@@ -131,7 +131,7 @@ impl Curve {
                 .into_iter()
                 .rev()
                 .filter(|w| !w.is_empty())
-                .for_each(|window| supply.push_front(window));
+                .for_each(|window| supply.insert(j, window));
             // (4) add overlap windows
             overlap = overlap.aggregate(&Curve::new(result.overlap));
             // (5) remove completed demand and add remaining demand
