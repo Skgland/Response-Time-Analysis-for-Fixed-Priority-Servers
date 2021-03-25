@@ -224,6 +224,63 @@ fn response_time() {
     assert_eq!(wcrt, TimeUnit::from(3));
 }
 
+#[test]
+#[ignore]
+fn response_time2() {
+    // Example 9. without t_3
+
+    // TODO fix, probably not applying 7.1 correctly
+
+    let servers = &[
+        Server {
+            tasks: vec![Task::new(1, 4, 0)],
+            capacity: TimeUnit::from(3),
+            interval: TimeUnit::from(10),
+            server_type: ServerType::Deferrable,
+        },
+        Server {
+            tasks: vec![Task::new(1, 5, 0)],
+            capacity: TimeUnit::from(2),
+            interval: TimeUnit::from(4),
+            server_type: ServerType::Deferrable,
+        },
+    ];
+
+    let t2_demand = Task::demand_curve(&servers[1].as_tasks()[0], TimeUnit::from(16));
+
+    let expected = unsafe {
+        Curve::from_windows_unchecked(vec![
+            Window::new(0, 1),
+            Window::new(5, 6),
+            Window::new(10, 11),
+            Window::new(15, 16),
+        ])
+    };
+
+    assert_eq!(t2_demand, expected);
+
+    let t2_available = Task::actual_execution_curve(servers, 1, 0, TimeUnit::from(16));
+
+    let expected = unsafe {
+        Curve::from_windows_unchecked(vec![
+            Window::new(1, 2),
+            Window::new(5, 6),
+            Window::new(10, 11),
+            Window::new(15, 16),
+        ])
+    };
+
+    assert_eq!(t2_available, expected);
+
+    let swh = Server::system_wide_hyper_periode(servers);
+
+    assert_eq!(swh, TimeUnit::from(20));
+
+    let wcrt = Task::worst_case_response_time(servers, 1, 0);
+
+    assert_eq!(wcrt, TimeUnit::from(3));
+}
+
 // TODO fix?
 #[test]
 #[ignore]
