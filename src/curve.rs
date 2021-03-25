@@ -229,48 +229,70 @@ impl Curve<Demand> {
     /// Only defined for Demand Curves as it doesn't rely make sense for Overlap or Supply curves
     /// As overlapping Supply may not be available later and Overlap may not Overlap later
     #[must_use]
-    pub fn aggregate(self, other: Self) -> Self {
-        let mut new = self.windows;
-
+    pub fn aggregate(mut self, other: Self) -> Self {
         for mut window in other.windows {
             let mut index = 0;
-            while index < new.len() {
-                if let Some(aggregate) = new[index].aggregate(&window) {
+
+            // iteratively aggregate window with overlapping windows in new
+            // until no window overlaps
+
+            while index < self.windows.len() {
+                if let Some(aggregate) = self.windows[index].aggregate(&window) {
                     // remove window that was aggregated
-                    new.remove(index);
+                    self.windows.remove(index);
                     // replace window to be inserted by aggregated window
+                    // continue at current index at it will not be inserted earlier
                     window = aggregate;
+                } else if self.windows[index].start > window.end {
+                    // window can be inserted at index, no need to look for further overlaps
+                    // reason:
+                    // - no-overlap: window does not overlap as otherwise the aggregation would be some
+                    // - ordered: assuming that window is not empty window.stat < window.end < new[index].start
+                    break;
                 } else {
+                    // window did not overlap with new[index],
+                    // but can't be inserted before index, try next index
                     index += 1;
                 }
             }
 
-            // find index where to insert new window
-            let index = new
-                .iter()
-                .enumerate()
-                .find(|(_, nw)| nw.start > window.end)
-                .map_or_else(|| new.len(), |(index, _)| index);
+            // index now contains either new.len() or the first index where window.end > new[index].start
+            // this is where window will be inserted
 
-            new.insert(index, window);
+            #[cfg(debug_assertions)]
+            {
+                // find index where to insert new window
+                let verify = self
+                    .windows
+                    .iter()
+                    .enumerate()
+                    .find_map(|(index, nw)| (nw.start > window.end).then(|| index))
+                    .unwrap_or_else(|| self.windows.len());
+                debug_assert_eq!(index, verify);
+            }
+
+            self.windows.insert(index, window);
         }
 
-        for new in new[..].windows(2) {
-            // assert new.is_sorted_by_key(|window|window.start) once is_sorted_by_key is stable
-            match new {
-                [prev, next] => {
-                    // ordered and non-overlapping
-                    debug_assert!(prev.end < next.start);
-                    debug_assert!(!prev.overlaps(next));
+        #[cfg(debug_assertions)]
+        {
+            for new in self.as_windows().windows(2) {
+                match new {
+                    [prev, next] => {
+                        // ordered
+                        // assert is_sorted_by_key on .start once that is stable
+                        debug_assert!(prev.start < next.start);
+                        // non-overlapping
+                        debug_assert!(!prev.overlaps(next));
+                    }
+                    _ => unreachable!(
+                        "Iteration over slice windows of size 2, can't have other slice lengths10"
+                    ),
                 }
-                _ => unreachable!(
-                    "Iteration over slice windows of size 2, can't have other slice lengths10"
-                ),
             }
         }
 
-        // TODO Safety Comment
-        unsafe { Self::from_windows_unchecked(new) }
+        self
     }
 
     /// Partition the Curve as Defined by Algorithms 2. and 3. of the paper
