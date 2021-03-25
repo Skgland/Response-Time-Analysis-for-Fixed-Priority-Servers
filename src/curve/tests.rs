@@ -1,14 +1,15 @@
 use std::collections::HashMap;
 
-use crate::curve::Curve;
+use crate::curve::{Curve, OverlapCurve, PrimitiveCurve};
+
 use crate::time::TimeUnit;
-use crate::window::{Demand, Overlap, Supply, Window};
+use crate::window::{Demand, Supply, Window};
 
 #[test]
 fn aggregate_curves() {
     // Example 2.
     let c1 = unsafe { Curve::from_windows_unchecked(vec![Window::new(0, 4)]) };
-    let c2 = unsafe {
+    let c2: Curve<PrimitiveCurve<Demand>> = unsafe {
         Curve::from_windows_unchecked(vec![
             Window::new(0, 1),
             Window::new(5, 6),
@@ -16,7 +17,10 @@ fn aggregate_curves() {
         ])
     };
     let c3 = unsafe {
-        Curve::<Demand>::from_windows_unchecked(vec![Window::new(0, 6), Window::new(10, 11)])
+        Curve::<PrimitiveCurve<Demand>>::from_windows_unchecked(vec![
+            Window::new(0, 6),
+            Window::new(10, 11),
+        ])
     };
 
     assert_eq!(c1.aggregate(c2), c3);
@@ -34,7 +38,7 @@ fn delta_curves() {
         ])
     };
 
-    let c_q: Curve<Demand> = unsafe {
+    let c_q: Curve<PrimitiveCurve<_>> = unsafe {
         Curve::from_windows_unchecked(vec![
             Window::new(2, 4),
             Window::new(14, 17),
@@ -42,7 +46,7 @@ fn delta_curves() {
         ])
     };
 
-    let expected_overlap: Curve<Overlap> = unsafe {
+    let expected_overlap: Curve<OverlapCurve<PrimitiveCurve<Supply>, PrimitiveCurve<Demand>>> = unsafe {
         Curve::from_windows_unchecked(vec![
             Window::new(2, 4),
             Window::new(14, 15),
@@ -51,7 +55,7 @@ fn delta_curves() {
         ])
     };
 
-    let expected_remaining_supply: Curve<Supply> = unsafe {
+    let expected_remaining_supply: Curve<PrimitiveCurve<Supply>> = unsafe {
         Curve::from_windows_unchecked(vec![
             Window::new(0, 2),
             Window::new(4, 5),
@@ -71,7 +75,7 @@ fn delta_curves() {
 fn split_curves() {
     // Example 4.
 
-    let c_p: Curve<Demand> = unsafe {
+    let c_p: Curve<PrimitiveCurve<Supply>> = unsafe {
         Curve::from_windows_unchecked(vec![
             Window::new(2, 4),
             Window::new(5, 6),

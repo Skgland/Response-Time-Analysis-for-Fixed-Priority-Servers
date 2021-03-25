@@ -4,10 +4,25 @@
 
 use std::collections::{HashMap, VecDeque};
 
-use crate::curve::{Curve, PartitionResult};
+use crate::curve::{Curve, PartitionResult, PrimitiveCurve};
 use crate::task::Task;
 use crate::time::TimeUnit;
-use crate::window::{Demand, Overlap, Supply, Window};
+use crate::window::{Overlap, Window};
+
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
+pub struct AggregatedServerDemand;
+
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
+pub struct ConstrainedServerDemand;
+
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
+pub struct HigherPriorityServerDemand;
+
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
+pub struct UnconstrainedServerExecution;
+
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
+pub struct ConstrainedServerExecution;
 
 /// Type Representing a Server
 /// with a given set of tasks,
@@ -50,7 +65,7 @@ impl Server {
 
     /// Calculate the aggregated demand Curve of a given Server up to a specified limit
     /// As defined in Definition 11. in the paper
-    pub fn aggregated_demand_curve(&self, up_to: TimeUnit) -> Curve<Demand> {
+    pub fn aggregated_demand_curve(&self, up_to: TimeUnit) -> Curve<AggregatedServerDemand> {
         self.tasks
             .iter()
             .map(|task| task.demand_curve(up_to))
@@ -59,7 +74,7 @@ impl Server {
 
     /// Calculate the Servers constrained demand curve up to the specified limit,
     /// based on the Algorithm 1. from the paper
-    pub fn constrain_demand_curve(&self, up_to: TimeUnit) -> Curve<Demand> {
+    pub fn constrain_demand_curve(&self, up_to: TimeUnit) -> Curve<ConstrainedServerDemand> {
         let aggregated_curve = self.aggregated_demand_curve(up_to);
 
         // (1)
@@ -68,10 +83,8 @@ impl Server {
         let mut key = if let Some(&key) = splits.keys().min() {
             key
         } else {
-            return splits
-                .into_iter()
-                .map(|(_, curve)| curve)
-                .fold(Curve::empty(), Curve::aggregate);
+            // curve must be empty
+            return Curve::empty();
         };
 
         // (2)
@@ -101,7 +114,7 @@ impl Server {
                 if delta_k > TimeUnit::ZERO {
                     let old = splits.remove(&(key + 1)).unwrap_or_else(Curve::empty);
                     let transfer_start = (key + 1) * self.interval;
-                    let updated = old.aggregate(Curve::new(Window::new(
+                    let updated = old.aggregate::<PrimitiveCurve<_>>(Curve::new(Window::new(
                         transfer_start,
                         transfer_start + delta_k,
                     )));
@@ -129,10 +142,10 @@ impl Server {
         servers: &[Server],
         index: usize,
         up_to: TimeUnit,
-    ) -> Curve<Demand> {
+    ) -> Curve<HigherPriorityServerDemand> {
         servers[..index]
             .iter()
-            .map(|server| server.aggregated_demand_curve(up_to))
+            .map(|server| server.constrain_demand_curve(up_to))
             .fold(Curve::empty(), Curve::aggregate)
     }
 
@@ -148,8 +161,8 @@ impl Server {
         servers: &[Server],
         index: usize,
         up_to: TimeUnit,
-    ) -> Curve<Supply> {
-        let result = Curve::delta(
+    ) -> Curve<UnconstrainedServerExecution> {
+        let result = Curve::delta::<_, PrimitiveCurve<_>>(
             Curve::total(up_to),
             Server::aggregated_higher_priority_demand_curve(servers, index, up_to),
         );
@@ -163,7 +176,7 @@ impl Server {
         servers: &[Server],
         index: usize,
         up_to: TimeUnit,
-    ) -> Curve<Overlap> {
+    ) -> Curve<ConstrainedServerExecution> {
         // Input
 
         let unconstrained_execution = Server::unconstrained_execution_curve(servers, index, up_to);
@@ -198,7 +211,7 @@ impl Server {
         // (2)
         let mut current_supply = split_execution;
         let mut current_demand: VecDeque<_> = constrained_demand.into_windows().into();
-        let mut constrained_execution = Vec::new();
+        let mut constrained_execution: Vec<Window<Overlap<_, _>>> = Vec::new();
 
         // (3) initialization will be done on demand
         let mut budgets = HashMap::new();
@@ -277,13 +290,13 @@ impl Server {
                     .for_each(|window| current_supply.insert(index, window));
 
                 // (g)
-                constrained_execution.push(result.overlap.to_other());
+                constrained_execution.push(result.overlap);
             } else {
                 break;
             }
         }
 
-        Curve::from_windows(constrained_execution).into_overlap()
+        Curve::overlap_from_windows(constrained_execution)
     }
 
     /// Calculate the system wide hyper periode

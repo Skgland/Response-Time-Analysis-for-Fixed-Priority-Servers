@@ -225,7 +225,7 @@ fn response_time() {
 }
 
 #[test]
-#[ignore]
+// #[ignore]
 fn response_time2() {
     // Example 9. without t_3
 
@@ -283,7 +283,7 @@ fn response_time2() {
 
 // TODO fix?
 #[test]
-#[ignore]
+// #[ignore]
 fn remarks() {
     // Example 10.
     // Demand, Intervals ,and Offsets multiplied by 2  to fit in Integers
@@ -363,7 +363,7 @@ fn comparison() {
         unsafe { Curve::from_windows_unchecked(vec![Window::new(0, 4), Window::new(10, 14)]) };
 
     assert_eq!(s2_aggregated_demand, expected_s2_demand);
-    assert_eq!(s2_constrained_demand, expected_s2_demand);
+    assert_eq!(s2_constrained_demand, expected_s2_demand.reclassify());
 
     let s2_unconstrained_execution = Server::unconstrained_execution_curve(servers, 1, up_to);
 

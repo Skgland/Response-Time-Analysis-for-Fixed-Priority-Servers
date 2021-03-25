@@ -4,37 +4,47 @@
 
 use std::collections::{HashMap, VecDeque};
 
-use crate::seal::WindowType;
+use crate::seal::{CurveType, WindowType};
 use crate::server::{Server, ServerType};
 use crate::time::TimeUnit;
 use crate::window::{Demand, Overlap, Supply, Window};
+
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
+pub struct PrimitiveCurve<W: WindowType>(W);
+
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
+pub struct OverlapCurve<P: CurveType, Q: CurveType>(P, Q);
 
 /// A Curve is an ordered Set of non-overlapping Windows
 ///
 /// The windows are ordered by their start
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Curve<T: WindowType> {
-    /// windows contains an ordered Set of non-overlapping windows
-    windows: Vec<Window<T>>,
+pub struct Curve<C: CurveType> {
+    /// windows contains an ordered Set of non-overlapping non-empty windows
+    windows: Vec<Window<C::WindowKind>>,
 }
 
 /// Return Type for [`Curve::delta`](Curve::delta)
 #[derive(Debug)]
-pub struct CurveDeltaResult<P: WindowType, Q: WindowType> {
+pub struct CurveDeltaResult<
+    P: CurveType,
+    Q: CurveType,
+    R: CurveType<WindowKind = Overlap<P::WindowKind, Q::WindowKind>>,
+> {
     /// The remaining supply, can be 0-2 Windows
     pub remaining_supply: Curve<P>,
     /// The (used) Overlap between Supply and Demand
-    pub overlap: Curve<Overlap>,
+    pub overlap: Curve<R>,
     /// The remaining Demand that could not be fulfilled by the Supply
     pub remaining_demand: Curve<Q>,
 }
 
-impl<T: WindowType> Curve<T> {
+impl<T: CurveType> Curve<T> {
     /// Create a new Curve from the provided window
     ///
     /// May return a Curve with no Windows when the provided Window is empty
     #[must_use]
-    pub fn new(window: Window<T>) -> Self {
+    pub fn new(window: Window<T::WindowKind>) -> Self {
         if window.is_empty() {
             // Empty windows can be ignored
             Self::empty()
@@ -49,13 +59,13 @@ impl<T: WindowType> Curve<T> {
 
     /// Returns a slice reference to the contained windows
     #[must_use]
-    pub fn as_windows(&self) -> &[Window<T>] {
+    pub fn as_windows(&self) -> &[Window<T::WindowKind>] {
         self.windows.as_slice()
     }
 
     /// Consumes self and returns the contained Windows
     #[must_use]
-    pub fn into_windows(self) -> Vec<Window<T>> {
+    pub fn into_windows(self) -> Vec<Window<T::WindowKind>> {
         self.windows
     }
 
@@ -78,7 +88,7 @@ impl<T: WindowType> Curve<T> {
     /// # Safety:
     /// Windows need to be non-overlapping and
     /// ordered based on start, to fulfill invariants of curve
-    pub(crate) unsafe fn from_windows_unchecked(windows: Vec<Window<T>>) -> Self {
+    pub(crate) unsafe fn from_windows_unchecked(windows: Vec<Window<T::WindowKind>>) -> Self {
         Self { windows }
     }
 
@@ -99,11 +109,14 @@ impl<T: WindowType> Curve<T> {
 
     /// Calculate Delta between the Supply and the Demand based on Definition 7. from the paper
     #[must_use]
-    pub fn delta<Q: WindowType>(supply: Self, demand: Curve<Q>) -> CurveDeltaResult<T, Q> {
+    pub fn delta<Q: CurveType, R: CurveType<WindowKind = Overlap<T::WindowKind, Q::WindowKind>>>(
+        supply: Self,
+        demand: Curve<Q>,
+    ) -> CurveDeltaResult<T, Q, R> {
         let mut demand: VecDeque<_> = demand.windows.into_iter().collect();
         let mut supply: VecDeque<_> = supply.windows.into_iter().collect();
 
-        let mut overlap: Curve<Demand> = Curve::empty();
+        let mut overlap: Curve<_> = Curve::empty();
 
         // get first demand window
         // if None we are done <=> Condition C^'_q(t) = {}
@@ -144,10 +157,7 @@ impl<T: WindowType> Curve<T> {
                 .for_each(|window| supply.insert(j, window));
 
             // (4) add overlap windows
-            overlap = overlap.aggregate(Curve::new(Window::new(
-                result.overlap.start,
-                result.overlap.end,
-            )));
+            overlap.insert(Window::new(result.overlap.start, result.overlap.end));
 
             // (5) remove completed demand and add remaining demand
             demand.pop_front();
@@ -160,7 +170,7 @@ impl<T: WindowType> Curve<T> {
             remaining_supply: Self {
                 windows: supply.into(),
             },
-            overlap: overlap.into_overlap(),
+            overlap,
             remaining_demand: Curve {
                 windows: demand.into(),
             },
@@ -213,11 +223,124 @@ impl<T: WindowType> Curve<T> {
                 false
             }))
     }
+
+    /// Change the `CurveType` of the Curve
+    /// requires that the `WindowType` of both [`CurveTypes`](CurveType) is the same
+    #[must_use]
+    pub fn reclassify<C: CurveType<WindowKind = T::WindowKind>>(self) -> Curve<C> {
+        Curve {
+            windows: self.windows,
+        }
+    }
+
+    /// Insert window into the Curve
+    ///
+    /// # Panics
+    /// If window overlaps by more than just the bounds
+    pub fn insert(&mut self, window: Window<T::WindowKind>) {
+        if window.is_empty() {
+            // Curves don't contain empty windows
+        } else if self.windows.is_empty()
+            || self
+                .windows
+                .last()
+                .filter(|last| last.end < window.start)
+                .is_some()
+        {
+            self.windows.push(window);
+        } else if let Some(prev) = self.windows.last().filter(|last| last.end == window.start) {
+            let start = prev.start;
+            self.windows.pop();
+            self.windows.push(Window::new(start, window.end));
+        } else if self
+            .windows
+            .first()
+            .filter(|first| window.end < first.start)
+            .is_some()
+        {
+            self.windows.insert(0, window);
+        } else if let Some(next) = self
+            .windows
+            .first()
+            .filter(|first| window.end < first.start)
+        {
+            let end = next.end;
+            self.windows.remove(0);
+            self.windows.push(Window::new(window.start, end));
+        } else {
+            let index = if let Some(index) = self
+                .windows
+                .as_slice()
+                .windows(2)
+                .enumerate()
+                .find_map(|(index, windows)| match windows {
+                    [prev, next] => {
+                        if prev.end <= window.start && window.end <= next.start {
+                            Some(index)
+                        } else {
+                            None
+                        }
+                    }
+                    _ => unreachable!("Windows size 2 hanled above!"),
+                }) {
+                index
+            } else {
+                panic!("Can't insert Window {:?} into Curve {:?} !", window, self);
+            };
+
+            let prev = self.windows.remove(index);
+            let next = self.windows.remove(index);
+
+            // insert window between prev and next
+
+            let (start, reinsert_prev) = if prev.end < window.start {
+                (window.start, true)
+            } else {
+                (prev.start, false)
+            };
+
+            let (end, reinsert_next) = if window.end < next.start {
+                (window.end, true)
+            } else {
+                (next.end, false)
+            };
+
+            if reinsert_next {
+                self.windows.insert(index, next);
+            }
+
+            self.windows.insert(index, Window::new(start, end));
+
+            if reinsert_prev {
+                self.windows.insert(index, prev);
+            }
+        }
+    }
 }
 
-impl Curve<Demand> {
+impl<T: CurveType<WindowKind = Supply>> Curve<T> {
+    /// Create a Curve of all provided Windows
+    pub fn supply_from_windows<I: IntoIterator<Item = Window<T::WindowKind>>>(windows: I) -> Self {
+        windows.into_iter().fold(Self::empty(), |mut acc, window| {
+            acc.insert(window);
+            acc
+        })
+    }
+}
+
+impl<P: WindowType, Q: WindowType, T: CurveType<WindowKind = Overlap<P, Q>>> Curve<T> {
+    /// Create a Curve of all provided Windows
+    pub fn overlap_from_windows<I: IntoIterator<Item = Window<T::WindowKind>>>(windows: I) -> Self {
+        windows.into_iter().fold(Self::empty(), |mut acc, window| {
+            acc.insert(window);
+            acc
+        })
+    }
+}
+
+impl<T: CurveType<WindowKind = Demand>> Curve<T> {
     /// Create an aggregated Curve of all provided Windows
-    pub fn from_windows<I: IntoIterator<Item = Window<Demand>>>(windows: I) -> Self {
+    pub fn demand_from_windows<I: IntoIterator<Item = Window<T::WindowKind>>>(windows: I) -> Self {
         windows
             .into_iter()
             .map(Self::new)
@@ -229,35 +352,35 @@ impl Curve<Demand> {
     /// Only defined for Demand Curves as it doesn't rely make sense for Overlap or Supply curves
     /// As overlapping Supply may not be available later and Overlap may not Overlap later
     #[must_use]
-    pub fn aggregate(mut self, other: Self) -> Self {
+    pub fn aggregate<R: CurveType<WindowKind = T::WindowKind>>(mut self, other: Curve<R>) -> Self {
         for mut window in other.windows {
             let mut index = 0;
 
             // iteratively aggregate window with overlapping windows in new
             // until no window overlaps
-
             while index < self.windows.len() {
                 if let Some(aggregate) = self.windows[index].aggregate(&window) {
                     // remove window that was aggregated
                     self.windows.remove(index);
                     // replace window to be inserted by aggregated window
-                    // continue at current index at it will not be inserted earlier
                     window = aggregate;
+                    // continue at current index as it will not be inserted earlier
+                    continue;
                 } else if self.windows[index].start > window.end {
-                    // window can be inserted at index, no need to look for further overlaps
-                    // reason:
-                    // - no-overlap: window does not overlap as otherwise the aggregation would be some
-                    // - ordered: assuming that window is not empty window.stat < window.end < new[index].start
+                    // window can be inserted at index, no need to look for further overlaps as
+                    // earlier overlaps are already handled, later overlaps can't happen
                     break;
                 } else {
                     // window did not overlap with new[index],
-                    // but can't be inserted before index, try next index
+                    // but can't be inserted at index, try next index
                     index += 1;
+                    continue;
                 }
             }
 
-            // index now contains either new.len() or the first index where window.end > new[index].start
+            // index now contains either new.len() or the first index where window.end < new[index].start
             // this is where window will be inserted
+            // all overlaps have been resolved
 
             #[cfg(debug_assertions)]
             {
@@ -271,6 +394,7 @@ impl Curve<Demand> {
                 debug_assert_eq!(index, verify);
             }
 
+            // this insert needs to preserve the Curve invariants
             self.windows.insert(index, window);
         }
 
@@ -382,18 +506,6 @@ impl Curve<Demand> {
             }
         }
     }
-
-    /// Convert a Demand Curve into an Overlap Curve
-    #[must_use]
-    pub fn into_overlap(self) -> Curve<Overlap> {
-        Curve {
-            windows: self
-                .windows
-                .into_iter()
-                .map(|window| window.to_other())
-                .collect(),
-        }
-    }
 }
 
 /// Return Type for [`Curve::partition`](Curve::partition)
@@ -414,8 +526,6 @@ pub struct PartitionResult {
     /// after the boundary or an empty window if there is no window after the boundary
     pub tail: Window<Demand>,
 }
-
-impl Curve<Supply> {}
 
 #[cfg(test)]
 mod tests;

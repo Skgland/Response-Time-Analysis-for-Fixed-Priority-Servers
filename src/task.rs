@@ -1,9 +1,21 @@
 //! Module for the Task definition
 
-use crate::curve::Curve;
+use crate::curve::{Curve, PrimitiveCurve};
 use crate::server::Server;
 use crate::time::TimeUnit;
-use crate::window::{Demand, Overlap, Window};
+use crate::window::Window;
+
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
+pub struct TaskDemand;
+
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
+pub struct HigherPriorityTaskDemand;
+
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
+pub struct AvailableTaskExecution;
+
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
+pub struct ActualTaskExecution;
 
 /// The Task type based on the Modeling described in the second paragraph
 /// of Chapter 3. in the paper
@@ -45,12 +57,13 @@ impl Task {
     ///
     /// Based on Definition 10. of the paper
     #[must_use]
-    pub fn demand_curve(&self, up_to: TimeUnit) -> Curve<Demand> {
+    pub fn demand_curve(&self, up_to: TimeUnit) -> Curve<TaskDemand> {
         let mut start = self.offset;
         let mut curve = Curve::empty();
 
         while start <= (up_to - self.demand) {
-            curve = curve.aggregate(Curve::new(Window::new(start, start + self.demand)));
+            curve =
+                curve.aggregate::<TaskDemand>(Curve::new(Window::new(start, start + self.demand)));
             start += self.interval;
         }
 
@@ -63,7 +76,7 @@ impl Task {
         tasks: &[Self],
         index: usize,
         up_to: TimeUnit,
-    ) -> Curve<Demand> {
+    ) -> Curve<HigherPriorityTaskDemand> {
         tasks[..index]
             .iter()
             .map(|task| task.demand_curve(up_to))
@@ -80,18 +93,18 @@ impl Task {
         server_index: usize,
         task_index: usize,
         up_to: TimeUnit,
-    ) -> Curve<Overlap> {
+    ) -> Curve<AvailableTaskExecution> {
         let constrained_server_execution_curve =
             Server::constrained_execution_curve(servers, server_index, up_to);
         let higher_priority_task_demand =
             Task::higher_priority_task_demand(servers[server_index].as_tasks(), task_index, up_to);
 
-        let result = Curve::delta(
+        let result = Curve::delta::<_, PrimitiveCurve<_>>(
             constrained_server_execution_curve,
             higher_priority_task_demand,
         );
 
-        result.remaining_supply
+        result.remaining_supply.reclassify()
     }
 
     /// Calculate the actual execution Curve for the Task with priority `task_index` of the Server with priority `server_index`
@@ -104,7 +117,7 @@ impl Task {
         server_index: usize,
         task_index: usize,
         up_to: TimeUnit,
-    ) -> Curve<Overlap> {
+    ) -> Curve<ActualTaskExecution> {
         let available_execution_curve =
             Task::available_execution_curve(servers, server_index, task_index, up_to);
         let task_demand_curve = servers[server_index].as_tasks()[task_index].demand_curve(up_to);
@@ -152,7 +165,10 @@ impl Task {
     /// Calculate the time till the execution curve has served t Units of Demand
     /// Implementing Algorithm 5. form the paper
     #[must_use]
-    pub(crate) fn time_to_provide(actual_execution_time: &Curve<Overlap>, t: TimeUnit) -> TimeUnit {
+    pub(crate) fn time_to_provide(
+        actual_execution_time: &Curve<ActualTaskExecution>,
+        t: TimeUnit,
+    ) -> TimeUnit {
         // Note: paper lists wants to find largest index k with the sum of the windows 0..=k < t
         // but when calculating k the sum skips 0
         // finding the largest index k with the sum of the windows 1..=k < t

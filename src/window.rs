@@ -2,7 +2,7 @@
 
 use std::marker::PhantomData;
 
-use crate::curve::Curve;
+use crate::curve::{Curve, PrimitiveCurve};
 use crate::seal::WindowType;
 use crate::time::TimeUnit;
 
@@ -129,11 +129,11 @@ impl<T: WindowType> Window<T> {
 
 /// The Return Type for the [`Window::delta`] calculation
 #[derive(Debug, Eq, PartialEq)] // Eq for tests
-pub struct WindowDeltaResult<P: WindowType, Q: WindowType> {
+pub struct WindowDeltaResult<T: WindowType, Q: WindowType> {
     /// The unused "supply"
-    pub remaining_supply: Curve<P>,
+    pub remaining_supply: Curve<PrimitiveCurve<T>>,
     /// The Windows Overlap
-    pub overlap: Window<Overlap>,
+    pub overlap: Window<Overlap<T, Q>>,
     /// The unfulfilled "demand"
     pub remaining_demand: Window<Q>,
 }
@@ -151,4 +151,4 @@ pub struct Demand;
 
 /// Marker Type for Window,indicating an Overlap between Supply and Demand
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Overlap;
+pub struct Overlap<P: WindowType, Q: WindowType>(P, Q);
