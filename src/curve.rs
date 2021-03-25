@@ -6,7 +6,8 @@ use std::collections::{HashMap, VecDeque};
 
 use crate::seal::WindowType;
 use crate::server::{Server, ServerType};
-use crate::window::Window;
+use crate::time::TimeUnit;
+use crate::window::{Demand, Overlap, Supply, Window};
 
 /// A Curve is an ordered Set of non-overlapping Windows
 ///
@@ -18,26 +19,15 @@ pub struct Curve<T: WindowType> {
 }
 
 /// Return Type for [`Curve::delta`](Curve::delta)
-pub struct CurveDeltaResult {
+#[derive(Debug)]
+pub struct CurveDeltaResult<P: WindowType, Q: WindowType> {
     /// The remaining supply, can be 0-2 Windows
-    pub remaining_supply: Curve<Supply>,
+    pub remaining_supply: Curve<P>,
     /// The (used) Overlap between Supply and Demand
     pub overlap: Curve<Overlap>,
     /// The remaining Demand that could not be fulfilled by the Supply
-    pub remaining_demand: Curve<Demand>,
+    pub remaining_demand: Curve<Q>,
 }
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-/// Marker Type for Window, indicating a Supply Window
-pub struct Supply;
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-/// Marker Type for Window, indicating Demand
-pub struct Demand;
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-/// Marker Type for Window,indicating an Overlap between Supply and Demand
-pub struct Overlap;
 
 impl<T: WindowType> Curve<T> {
     /// Create a new Curve from the provided window
@@ -77,8 +67,8 @@ impl<T: WindowType> Curve<T> {
 
     /// Create a new Total Curve for the given limit
     #[must_use]
-    pub fn total(up_to: usize) -> Self {
-        Self::new(Window::up_to(up_to))
+    pub fn total(up_to: TimeUnit) -> Self {
+        Self::new(Window::new(TimeUnit::ZERO, up_to))
     }
 
     /// Create a new Curve from the given Vector of Windows
@@ -94,19 +84,92 @@ impl<T: WindowType> Curve<T> {
 
     /// Return the Curves Capacity as defined by Definition 3. in the paper
     #[must_use]
-    pub fn capacity(&self) -> usize {
+    pub fn capacity(&self) -> TimeUnit {
         self.windows.iter().map(Window::length).sum()
     }
 
     /// Return true if the Capacity of the Curve is 0
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.windows.iter().map(Window::length).all(|c| c == 0)
+        self.windows
+            .iter()
+            .map(Window::length)
+            .all(|c| c == TimeUnit::ZERO)
+    }
+
+    /// Calculate Delta between the Supply and the Demand based on Definition 7. from the paper
+    #[must_use]
+    pub fn delta<Q: WindowType>(supply: Self, demand: Curve<Q>) -> CurveDeltaResult<T, Q> {
+        let mut demand: VecDeque<_> = demand.windows.into_iter().collect();
+        let mut supply: VecDeque<_> = supply.windows.into_iter().collect();
+
+        let mut overlap: Curve<Demand> = Curve::empty();
+
+        // get first demand window
+        // if None we are done <=> Condition C^'_q(t) = {}
+        'main: while let Some(demand_window) = demand.front() {
+            // (1) find valid supply window
+            let j = if let Some(i) = supply
+                .iter()
+                .enumerate()
+                .find_map(|(i, supply)| (demand_window.start < supply.end).then(|| i))
+            {
+                i
+            } else {
+                // exhausted usable supply
+                // either supply.len() == 0 <=> Condition C^'_p(t) = {}
+                // or all remaining supply is before remaining demand,
+                // this should not happen for schedulable scenarios
+                break 'main;
+            };
+
+            let supply_window = supply
+                .get(j)
+                .expect("Index should have only be searched in bounds!");
+
+            // (2) calculate delta
+            let result = Window::delta(supply_window, demand_window);
+
+            // (3) removed used supply and add remaining supply
+            supply
+                .remove(j)
+                .expect("Index should have only be searched in bounds, and has yet to be removed!");
+
+            result
+                .remaining_supply
+                .windows
+                .into_iter()
+                .rev()
+                .filter(|w| !w.is_empty())
+                .for_each(|window| supply.insert(j, window));
+
+            // (4) add overlap windows
+            overlap = overlap.aggregate(Curve::new(Window::new(
+                result.overlap.start,
+                result.overlap.end,
+            )));
+
+            // (5) remove completed demand and add remaining demand
+            demand.pop_front();
+            if !result.remaining_demand.is_empty() {
+                demand.push_front(result.remaining_demand)
+            }
+        }
+
+        CurveDeltaResult {
+            remaining_supply: Self {
+                windows: supply.into(),
+            },
+            overlap: overlap.into_overlap(),
+            remaining_demand: Curve {
+                windows: demand.into(),
+            },
+        }
     }
 
     /// Split the curve on every interval boundary as defined in Definition 8. of the paper
     #[must_use]
-    pub fn split(self, interval: usize) -> HashMap<usize, Self> {
+    pub fn split(self, interval: TimeUnit) -> HashMap<usize, Self> {
         let mut curves: HashMap<_, Self> = HashMap::new();
 
         for mut window in self.windows {
@@ -222,7 +285,7 @@ impl Curve<Demand> {
                 let index = self
                     .windows
                     .iter()
-                    .scan(0, |acc, window| {
+                    .scan(TimeUnit::ZERO, |acc, window| {
                         *acc += window.length();
                         Some(*acc)
                     })
@@ -236,26 +299,27 @@ impl Curve<Demand> {
                     - self.windows[..index]
                         .iter()
                         .map(Window::length)
-                        .sum::<usize>();
-                let (head, tail) = if remaining_capacity != 0 && index < self.windows.len() {
-                    let window = &self.windows[index];
-                    let head_start = window.start;
-                    let tail_end = window.end;
-                    let split = head_start + remaining_capacity;
-                    let head = Window::new(head_start, split);
-                    let tail = Window::new(split, tail_end);
-                    (head, tail)
-                } else {
-                    // Window won't be split as we don't have remaining capacity
-                    // if there is a window set it as the tail, otherwise the tail is also empty
-                    (
-                        Window::empty(),
-                        self.windows
-                            .get(index)
-                            .cloned()
-                            .unwrap_or_else(Window::empty),
-                    )
-                };
+                        .sum::<TimeUnit>();
+                let (head, tail) =
+                    if remaining_capacity != TimeUnit::ZERO && index < self.windows.len() {
+                        let window = &self.windows[index];
+                        let head_start = window.start;
+                        let tail_end = window.end;
+                        let split = head_start + remaining_capacity;
+                        let head = Window::new(head_start, split);
+                        let tail = Window::new(split, tail_end);
+                        (head, tail)
+                    } else {
+                        // Window won't be split as we don't have remaining capacity
+                        // if there is a window set it as the tail, otherwise the tail is also empty
+                        (
+                            Window::empty(),
+                            self.windows
+                                .get(index)
+                                .cloned()
+                                .unwrap_or_else(Window::empty),
+                        )
+                    };
 
                 PartitionResult { index, head, tail }
             }
@@ -311,86 +375,25 @@ impl Curve<Demand> {
 }
 
 /// Return Type for [`Curve::partition`](Curve::partition)
+#[derive(Debug)]
 pub struct PartitionResult {
-    // exclusive index, reference paper uses inclusive index
     /// The exclusive index up to which all demand fits into the current partition
+    ///
+    /// Note: the paper uses an inclusive index
     pub index: usize,
 
+    /// If there is a window on the partitioning boundary
+    /// this contains the split before the boundary, otherwise this contains an empty window
     pub head: Window<Demand>,
+
+    /// If there is a window on the partitioning boundary
+    /// this contains the split after the boundary,
+    /// otherwise if there is no window on the boundary this contains the first window
+    /// after the boundary or an empty window if there is no window after the boundary
     pub tail: Window<Demand>,
 }
 
-impl Curve<Supply> {
-    /// Calculate Delta between the Supply and the Demand based on Definition 7. from the paper
-    #[must_use]
-    pub fn delta(supply: Self, demand: Curve<Demand>) -> CurveDeltaResult {
-        let mut demand: VecDeque<_> = demand.windows.into_iter().collect();
-        let mut supply: VecDeque<_> = supply.windows.into_iter().collect();
-
-        let mut overlap: Curve<Demand> = Curve::empty();
-
-        // get first demand window
-        // if None we are done <=> Condition C^'_q(t) = {}
-        'main: while let Some(demand_window) = demand.front() {
-            // (1) find valid supply window
-            let j = if let Some(i) = supply
-                .iter()
-                .enumerate()
-                .find_map(|(i, supply)| (demand_window.start < supply.end).then(|| i))
-            {
-                i
-            } else {
-                // exhausted usable supply
-                // either supply.len() == 0 <=> Condition C^'_p(t) = {}
-                // or all remaining supply is before remaining demand,
-                // this should not happen for schedulable scenarios
-                break 'main;
-            };
-
-            let supply_window = supply
-                .get(j)
-                .expect("Index should have only be searched in bounds!");
-
-            // (2) calculate delta
-            let result = Window::delta(supply_window, demand_window);
-
-            // (3) removed used supply and add remaining supply
-            supply
-                .remove(j)
-                .expect("Index should have only be searched in bounds, and has yet to be removed!");
-
-            result
-                .remaining_supply
-                .windows
-                .into_iter()
-                .rev()
-                .filter(|w| !w.is_empty())
-                .for_each(|window| supply.insert(j, window));
-
-            // (4) add overlap windows
-            overlap = overlap.aggregate(Curve::new(Window::new(
-                result.overlap.start,
-                result.overlap.end,
-            )));
-
-            // (5) remove completed demand and add remaining demand
-            demand.pop_front();
-            if !result.remaining_demand.is_empty() {
-                demand.push_front(result.remaining_demand)
-            }
-        }
-
-        CurveDeltaResult {
-            remaining_supply: Self {
-                windows: supply.into(),
-            },
-            overlap: overlap.into_overlap(),
-            remaining_demand: Curve {
-                windows: demand.into(),
-            },
-        }
-    }
-}
+impl Curve<Supply> {}
 
 #[cfg(test)]
 mod tests;

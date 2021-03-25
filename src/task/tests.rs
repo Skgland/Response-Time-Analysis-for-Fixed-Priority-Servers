@@ -1,5 +1,6 @@
 use crate::curve::Curve;
 use crate::task::Task;
+use crate::time::TimeUnit;
 use crate::window::Window;
 
 #[test]
@@ -9,7 +10,7 @@ fn demand_curve() {
     let t_2 = Task::new(1, 5, 0);
     let t_3 = Task::new(2, 8, 0);
 
-    let up_to = 18;
+    let up_to = TimeUnit::from(18);
 
     let c_2 = t_2.demand_curve(up_to);
     let c_3 = t_3.demand_curve(up_to);
@@ -42,7 +43,7 @@ fn aggregated_demand_curve() {
     let t_2 = Task::new(1, 5, 0);
     let t_3 = Task::new(2, 8, 0);
 
-    let up_to = 18;
+    let up_to = TimeUnit::from(18);
 
     let result = t_2.demand_curve(up_to).aggregate(t_3.demand_curve(up_to));
 

@@ -1,5 +1,5 @@
-use crate::curve::{Curve, Demand};
-use crate::window::{Window, WindowDeltaResult};
+use crate::curve::Curve;
+use crate::window::{Demand, Supply, Window, WindowDeltaResult};
 
 #[test]
 fn aggregate_windows() {
@@ -16,8 +16,8 @@ fn window_delta_a() {
     // Example from figure 3. Part a
     // Partially full filled demand with partially used supply
 
-    let w_p = Window::new(0, 5);
-    let w_q = Window::new(3, 7);
+    let w_p = Window::<Supply>::new(0, 5);
+    let w_q = Window::<Demand>::new(3, 7);
 
     let result = Window::delta(&w_p, &w_q);
 
@@ -35,8 +35,8 @@ fn window_delta_b() {
     // Example from figure 3. Part b
     // Fully full filled demand with partial used supply
 
-    let w_p = Window::new(2, 8);
-    let w_q = Window::new(0, 4);
+    let w_p = Window::<Supply>::new(2, 8);
+    let w_q = Window::<Demand>::new(0, 4);
 
     let result = Window::delta(&w_p, &w_q);
 
@@ -53,8 +53,8 @@ fn window_delta_c() {
     // Example from figure 3. Part c
     // Fully full filled demand with split remaining supply
 
-    let w_p = Window::new(0, 8);
-    let w_q = Window::new(2, 6);
+    let w_p = Window::<Supply>::new(0, 8);
+    let w_q = Window::<Demand>::new(2, 6);
 
     let result = Window::delta(&w_p, &w_q);
 
@@ -73,8 +73,8 @@ fn window_delta_d() {
     // Example from figure 3. Part d
     // Partially full filled demand with fully used supply
 
-    let w_p = Window::new(2, 6);
-    let w_q = Window::new(0, 8);
+    let w_p = Window::<Supply>::new(2, 6);
+    let w_q = Window::<Demand>::new(0, 8);
 
     let result = Window::delta(&w_p, &w_q);
 

@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
-use crate::curve::{Curve, Demand, Overlap, Supply};
-use crate::window::Window;
+use crate::curve::Curve;
+use crate::time::TimeUnit;
+use crate::window::{Demand, Overlap, Supply, Window};
 
 #[test]
 fn aggregate_curves() {
@@ -33,7 +34,7 @@ fn delta_curves() {
         ])
     };
 
-    let c_q = unsafe {
+    let c_q: Curve<Demand> = unsafe {
         Curve::from_windows_unchecked(vec![
             Window::new(2, 4),
             Window::new(14, 17),
@@ -79,7 +80,7 @@ fn split_curves() {
         ])
     };
 
-    let t_s = 10;
+    let t_s = TimeUnit::from(10);
 
     let expected: HashMap<usize, _> = vec![
         (0, unsafe {

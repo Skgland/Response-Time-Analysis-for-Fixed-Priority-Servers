@@ -1,9 +1,9 @@
 //! Non pub Module for Sealing Traits, currently only the [`WindowType`](WindowType) trait
 
-use crate::curve::{Demand, Overlap, Supply};
+use crate::window::{Demand, Overlap, Supply};
 
 /// Sealed Marker Trait for Window Types
-pub trait WindowType {}
+pub trait WindowType: Clone {}
 
 impl WindowType for Supply {}
 

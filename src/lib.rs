@@ -4,6 +4,9 @@
 //!
 //! [paper]: https://doi.org/10.1145/3273905.3273927
 
+#![warn(missing_debug_implementations)]
+#![warn(unused)]
+//
 #![warn(clippy::cargo)]
 //
 #![warn(clippy::pedantic)]
@@ -12,12 +15,16 @@
 //
 #![warn(clippy::nursery)]
 #![allow(clippy::use_self)] // too many false positives and fails to be overridden locally
+#![allow(clippy::redundant_pub_crate)] // prevents accidents when changing the visibility of the containing modul
+//
 #![warn(clippy::missing_const_for_fn)]
 #![warn(clippy::missing_docs_in_private_items)]
 #![warn(clippy::missing_errors_doc)]
 #![warn(clippy::unimplemented)]
 #![warn(clippy::unwrap_in_result)]
 #![warn(clippy::unwrap_used)]
+
+pub mod time;
 
 pub mod curve;
 pub(crate) mod seal;

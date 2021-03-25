@@ -2,10 +2,12 @@
 //!
 //! and functions to be used with one or multiple Servers
 
-use crate::curve::{Curve, Demand, Overlap, PartitionResult, Supply};
-use crate::task::Task;
-use crate::window::Window;
 use std::collections::{HashMap, VecDeque};
+
+use crate::curve::{Curve, PartitionResult};
+use crate::task::Task;
+use crate::time::TimeUnit;
+use crate::window::{Demand, Overlap, Supply, Window};
 
 /// Type Representing a Server
 /// with a given set of tasks,
@@ -15,18 +17,21 @@ use std::collections::{HashMap, VecDeque};
 /// ,and a server type determining if the
 /// capacity is available only at the beginning of the interval
 /// or until it is used up
+#[derive(Debug)]
 pub struct Server {
     /// The Tasks that produce Demand for this Server
+    /// Sorted by priority with lower index equalling higher priority
     pub tasks: Vec<Task>,
     /// The capacity for fulfilling Demand
-    pub capacity: usize,
+    pub capacity: TimeUnit,
     /// How often the capacity is available
-    pub interval: usize,
+    pub interval: TimeUnit,
     /// How the available capacity behaves
     pub server_type: ServerType,
 }
 
 /// The Type of a Server
+#[derive(Debug)]
 pub enum ServerType {
     /// Indicated that the Server is a Deferrable Server
     /// as described/defined in Section 5.2 Paragraph 2 of the paper
@@ -37,9 +42,15 @@ pub enum ServerType {
 }
 
 impl Server {
+    /// Get a a reference to a slice of the Servers contained Tasks
+    #[must_use]
+    pub fn as_tasks(&self) -> &[Task] {
+        self.tasks.as_slice()
+    }
+
     /// Calculate the aggregated demand Curve of a given Server up to a specified limit
     /// As defined in Definition 11. in the paper
-    pub fn aggregated_demand_curve(&self, up_to: usize) -> Curve<Demand> {
+    pub fn aggregated_demand_curve(&self, up_to: TimeUnit) -> Curve<Demand> {
         self.tasks
             .iter()
             .map(|task| task.demand_curve(up_to))
@@ -48,7 +59,7 @@ impl Server {
 
     /// Calculate the Servers constrained demand curve up to the specified limit,
     /// based on the Algorithm 1. from the paper
-    pub fn constrain_demand_curve(&self, up_to: usize) -> Curve<Demand> {
+    pub fn constrain_demand_curve(&self, up_to: TimeUnit) -> Curve<Demand> {
         let aggregated_curve = self.aggregated_demand_curve(up_to);
 
         // (1)
@@ -85,9 +96,9 @@ impl Server {
                         .drain(..)
                         .skip(1) // skip window split into tail and head
                         .map(|window| window.length())
-                        .sum::<usize>();
+                        .sum::<TimeUnit>();
 
-                if delta_k > 0 {
+                if delta_k > TimeUnit::ZERO {
                     let old = splits.remove(&(key + 1)).unwrap_or_else(Curve::empty);
                     let transfer_start = (key + 1) * self.interval;
                     let updated = old.aggregate(Curve::new(Window::new(
@@ -117,7 +128,7 @@ impl Server {
     pub fn aggregated_higher_priority_demand_curve(
         servers: &[Server],
         index: usize,
-        up_to: usize,
+        up_to: TimeUnit,
     ) -> Curve<Demand> {
         servers[..index]
             .iter()
@@ -136,7 +147,7 @@ impl Server {
     pub fn unconstrained_execution_curve(
         servers: &[Server],
         index: usize,
-        up_to: usize,
+        up_to: TimeUnit,
     ) -> Curve<Supply> {
         let result = Curve::delta(
             Curve::total(up_to),
@@ -151,7 +162,7 @@ impl Server {
     pub fn constrained_execution_curve(
         servers: &[Server],
         index: usize,
-        up_to: usize,
+        up_to: TimeUnit,
     ) -> Curve<Overlap> {
         // Input
 
@@ -209,7 +220,7 @@ impl Server {
                             if window.end > demand_window.start
                                 && *budgets
                                     .entry(window.budget_group(server.interval))
-                                    .or_default()
+                                    .or_insert(TimeUnit::ZERO)
                                     < server.capacity
                             {
                                 Some(index)
@@ -273,6 +284,22 @@ impl Server {
         }
 
         Curve::from_windows(constrained_execution).into_overlap()
+    }
+
+    /// Calculate the system wide hyper periode
+    /// accounting for all servers and tasks
+    ///
+    /// Section 7.1
+    pub fn system_wide_hyper_periode(servers: &[Server]) -> TimeUnit {
+        servers
+            .iter()
+            .map(|server| server.interval)
+            .chain(
+                servers
+                    .iter()
+                    .flat_map(|server| server.as_tasks().iter().map(|task| task.interval)),
+            )
+            .fold(TimeUnit::ONE, TimeUnit::lcm)
     }
 }
 
