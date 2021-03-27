@@ -1,19 +1,23 @@
 //! Module for the Task definition
 
-use crate::curve::{Curve, PrimitiveCurve};
+use crate::curve::{AggregateExt, Curve, PrimitiveCurve};
 use crate::server::Server;
 use crate::time::TimeUnit;
 use crate::window::Window;
 
+/// Marker Type for Curves representing a Tasks Demand
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
 pub struct TaskDemand;
 
+/// Mark Type for Curves representing aggregated higher priority task demand
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
 pub struct HigherPriorityTaskDemand;
 
+/// Marker type for Curves representing the available execution for a task
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
 pub struct AvailableTaskExecution;
 
+/// Marker type for Curves representing the actual execution for a task
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
 pub struct ActualTaskExecution;
 
@@ -72,6 +76,7 @@ impl Task {
 
     /// calculate the Higher Priority task Demand for the task with priority `index` as defined in Definition 14. (1) in the paper,
     /// for a set of tasks indexed by their priority (lower index <=> higher priority) and up to the specified limit
+    #[must_use]
     pub fn higher_priority_task_demand(
         tasks: &[Self],
         index: usize,
@@ -80,7 +85,7 @@ impl Task {
         tasks[..index]
             .iter()
             .map(|task| task.demand_curve(up_to))
-            .fold(Curve::empty(), Curve::aggregate)
+            .aggregate()
     }
 
     /// Calculate the available execution Curve for the task with priority `task_index` of the server with priority `server_index`
@@ -95,7 +100,7 @@ impl Task {
         up_to: TimeUnit,
     ) -> Curve<AvailableTaskExecution> {
         let constrained_server_execution_curve =
-            Server::constrained_execution_curve(servers, server_index, up_to);
+            Server::actual_execution_curve(servers, server_index, up_to);
         let higher_priority_task_demand =
             Task::higher_priority_task_demand(servers[server_index].as_tasks(), task_index, up_to);
 
@@ -133,9 +138,10 @@ impl Task {
         server_index: usize,
         task_index: usize,
     ) -> TimeUnit {
-        let swh = Server::system_wide_hyper_periode(servers);
+        let swh = Server::system_wide_hyper_periode(servers, server_index);
 
-        let actual_execution_time =
+        let mut up_to = swh;
+        let mut actual_execution_time =
             Task::actual_execution_curve(servers, server_index, task_index, swh);
 
         let mut worst_case = TimeUnit::ZERO;
@@ -151,6 +157,12 @@ impl Task {
             }
 
             let t = j * task.demand;
+
+            if actual_execution_time.capacity() < t {
+                up_to = up_to * 2;
+                actual_execution_time =
+                    Task::actual_execution_curve(servers, server_index, task_index, up_to)
+            }
 
             let r = Task::time_to_provide(&actual_execution_time, t) - arrival;
 

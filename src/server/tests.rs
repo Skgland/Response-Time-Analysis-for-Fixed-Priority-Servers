@@ -1,5 +1,5 @@
 use crate::curve::Curve;
-use crate::server::{Server, ServerType};
+use crate::server::{Server, ServerKind};
 use crate::task::Task;
 use crate::time::TimeUnit;
 use crate::window::Window;
@@ -12,7 +12,7 @@ fn deferrable_server() {
         tasks: vec![Task::new(1, 5, 0), Task::new(2, 8, 0)],
         capacity: TimeUnit::from(2),
         interval: TimeUnit::from(4),
-        server_type: ServerType::Deferrable,
+        server_type: ServerKind::Deferrable,
     };
 
     let result = server.constrain_demand_curve(TimeUnit::from(18));
@@ -42,7 +42,7 @@ fn unconstrained_curve() {
         tasks: vec![Task::new(1, 4, 0)],
         capacity: TimeUnit::from(3),
         interval: TimeUnit::from(10),
-        server_type: ServerType::Deferrable,
+        server_type: ServerKind::Deferrable,
     };
 
     let servers: &[_] = &[server];
@@ -62,7 +62,7 @@ fn unconstrained_curve() {
 
     assert_eq!(aggregated_result, expected_aggregated_result);
 
-    let unconstrained_result = Server::unconstrained_execution_curve(servers, 1, up_to);
+    let unconstrained_result = Server::available_server_execution_curve(servers, 1, up_to);
 
     let expected_unconstrained_result = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -89,7 +89,7 @@ fn executive_curve() {
         ],
         capacity: TimeUnit::from(2),
         interval: TimeUnit::from(10),
-        server_type: ServerType::Deferrable,
+        server_type: ServerKind::Deferrable,
     };
 
     let higher_priority_load = Server {
@@ -101,7 +101,7 @@ fn executive_curve() {
         ],
         capacity: TimeUnit::from(30),
         interval: TimeUnit::from(30),
-        server_type: ServerType::Deferrable,
+        server_type: ServerKind::Deferrable,
     };
 
     let up_to = TimeUnit::from(24);
@@ -110,7 +110,7 @@ fn executive_curve() {
 
     // Unconstrained execution supply curve
 
-    let uc_execution_result = Server::unconstrained_execution_curve(servers, 1, up_to);
+    let uc_execution_result = Server::available_server_execution_curve(servers, 1, up_to);
 
     let expected_uc_execution = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -140,7 +140,7 @@ fn executive_curve() {
 
     assert_eq!(demand_result, expected_demand, "Constrained demand Curve");
 
-    let c_execution_result = Server::constrained_execution_curve(servers, 1, up_to);
+    let c_execution_result = Server::actual_execution_curve(servers, 1, up_to);
 
     let expected_c_execution = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -165,17 +165,20 @@ fn response_time() {
             tasks: vec![Task::new(1, 4, 0)],
             capacity: TimeUnit::from(3),
             interval: TimeUnit::from(10),
-            server_type: ServerType::Deferrable,
+            server_type: ServerKind::Deferrable,
         },
         Server {
             tasks: vec![Task::new(1, 5, 0), Task::new(2, 8, 0)],
             capacity: TimeUnit::from(2),
             interval: TimeUnit::from(4),
-            server_type: ServerType::Deferrable,
+            server_type: ServerKind::Deferrable,
         },
     ];
 
-    let c_s2 = Server::constrained_execution_curve(servers, 1, TimeUnit::from(16));
+    let server_index = 1;
+    let task_index = 0;
+
+    let c_s2 = Server::actual_execution_curve(servers, server_index, TimeUnit::from(16));
 
     let expected = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -189,7 +192,10 @@ fn response_time() {
 
     assert_eq!(c_s2, expected);
 
-    let t2_demand = Task::demand_curve(&servers[1].as_tasks()[0], TimeUnit::from(16));
+    let t2_demand = Task::demand_curve(
+        &servers[server_index].as_tasks()[task_index],
+        TimeUnit::from(16),
+    );
 
     let expected = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -202,7 +208,8 @@ fn response_time() {
 
     assert_eq!(t2_demand, expected);
 
-    let t2_available = Task::actual_execution_curve(servers, 1, 0, TimeUnit::from(16));
+    let t2_available =
+        Task::actual_execution_curve(servers, server_index, task_index, TimeUnit::from(16));
 
     let expected = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -215,75 +222,17 @@ fn response_time() {
 
     assert_eq!(t2_available, expected);
 
-    let swh = Server::system_wide_hyper_periode(servers);
+    let swh = Server::system_wide_hyper_periode(servers, server_index);
 
     assert_eq!(swh, TimeUnit::from(40));
 
-    let wcrt = Task::worst_case_response_time(servers, 1, 0);
+    let wcrt = Task::worst_case_response_time(servers, server_index, task_index);
 
     assert_eq!(wcrt, TimeUnit::from(3));
 }
 
+// TODO test currently fails: fix?
 #[test]
-// #[ignore]
-fn response_time2() {
-    // Example 9. without t_3
-
-    // TODO fix, probably not applying 7.1 correctly
-
-    let servers = &[
-        Server {
-            tasks: vec![Task::new(1, 4, 0)],
-            capacity: TimeUnit::from(3),
-            interval: TimeUnit::from(10),
-            server_type: ServerType::Deferrable,
-        },
-        Server {
-            tasks: vec![Task::new(1, 5, 0)],
-            capacity: TimeUnit::from(2),
-            interval: TimeUnit::from(4),
-            server_type: ServerType::Deferrable,
-        },
-    ];
-
-    let t2_demand = Task::demand_curve(&servers[1].as_tasks()[0], TimeUnit::from(16));
-
-    let expected = unsafe {
-        Curve::from_windows_unchecked(vec![
-            Window::new(0, 1),
-            Window::new(5, 6),
-            Window::new(10, 11),
-            Window::new(15, 16),
-        ])
-    };
-
-    assert_eq!(t2_demand, expected);
-
-    let t2_available = Task::actual_execution_curve(servers, 1, 0, TimeUnit::from(16));
-
-    let expected = unsafe {
-        Curve::from_windows_unchecked(vec![
-            Window::new(1, 2),
-            Window::new(5, 6),
-            Window::new(10, 11),
-            Window::new(15, 16),
-        ])
-    };
-
-    assert_eq!(t2_available, expected);
-
-    let swh = Server::system_wide_hyper_periode(servers);
-
-    assert_eq!(swh, TimeUnit::from(20));
-
-    let wcrt = Task::worst_case_response_time(servers, 1, 0);
-
-    assert_eq!(wcrt, TimeUnit::from(3));
-}
-
-// TODO fix?
-#[test]
-// #[ignore]
 fn remarks() {
     // Example 10.
     // Demand, Intervals ,and Offsets multiplied by 2  to fit in Integers
@@ -294,22 +243,24 @@ fn remarks() {
             tasks: vec![Task::new(6, 22, 0)],
             capacity: TimeUnit::from(3),
             interval: TimeUnit::from(10),
-            server_type: ServerType::Deferrable,
+            server_type: ServerKind::Deferrable,
         },
         Server {
             tasks: vec![Task::new(100, 400, 0)],
             capacity: TimeUnit::from(2),
             interval: TimeUnit::from(6),
-            server_type: ServerType::Deferrable,
+            server_type: ServerKind::Deferrable,
         },
     ];
 
-    let swh = Server::system_wide_hyper_periode(servers);
+    let server_index = 1;
+    let task_index = 0;
+    let swh = Server::system_wide_hyper_periode(servers, server_index);
 
-    let task = &servers[1].as_tasks()[0];
+    let task = &servers[server_index].as_tasks()[task_index];
     let j = 24;
     let arrival = task.job_arrival(j - 1);
-    let execution = Task::actual_execution_curve(servers, 1, 0, swh);
+    let execution = Task::actual_execution_curve(servers, server_index, task_index, swh);
 
     assert_eq!(arrival, TimeUnit::from(4600 * 2));
 
@@ -331,13 +282,13 @@ fn comparison() {
             tasks: vec![Task::new(4, 10, 0)],
             capacity: TimeUnit::from(5),
             interval: TimeUnit::from(10),
-            server_type: ServerType::Deferrable,
+            server_type: ServerKind::Deferrable,
         },
         Server {
             tasks: vec![Task::new(3, 10, 0), Task::new(1, 10, 0)],
             capacity: TimeUnit::from(8),
             interval: TimeUnit::from(20),
-            server_type: ServerType::Deferrable,
+            server_type: ServerKind::Deferrable,
         },
     ];
 
@@ -365,7 +316,7 @@ fn comparison() {
     assert_eq!(s2_aggregated_demand, expected_s2_demand);
     assert_eq!(s2_constrained_demand, expected_s2_demand.reclassify());
 
-    let s2_unconstrained_execution = Server::unconstrained_execution_curve(servers, 1, up_to);
+    let s2_unconstrained_execution = Server::available_server_execution_curve(servers, 1, up_to);
 
     // Note: Paper lists 6,10 and 16,20 as the unconstrained curve
     // but contradicts itself later with actual curve 4,8 and 14,18
@@ -381,7 +332,7 @@ fn comparison() {
         expected_s2_unconstrained_execution
     );
 
-    let s2_constrained_execution = Server::constrained_execution_curve(servers, 1, up_to);
+    let s2_constrained_execution = Server::actual_execution_curve(servers, 1, up_to);
     let expected_s2_constrained_execution =
         unsafe { Curve::from_windows_unchecked(vec![Window::new(4, 8), Window::new(14, 18)]) };
 

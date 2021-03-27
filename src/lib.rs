@@ -5,6 +5,7 @@
 //! [paper]: https://doi.org/10.1145/3273905.3273927
 
 #![warn(missing_debug_implementations)]
+#![allow(private_intra_doc_links)]
 #![warn(unused)]
 //
 #![warn(clippy::cargo)]
@@ -31,3 +32,5 @@ pub(crate) mod seal;
 pub mod server;
 pub mod task;
 pub mod window;
+
+pub mod paper;

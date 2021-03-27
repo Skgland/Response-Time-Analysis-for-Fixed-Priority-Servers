@@ -56,15 +56,6 @@ impl<T: WindowType> Window<T> {
     pub fn overlaps(&self, other: &Self) -> bool {
         !(self.end < other.start || other.end < self.start)
     }
-    /// Calculate the aggregation (⊕) of two windows as defined in Definition 4. of the paper
-    #[must_use]
-    pub fn aggregate(&self, other: &Self) -> Option<Self> {
-        self.overlaps(other).then(|| {
-            let start = TimeUnit::min(self.start, other.start);
-            let end = start + self.length() + other.length();
-            Window::new(start, end)
-        })
-    }
 
     /// Calculate the Window delta as defined in Definition 6. of the paper
     #[must_use]
@@ -114,7 +105,8 @@ impl<T: WindowType> Window<T> {
 
     /// Calculate the Budget Group that the window falls into
     /// given a splitting interval
-    /// TODO reference paper
+    ///
+    /// See Section 6.2 §3
     #[must_use]
     pub fn budget_group(&self, interval: TimeUnit) -> usize {
         self.start / interval
@@ -124,6 +116,14 @@ impl<T: WindowType> Window<T> {
     #[must_use]
     pub fn to_other<I: WindowType>(&self) -> Window<I> {
         Window::new(self.start, self.end)
+    }
+}
+
+impl Window<Demand> {
+    /// Version of [`crate::paper::aggregate_window`] that is constrained to `Window<Demand>`
+    #[must_use]
+    pub fn aggregate(&self, other: &Self) -> Option<Self> {
+        crate::paper::aggregate_window(self, other)
     }
 }
 

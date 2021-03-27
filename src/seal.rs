@@ -2,8 +2,8 @@
 
 use crate::curve::{OverlapCurve, PrimitiveCurve};
 use crate::server::{
-    AggregatedServerDemand, ConstrainedServerDemand, ConstrainedServerExecution,
-    HigherPriorityServerDemand, UnconstrainedServerExecution,
+    AggregatedServerDemand, AvailableServerExecution, ConstrainedServerDemand,
+    ConstrainedServerExecution, HigherPriorityServerDemand,
 };
 use crate::task::{
     ActualTaskExecution, AvailableTaskExecution, HigherPriorityTaskDemand, TaskDemand,
@@ -22,7 +22,7 @@ impl<P: WindowType, Q: WindowType> WindowType for Overlap<P, Q> {}
 
 /// Sealed Marker Trait for Curve Types
 pub trait CurveType: Debug + Eq {
-    /// The [`WindowKind`] for the Windows of the Curve
+    /// The [`WindowKind`](CurveType::WindowKind) for the Windows of the Curve
     type WindowKind: WindowType;
 }
 
@@ -46,7 +46,7 @@ impl CurveType for HigherPriorityServerDemand {
     type WindowKind = <ConstrainedServerDemand as CurveType>::WindowKind;
 }
 
-impl CurveType for UnconstrainedServerExecution {
+impl CurveType for AvailableServerExecution {
     type WindowKind = Overlap<Supply, Demand>;
 }
 

@@ -5,13 +5,18 @@
 use std::collections::{HashMap, VecDeque};
 
 use crate::seal::{CurveType, WindowType};
-use crate::server::{Server, ServerType};
+use crate::server::{
+    AggregatedServerDemand, ConstrainedServerDemand, HigherPriorityServerDemand, Server, ServerKind,
+};
+use crate::task::{HigherPriorityTaskDemand, TaskDemand};
 use crate::time::TimeUnit;
 use crate::window::{Demand, Overlap, Supply, Window};
 
+/// Marker Type for all [`WindowTypes`](WindowType) without further specificity
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
 pub struct PrimitiveCurve<W: WindowType>(W);
 
+/// Marker Type for a Curve representing the overlap of two other Curves
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
 pub struct OverlapCurve<P: CurveType, Q: CurveType>(P, Q);
 
@@ -61,6 +66,11 @@ impl<T: CurveType> Curve<T> {
     #[must_use]
     pub fn as_windows(&self) -> &[Window<T::WindowKind>] {
         self.windows.as_slice()
+    }
+
+    /// Return a mutabel reference to the contained window container
+    pub(crate) fn as_mut_windows(&mut self) -> &mut Vec<Window<T::WindowKind>> {
+        &mut self.windows
     }
 
     /// Consumes self and returns the contained Windows
@@ -212,6 +222,10 @@ impl<T: CurveType> Curve<T> {
     }
 
     /// Validate using `debug_assert!` that the Types invariants are met
+    ///
+    /// # Panics
+    ///
+    /// Panics when the Curve contains overlapping or out of order windows
     pub fn debug_validate(&self) {
         debug_assert!(self
             .windows
@@ -224,8 +238,8 @@ impl<T: CurveType> Curve<T> {
             }))
     }
 
-    /// Change the `CurveType` of the Curve
-    /// requires that the `WindowType` of both [`CurveTypes`](CurveType) is the same
+    /// Change the `CurveType` of the Curve,
+    /// requires that the `WindowType` of both [`CurveTypes`](trait@CurveType) is the same
     #[must_use]
     pub fn reclassify<C: CurveType<WindowKind = T::WindowKind>>(self) -> Curve<C> {
         Curve {
@@ -341,82 +355,16 @@ impl<P: WindowType, Q: WindowType, T: CurveType<WindowKind = Overlap<P, Q>>> Cur
 impl<T: CurveType<WindowKind = Demand>> Curve<T> {
     /// Create an aggregated Curve of all provided Windows
     pub fn demand_from_windows<I: IntoIterator<Item = Window<T::WindowKind>>>(windows: I) -> Self {
-        windows
-            .into_iter()
-            .map(Self::new)
-            .fold(Self::empty(), Self::aggregate)
+        windows.into_iter().aggregate()
     }
 
-    /// Aggregate two (Demand) Curves as defined in Definition 5. of the paper
+    /// Limited version of the curve aggregation defined in the paper
     ///
     /// Only defined for Demand Curves as it doesn't rely make sense for Overlap or Supply curves
     /// As overlapping Supply may not be available later and Overlap may not Overlap later
     #[must_use]
-    pub fn aggregate<R: CurveType<WindowKind = T::WindowKind>>(mut self, other: Curve<R>) -> Self {
-        for mut window in other.windows {
-            let mut index = 0;
-
-            // iteratively aggregate window with overlapping windows in new
-            // until no window overlaps
-            while index < self.windows.len() {
-                if let Some(aggregate) = self.windows[index].aggregate(&window) {
-                    // remove window that was aggregated
-                    self.windows.remove(index);
-                    // replace window to be inserted by aggregated window
-                    window = aggregate;
-                    // continue at current index as it will not be inserted earlier
-                    continue;
-                } else if self.windows[index].start > window.end {
-                    // window can be inserted at index, no need to look for further overlaps as
-                    // earlier overlaps are already handled, later overlaps can't happen
-                    break;
-                } else {
-                    // window did not overlap with new[index],
-                    // but can't be inserted at index, try next index
-                    index += 1;
-                    continue;
-                }
-            }
-
-            // index now contains either new.len() or the first index where window.end < new[index].start
-            // this is where window will be inserted
-            // all overlaps have been resolved
-
-            #[cfg(debug_assertions)]
-            {
-                // find index where to insert new window
-                let verify = self
-                    .windows
-                    .iter()
-                    .enumerate()
-                    .find_map(|(index, nw)| (nw.start > window.end).then(|| index))
-                    .unwrap_or_else(|| self.windows.len());
-                debug_assert_eq!(index, verify);
-            }
-
-            // this insert needs to preserve the Curve invariants
-            self.windows.insert(index, window);
-        }
-
-        #[cfg(debug_assertions)]
-        {
-            for new in self.as_windows().windows(2) {
-                match new {
-                    [prev, next] => {
-                        // ordered
-                        // assert is_sorted_by_key on .start once that is stable
-                        debug_assert!(prev.start < next.start);
-                        // non-overlapping
-                        debug_assert!(!prev.overlaps(next));
-                    }
-                    _ => unreachable!(
-                        "Iteration over slice windows of size 2, can't have other slice lengths10"
-                    ),
-                }
-            }
-        }
-
-        self
+    pub fn aggregate<R: CurveType<WindowKind = T::WindowKind>>(self, other: Curve<R>) -> Self {
+        crate::paper::aggregate_curve(self, other)
     }
 
     /// Partition the Curve as Defined by Algorithms 2. and 3. of the paper
@@ -425,7 +373,7 @@ impl<T: CurveType<WindowKind = Demand>> Curve<T> {
     #[must_use]
     pub fn partition(&self, offset: usize, server: &Server) -> PartitionResult {
         match server.server_type {
-            ServerType::Deferrable => {
+            ServerKind::Deferrable => {
                 // Algorithm 2.
                 // (1)
                 let index = self
@@ -469,7 +417,7 @@ impl<T: CurveType<WindowKind = Demand>> Curve<T> {
 
                 PartitionResult { index, head, tail }
             }
-            ServerType::Periodic => {
+            ServerKind::Periodic => {
                 // Algorithm 3.
                 // (1)
                 let limit = offset * server.interval + server.capacity;
@@ -525,6 +473,57 @@ pub struct PartitionResult {
     /// otherwise if there is no window on the boundary this contains the first window
     /// after the boundary or an empty window if there is no window after the boundary
     pub tail: Window<Demand>,
+}
+
+/// Extension trait to allow calling aggregate on an iterator
+pub trait AggregateExt: Iterator + Sized {
+    /// aggregate all iterator elements
+    /// acts similar to [`std::iter::Iterator::sum`]
+    fn aggregate<A: Aggregate<Self::Item>>(self) -> A {
+        A::aggregate(self)
+    }
+}
+
+impl<I: Iterator> AggregateExt for I {}
+
+/// Trait used by the `AggregateExt` Extension trait
+pub trait Aggregate<A = Self> {
+    /// aggregate all elements of `iter` into a new Self
+    /// pendant to [`std::iter::Sum`]
+    fn aggregate<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = A>;
+}
+
+impl<C: CurveType<WindowKind = Demand>> Aggregate<Window<Demand>> for Curve<C> {
+    fn aggregate<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = Window<Demand>>,
+    {
+        iter.map(Self::new).fold(Self::empty(), Self::aggregate)
+    }
+}
+
+/// Marker for `CurveTypes` that can be aggregated into other `CurveTypes`
+pub trait AggregatesTo<R: CurveType>: CurveType {}
+
+impl<T: CurveType> AggregatesTo<T> for T {}
+
+impl AggregatesTo<AggregatedServerDemand> for TaskDemand {}
+impl AggregatesTo<HigherPriorityServerDemand> for ConstrainedServerDemand {}
+impl AggregatesTo<HigherPriorityTaskDemand> for TaskDemand {}
+
+impl<N: CurveType<WindowKind = Demand>, O: CurveType<WindowKind = Demand>> Aggregate<Curve<N>>
+    for Curve<O>
+where
+    N: AggregatesTo<O>,
+{
+    fn aggregate<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = Curve<N>>,
+    {
+        iter.fold(Self::empty(), Self::aggregate)
+    }
 }
 
 #[cfg(test)]
