@@ -1,6 +1,6 @@
 //! Non pub Module for Sealing Traits
 
-use crate::curve::{CurveType, OverlapCurve, PrimitiveCurve};
+use crate::curve::curve_types::{CurveType, OverlapCurve, PrimitiveCurve};
 use crate::server::{
     AggregatedServerDemand, AvailableServerExecution, ConstrainedServerDemand,
     ConstrainedServerExecution, HigherPriorityServerDemand,
@@ -8,8 +8,10 @@ use crate::server::{
 use crate::task::{
     ActualTaskExecution, AvailableTaskExecution, HigherPriorityTaskDemand, TaskDemand,
 };
-use crate::window::{Demand, Overlap, Supply, WindowType};
+use crate::window::window_types::WindowType;
+use crate::window::{Demand, Overlap, Supply};
 
+/// Trait used as Sub-Trait for Sealing Traits
 pub trait Seal {}
 
 // WindowKind

@@ -1,20 +1,27 @@
 //! Module defining the Window and its operations
 
+use std::fmt::Debug;
 use std::marker::PhantomData;
 
-/// Marker Trait for Window Types
-pub trait WindowType: Seal + Clone + Debug + Eq {}
-
-impl WindowType for Supply {}
-
-impl WindowType for Demand {}
-
-impl<P: WindowType, Q: WindowType> WindowType for Overlap<P, Q> {}
-
-use crate::curve::{Curve, PrimitiveCurve};
-use crate::seal::Seal;
+use crate::curve::curve_types::PrimitiveCurve;
+use crate::curve::Curve;
 use crate::time::TimeUnit;
-use std::fmt::Debug;
+use crate::window::window_types::WindowType;
+
+pub mod window_types {
+    use crate::seal::Seal;
+    use crate::window::{Demand, Overlap, Supply};
+    use std::fmt::Debug;
+
+    /// Marker Trait for Window Types
+    pub trait WindowType: Seal + Clone + Debug + Eq {}
+
+    impl WindowType for Supply {}
+
+    impl WindowType for Demand {}
+
+    impl<P: WindowType, Q: WindowType> WindowType for Overlap<P, Q> {}
+}
 
 /// Type representing a Window based on the papers Definition 1.
 ///

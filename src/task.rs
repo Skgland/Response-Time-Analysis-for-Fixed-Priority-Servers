@@ -1,6 +1,7 @@
 //! Module for the Task definition
 
-use crate::curve::{AggregateExt, Curve, PrimitiveCurve};
+use crate::curve::curve_types::PrimitiveCurve;
+use crate::curve::{AggregateExt, Curve};
 use crate::server::Server;
 use crate::time::TimeUnit;
 use crate::window::Window;

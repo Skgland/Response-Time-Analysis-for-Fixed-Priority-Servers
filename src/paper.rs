@@ -1,14 +1,17 @@
 //! Module defining some operations more closely to the paper
 //! used by the more constrained versions of the main implementation
 
-use crate::curve::{AggregateExt, Curve, CurveType, PartitionResult, PrimitiveCurve};
+use std::collections::{HashMap, VecDeque};
+
+use crate::curve::curve_types::{CurveType, PrimitiveCurve};
+use crate::curve::{AggregateExt, Curve, PartitionResult};
 use crate::server::{
     AggregatedServerDemand, AvailableServerExecution, ConstrainedServerDemand,
     ConstrainedServerExecution, Server,
 };
 use crate::time::TimeUnit;
-use crate::window::{Overlap, Window, WindowType};
-use std::collections::{HashMap, VecDeque};
+use crate::window::window_types::WindowType;
+use crate::window::{Overlap, Window};
 
 /// Calculate the aggregation (⊕) of two windows as defined in Definition 4. of the paper
 #[must_use]

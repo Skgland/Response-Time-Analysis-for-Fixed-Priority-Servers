@@ -2,7 +2,8 @@
 //!
 //! and functions to be used with one or multiple Servers
 
-use crate::curve::{AggregateExt, Curve, PrimitiveCurve};
+use crate::curve::curve_types::PrimitiveCurve;
+use crate::curve::{AggregateExt, Curve};
 use crate::task::Task;
 use crate::time::TimeUnit;
 

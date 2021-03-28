@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use crate::curve::{Curve, OverlapCurve, PrimitiveCurve};
-
+use crate::curve::curve_types::{OverlapCurve, PrimitiveCurve};
+use crate::curve::Curve;
 use crate::time::TimeUnit;
 use crate::window::{Demand, Supply, Window};
 
