@@ -2,9 +2,19 @@
 
 use std::marker::PhantomData;
 
+/// Marker Trait for Window Types
+pub trait WindowType: Seal + Clone + Debug + Eq {}
+
+impl WindowType for Supply {}
+
+impl WindowType for Demand {}
+
+impl<P: WindowType, Q: WindowType> WindowType for Overlap<P, Q> {}
+
 use crate::curve::{Curve, PrimitiveCurve};
-use crate::seal::WindowType;
+use crate::seal::Seal;
 use crate::time::TimeUnit;
+use std::fmt::Debug;
 
 /// Type representing a Window based on the papers Definition 1.
 ///

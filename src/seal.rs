@@ -1,6 +1,6 @@
 //! Non pub Module for Sealing Traits
 
-use crate::curve::{OverlapCurve, PrimitiveCurve};
+use crate::curve::{CurveType, OverlapCurve, PrimitiveCurve};
 use crate::server::{
     AggregatedServerDemand, AvailableServerExecution, ConstrainedServerDemand,
     ConstrainedServerExecution, HigherPriorityServerDemand,
@@ -8,67 +8,30 @@ use crate::server::{
 use crate::task::{
     ActualTaskExecution, AvailableTaskExecution, HigherPriorityTaskDemand, TaskDemand,
 };
-use crate::window::{Demand, Overlap, Supply};
-use std::fmt::Debug;
+use crate::window::{Demand, Overlap, Supply, WindowType};
 
-/// Sealed Marker Trait for Window Types
-pub trait WindowType: Clone + Debug + Eq {}
+pub trait Seal {}
 
-impl WindowType for Supply {}
+// WindowKind
 
-impl WindowType for Demand {}
+impl<P: WindowType, Q: WindowType> Seal for Overlap<P, Q> {}
+impl Seal for Supply {}
+impl Seal for Demand {}
 
-impl<P: WindowType, Q: WindowType> WindowType for Overlap<P, Q> {}
+// CurveKind
 
-/// Sealed Marker Trait for Curve Types
-pub trait CurveType: Debug + Eq {
-    /// The [`WindowKind`](CurveType::WindowKind) for the Windows of the Curve
-    type WindowKind: WindowType;
-}
+impl<P: CurveType, Q: CurveType> Seal for OverlapCurve<P, Q> {}
+impl<W: WindowType> Seal for PrimitiveCurve<W> {}
 
-impl<P: CurveType, Q: CurveType> CurveType for OverlapCurve<P, Q> {
-    type WindowKind = Overlap<P::WindowKind, Q::WindowKind>;
-}
+// Serve Curves
+impl Seal for AggregatedServerDemand {}
+impl Seal for ConstrainedServerDemand {}
+impl Seal for HigherPriorityServerDemand {}
+impl Seal for AvailableServerExecution {}
+impl Seal for ConstrainedServerExecution {}
 
-impl<W: WindowType> CurveType for PrimitiveCurve<W> {
-    type WindowKind = W;
-}
-
-impl CurveType for AggregatedServerDemand {
-    type WindowKind = <TaskDemand as CurveType>::WindowKind;
-}
-
-impl CurveType for ConstrainedServerDemand {
-    type WindowKind = <AggregatedServerDemand as CurveType>::WindowKind;
-}
-
-impl CurveType for HigherPriorityServerDemand {
-    type WindowKind = <ConstrainedServerDemand as CurveType>::WindowKind;
-}
-
-impl CurveType for AvailableServerExecution {
-    type WindowKind = Overlap<Supply, Demand>;
-}
-
-impl CurveType for ConstrainedServerExecution {
-    type WindowKind = Overlap<Overlap<Supply, Demand>, Demand>;
-}
-
-impl CurveType for TaskDemand {
-    type WindowKind = Demand;
-}
-
-impl CurveType for HigherPriorityTaskDemand {
-    type WindowKind = <TaskDemand as CurveType>::WindowKind;
-}
-
-impl CurveType for AvailableTaskExecution {
-    type WindowKind = <ConstrainedServerExecution as CurveType>::WindowKind;
-}
-
-impl CurveType for ActualTaskExecution {
-    type WindowKind = Overlap<
-        <AvailableTaskExecution as CurveType>::WindowKind,
-        <TaskDemand as CurveType>::WindowKind,
-    >;
-}
+// Task Curves
+impl Seal for TaskDemand {}
+impl Seal for HigherPriorityTaskDemand {}
+impl Seal for AvailableTaskExecution {}
+impl Seal for ActualTaskExecution {}
