@@ -173,6 +173,9 @@ impl Task {
 
     /// Calculate the time till the execution curve has served t Units of Demand
     /// Implementing Algorithm 5. form the paper
+    ///
+    /// # Panics
+    /// When the capacity of the curve is less than t
     #[must_use]
     pub(crate) fn time_to_provide(
         actual_execution_time: &Curve<ActualTaskExecution>,
@@ -181,9 +184,11 @@ impl Task {
         // Note: paper lists wants to find largest index k with the sum of the windows 0..=k < t
         // but when calculating k the sum skips 0
         // finding the largest index k with the sum of the windows 1..=k < t
+        // this appears to be a mix-up between 0-based and 1-based indexing and
+        // is therefore not replicated in this implementation
 
         // (1)
-        // index here is exclusive aka. k+1
+        // index here is exclusive aka. k+1 as appose to inclusive as in the paper
         let (index, sum) = actual_execution_time
             .as_windows()
             .iter()
@@ -201,10 +206,7 @@ impl Task {
         // this should hold as sum is the largest sum of head window lengths less than t
         debug_assert!(b > TimeUnit::ZERO);
 
-        // TODO what to do when index+1 is out of bounds?
-        let ttp = actual_execution_time.as_windows()[index].start + b;
-
-        ttp
+        actual_execution_time.as_windows()[index].start + b
     }
 
     /// Calculate the arrival for the job_index+1-th job
