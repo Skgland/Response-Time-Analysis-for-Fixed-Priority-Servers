@@ -95,10 +95,11 @@ impl<T: CurveType> Curve<T> {
     /// without checking or guaranteeing that the Curve invariants are met
     /// by the list of windows.
     ///
-    /// # Safety:
+    /// # Safety
     /// Windows need to be non-overlapping and
     /// ordered based on start, to fulfill invariants of curve
-    pub(crate) unsafe fn from_windows_unchecked(windows: Vec<Window<T::WindowKind>>) -> Self {
+    #[must_use]
+    pub unsafe fn from_windows_unchecked(windows: Vec<Window<T::WindowKind>>) -> Self {
         Self { windows }
     }
 
@@ -143,6 +144,7 @@ impl<T: CurveType> Curve<T> {
                 // exhausted usable supply
                 // either supply.len() == 0 <=> Condition C^'_p(t) = {}
                 // or all remaining supply is before remaining demand
+                // TODO paper assumes later case to be absent, what to do?
                 break;
             };
 
@@ -407,9 +409,7 @@ impl<T: CurveType<WindowKind = Demand>> Curve<T> {
                     || (Window::empty(), Window::empty()),
                     |window| {
                         if remaining_capacity > TimeUnit::ZERO {
-                            // we have remaining capacity and a window at index i+1 exists
-                            // split it to fill the remaining budget
-
+                            // we have remaining capacity the window to fill the remaining budget
                             let head_start = window.start;
                             let tail_end = window.end;
                             let split = head_start + remaining_capacity;
@@ -417,9 +417,7 @@ impl<T: CurveType<WindowKind = Demand>> Curve<T> {
                             let tail = Window::new(split, tail_end);
                             (head, tail)
                         } else {
-                            // Window won't be split as we don't have remaining capacity
-                            // if there is a window at index i+1 set it as the tail,
-                            // otherwise the tail is also empty
+                            // no capacity left set window as tail
                             (Window::empty(), window.clone())
                         }
                     },
@@ -456,7 +454,7 @@ impl<T: CurveType<WindowKind = Demand>> Curve<T> {
                             (head, tail)
                         } else {
                             // Window won't be split as it does not contain the limit
-                            // if there is a window at index i+1 set it as the tail, otherwise the tail is also empty
+                            // just set the window as the tail
                             (Window::empty(), window.clone())
                         }
                     },

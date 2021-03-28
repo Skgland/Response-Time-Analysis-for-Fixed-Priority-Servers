@@ -125,12 +125,13 @@ pub fn constrained_server_demand(
     };
 
     // (2)
-    while Some(&key) < splits.keys().max() {
+    while Some(&key) <= splits.keys().max() {
         if let Some(curve) = splits.remove(&key) {
             // index here is exclusive while the paper uses an inclusive index
             let PartitionResult { index, head, tail } = curve.partition(key, server);
 
             let mut windows = curve.into_windows();
+
             let keep = windows
                 .drain(..index)
                 .chain(std::iter::once(head).filter(|window| !window.is_empty()))
@@ -143,7 +144,7 @@ pub fn constrained_server_demand(
 
             let delta_k = tail.length()
                 + windows
-                    .drain(..)
+                    .into_iter()
                     .skip(1) // skip window split into tail and head
                     .map(|window| window.length())
                     .sum::<TimeUnit>();
