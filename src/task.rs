@@ -133,6 +133,9 @@ impl Task {
     }
 
     /// Calculate the WCRT for the task with priority `task_index` for the Server with priority `server_index`
+    ///
+    /// # Panics
+    /// When sanity checks fail
     #[must_use]
     pub fn worst_case_response_time(
         servers: &[Server],
@@ -141,38 +144,31 @@ impl Task {
     ) -> TimeUnit {
         let swh = Server::system_wide_hyper_periode(servers, server_index);
 
-        let mut up_to = swh;
-        let mut actual_execution_time =
+        let actual_execution_time =
             Task::actual_execution_curve(servers, server_index, task_index, swh);
-
-        let mut worst_case = TimeUnit::ZERO;
-        let mut j = 1;
 
         let task = &servers[server_index].as_tasks()[task_index];
 
-        loop {
-            let arrival = task.job_arrival(j - 1);
+        let last_job = (swh - task.offset - TimeUnit::ONE) / task.interval;
 
-            if arrival >= swh {
-                break;
-            }
+        // sanity check that last_job arrival is before swh
+        assert!(task.job_arrival(last_job) < swh);
+        // sanity check that job after last_job is not before swh
+        assert!(task.job_arrival(last_job + 1) >= swh);
 
-            let t = j * task.demand;
+        // check that there is enough capacity so that last_job is able to execute
+        assert!((last_job + 1) * task.demand <= actual_execution_time.capacity());
 
-            if actual_execution_time.capacity() < t {
-                up_to = up_to * 2;
-                actual_execution_time =
-                    Task::actual_execution_curve(servers, server_index, task_index, up_to)
-            }
+        (0..=last_job)
+            .into_iter()
+            .map(|job| {
+                let arrival = task.job_arrival(job);
+                let t = (job + 1) * task.demand;
 
-            let r = Task::time_to_provide(&actual_execution_time, t) - arrival;
-
-            worst_case = TimeUnit::max(worst_case, r);
-
-            j += 1;
-        }
-
-        worst_case
+                Task::time_to_provide(&actual_execution_time, t) - arrival
+            })
+            .max()
+            .unwrap_or(TimeUnit::ZERO)
     }
 
     /// Calculate the time till the execution curve has served t Units of Demand
