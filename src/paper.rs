@@ -17,6 +17,7 @@ pub fn aggregate_window<W: WindowType>(
     window_a: &Window<W>,
     window_b: &Window<W>,
 ) -> Option<Window<W>> {
+    // only defined for overlapping windows, return None when not overlapping
     window_a.overlaps(window_b).then(|| {
         let start = TimeUnit::min(window_a.start, window_b.start);
         let end = start + window_a.length() + window_b.length();
@@ -107,7 +108,7 @@ pub fn aggregate_curve<
 
 /// Calculate the Servers constrained demand curve,
 /// using the aggregated server demand curve
-/// based on the Algorithm 1. from the paper
+/// based on the Algorithm 1. from the paper and described in Section 5.1 of the paper
 #[must_use]
 pub fn constrained_server_demand(
     server: &Server,
@@ -132,7 +133,7 @@ pub fn constrained_server_demand(
             let mut windows = curve.into_windows();
             let keep = windows
                 .drain(..index)
-                .chain(std::iter::once(head))
+                .chain(std::iter::once(head).filter(|window| !window.is_empty()))
                 .collect();
 
             let constrained = unsafe { Curve::from_windows_unchecked(keep) };

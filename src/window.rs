@@ -44,7 +44,7 @@ impl<T: WindowType> Window<T> {
     /// Calculate the window length as defined in Definition 1. of the paper
     #[must_use]
     pub fn length(&self) -> TimeUnit {
-        if self.end > self.start {
+        if self.start < self.end {
             self.end - self.start
         } else {
             TimeUnit::ZERO

@@ -130,34 +130,31 @@ impl<T: CurveType> Curve<T> {
 
         // get first demand window
         // if None we are done <=> Condition C^'_q(t) = {}
-        'main: while let Some(demand_window) = demand.front() {
+        while let Some(demand_window) = demand.front() {
             // (1) find valid supply window
-            let j = if let Some(i) = supply
+            let maybe_j = supply
                 .iter()
                 .enumerate()
-                .find_map(|(i, supply)| (demand_window.start < supply.end).then(|| i))
-            {
-                i
+                .find_map(|(i, supply)| (demand_window.start < supply.end).then(|| i));
+
+            let j = if let Some(j) = maybe_j {
+                j
             } else {
                 // exhausted usable supply
                 // either supply.len() == 0 <=> Condition C^'_p(t) = {}
-                // or all remaining supply is before remaining demand,
-                // this should not happen for schedulable scenarios
-                break 'main;
+                // or all remaining supply is before remaining demand
+                break;
             };
 
+            // (3) removed used supply that will be used
             let supply_window = supply
-                .get(j)
-                .expect("Index should have only be searched in bounds!");
+                .remove(j)
+                .expect("sanity check: j should still be a valid index");
 
             // (2) calculate delta
-            let result = Window::delta(supply_window, demand_window);
+            let result = Window::delta(&supply_window, demand_window);
 
-            // (3) removed used supply and add remaining supply
-            supply
-                .remove(j)
-                .expect("Index should have only be searched in bounds, and has yet to be removed!");
-
+            // (3) add remaining supply
             result
                 .remaining_supply
                 .windows
@@ -250,7 +247,9 @@ impl<T: CurveType> Curve<T> {
     /// Insert window into the Curve
     ///
     /// # Panics
-    /// If window overlaps by more than just the bounds
+    /// When window overlaps a window in the existing Curve,
+    /// being adjacent is not considered overlapping,
+    /// though the windows will be aggregated in that case
     pub fn insert(&mut self, window: Window<T::WindowKind>) {
         if window.is_empty() {
             // Curves don't contain empty windows
@@ -371,22 +370,31 @@ impl<T: CurveType<WindowKind = Demand>> Curve<T> {
     ///
     /// The implementation here deviates from the paper by returning an exclusive index while the paper uses an inclusive index
     #[must_use]
-    pub fn partition(&self, offset: usize, server: &Server) -> PartitionResult {
+    pub fn partition(&self, group_index: usize, server: &Server) -> PartitionResult {
         match server.server_type {
             ServerKind::Deferrable => {
                 // Algorithm 2.
+
+                // Note for Step (1):
+                // The paper indexes the Windows 0-based but iterates starting at 1
+                // this appears to be a mix-up between 0-based and 1-based indexing
+                // which is mixed throughout the paper
+
+                // Note index is i+1 rather than i
+                // as 0 is used in case the first window is larges than the server capacity
+                // meaning index is exclusive here rather than inclusive as in the paper
+
                 // (1)
                 let index = self
                     .windows
                     .iter()
-                    .scan(TimeUnit::ZERO, |acc, window| {
-                        *acc += window.length();
-                        Some(*acc)
-                    })
                     .enumerate()
-                    .filter(|(_, used)| *used < server.capacity)
+                    .scan(TimeUnit::ZERO, |acc, (index, window)| {
+                        *acc += window.length();
+                        (*acc <= server.capacity).then(|| index + 1)
+                    })
                     .last()
-                    .map_or(0, |(index, _)| index + 1);
+                    .unwrap_or(0);
 
                 // (2)
                 let remaining_capacity = server.capacity
@@ -394,33 +402,41 @@ impl<T: CurveType<WindowKind = Demand>> Curve<T> {
                         .iter()
                         .map(Window::length)
                         .sum::<TimeUnit>();
-                let (head, tail) =
-                    if remaining_capacity != TimeUnit::ZERO && index < self.windows.len() {
-                        let window = &self.windows[index];
-                        let head_start = window.start;
-                        let tail_end = window.end;
-                        let split = head_start + remaining_capacity;
-                        let head = Window::new(head_start, split);
-                        let tail = Window::new(split, tail_end);
-                        (head, tail)
-                    } else {
-                        // Window won't be split as we don't have remaining capacity
-                        // if there is a window set it as the tail, otherwise the tail is also empty
-                        (
-                            Window::empty(),
-                            self.windows
-                                .get(index)
-                                .cloned()
-                                .unwrap_or_else(Window::empty),
-                        )
-                    };
+
+                let (head, tail) = self.windows.get(index).map_or_else(
+                    || (Window::empty(), Window::empty()),
+                    |window| {
+                        if remaining_capacity > TimeUnit::ZERO {
+                            // we have remaining capacity and a window at index i+1 exists
+                            // split it to fill the remaining budget
+
+                            let head_start = window.start;
+                            let tail_end = window.end;
+                            let split = head_start + remaining_capacity;
+                            let head = Window::new(head_start, split);
+                            let tail = Window::new(split, tail_end);
+                            (head, tail)
+                        } else {
+                            // Window won't be split as we don't have remaining capacity
+                            // if there is a window at index i+1 set it as the tail,
+                            // otherwise the tail is also empty
+                            (Window::empty(), window.clone())
+                        }
+                    },
+                );
 
                 PartitionResult { index, head, tail }
             }
             ServerKind::Periodic => {
                 // Algorithm 3.
                 // (1)
-                let limit = offset * server.interval + server.capacity;
+
+                let limit = group_index * server.interval + server.capacity;
+
+                // Note index is i+1 rather than i,
+                // as 0 is used to indicate that the first window is already past the limit
+                // index need therefore be treated as exclusive rather than inclusive as in the paper
+
                 let index = self
                     .windows
                     .iter()
@@ -430,25 +446,21 @@ impl<T: CurveType<WindowKind = Demand>> Curve<T> {
                     .unwrap_or(0);
 
                 // (2)
-                let (head, tail) = if index <= self.windows.len()
-                    && self.windows[index].start < limit
-                    && limit < self.windows[index].end
-                {
-                    let window = &self.windows[index];
-                    let head = Window::new(window.start, limit);
-                    let tail = Window::new(limit, window.end);
-                    (head, tail)
-                } else {
-                    // Window won't be split as it does not contain the limit
-                    // if there is a window set it as the tail, otherwise the tail is also empty
-                    (
-                        Window::empty(),
-                        self.windows
-                            .get(index)
-                            .cloned()
-                            .unwrap_or_else(Window::empty),
-                    )
-                };
+                let (head, tail) = self.windows.get(index).map_or_else(
+                    || (Window::empty(), Window::empty()),
+                    |window| {
+                        if window.start < limit && limit < window.end {
+                            // window crosses the limit, split it at the limit
+                            let head = Window::new(window.start, limit);
+                            let tail = Window::new(limit, window.end);
+                            (head, tail)
+                        } else {
+                            // Window won't be split as it does not contain the limit
+                            // if there is a window at index i+1 set it as the tail, otherwise the tail is also empty
+                            (Window::empty(), window.clone())
+                        }
+                    },
+                );
 
                 PartitionResult { index, head, tail }
             }
