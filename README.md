@@ -9,5 +9,8 @@ The goal behind this project is a better understanding of said paper as preparat
 The implementation tries to reference the paper where practical and improve on it with type safety.
 The examples in the paper are incorporated as tests where possible.
 
+# Note
+The check mentioned in the last paragraph of Section 6.1 of the paper is not implemented!
+
 [Rust]: https://www.rust-lang.org/
 [1]: https://doi.org/10.1145/3273905.3273927
