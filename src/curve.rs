@@ -382,7 +382,7 @@ impl<T: CurveType<WindowKind = Demand>> Curve<T> {
                     || (Window::empty(), Window::empty()),
                     |window| {
                         if remaining_capacity > TimeUnit::ZERO {
-                            // we have remaining capacity the window to fill the remaining budget
+                            // we have remaining capacity and a window to fill the remaining budget
                             let head_start = window.start;
                             let tail_end = window.end;
                             let split = head_start + remaining_capacity;
