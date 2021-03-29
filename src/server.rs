@@ -4,6 +4,8 @@
 
 use crate::curve::{AggregateExt, Curve};
 use crate::iterators::curve::AggregatedDemandIterator;
+use crate::iterators::server::ConstrainedServerDemandIterator;
+use crate::iterators::{CurveIterator, ReclassifyExt};
 use crate::task::Task;
 use crate::time::TimeUnit;
 
@@ -70,20 +72,30 @@ impl Server {
     /// As defined in Definition 11. in the paper
     #[must_use]
     pub fn aggregated_demand_curve(&self, up_to: TimeUnit) -> Curve<AggregatedServerDemand> {
-        let windows = self
-            .tasks
-            .iter()
-            .map(|task| task.into_iter().take_while(|window| window.end <= up_to))
-            .aggregate::<AggregatedDemandIterator<_, _, _>>()
-            .collect();
+        let windows = self.aggregated_demand_curve_iter(up_to).collect();
         unsafe { Curve::from_windows_unchecked(windows) }
+    }
+
+    pub fn aggregated_demand_curve_iter<'a>(
+        &'a self,
+        up_to: TimeUnit,
+    ) -> impl CurveIterator<AggregatedServerDemand> {
+        self.tasks
+            .iter()
+            .map(move |task| {
+                let up_to = up_to;
+                task.into_iter()
+                    .take_while(move |window| window.end <= up_to)
+            })
+            .aggregate::<AggregatedDemandIterator<_, _, _>>()
+            .reclassify()
     }
 
     /// Calculate the constrained demand curve
     #[must_use]
     pub fn constrain_demand_curve(&self, up_to: TimeUnit) -> Curve<ConstrainedServerDemand> {
-        let aggregated_curve = self.aggregated_demand_curve(up_to);
-        crate::paper::constrained_server_demand(self, aggregated_curve)
+        let aggregated_curve = self.aggregated_demand_curve_iter(up_to);
+        ConstrainedServerDemandIterator::new(self, aggregated_curve).collect()
     }
 }
 

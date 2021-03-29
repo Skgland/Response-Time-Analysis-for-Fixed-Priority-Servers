@@ -4,7 +4,72 @@ use std::fmt::Debug;
 use std::iter::{Empty, FusedIterator, TakeWhile};
 
 use crate::curve::curve_types::CurveType;
-use crate::window::Window;
+use crate::window::{Demand, Window};
+use std::marker::PhantomData;
+
+pub mod curve;
+pub mod server;
+pub mod task;
+
+pub trait ReclassifyExt<'a, O: CurveType> {
+    fn reclassify<C: CurveType<WindowKind = O::WindowKind>>(
+        self,
+    ) -> ReclassifyIterator<'a, O, Self, C>
+    where
+        Self: CurveIterator<'a, O> + Sized;
+}
+
+impl<'a, O: CurveType, T> ReclassifyExt<'a, O> for T
+where
+    T: CurveIterator<'a, O>,
+{
+    fn reclassify<C: CurveType<WindowKind = O::WindowKind>>(
+        self,
+    ) -> ReclassifyIterator<'a, O, Self, C>
+    where
+        Self: CurveIterator<'a, O> + Sized,
+    {
+        ReclassifyIterator {
+            iter: self,
+            phantom: PhantomData,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ReclassifyIterator<
+    'a,
+    O: CurveType,
+    I: CurveIterator<'a, O>,
+    C: CurveType<WindowKind = O::WindowKind>,
+> {
+    iter: I,
+    phantom: PhantomData<(&'a (), O, C)>,
+}
+
+impl<
+        'a,
+        O: CurveType + 'a,
+        I: CurveIterator<'a, O>,
+        C: CurveType<WindowKind = O::WindowKind> + 'a,
+    > CurveIterator<'a, C> for ReclassifyIterator<'a, O, I, C>
+{
+}
+
+impl<'a, O: CurveType, I: CurveIterator<'a, O>, C: CurveType<WindowKind = O::WindowKind>>
+    FusedIterator for ReclassifyIterator<'a, O, I, C>
+{
+}
+
+impl<'a, O: CurveType, I: CurveIterator<'a, O>, C: CurveType<WindowKind = O::WindowKind>> Iterator
+    for ReclassifyIterator<'a, O, I, C>
+{
+    type Item = I::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
+    }
+}
 
 /// Trait representing an Iterator that has the guarantees of a curve:
 /// 1. Windows ordered by start
@@ -17,13 +82,79 @@ pub trait CurveIterator<'a, C: CurveType>:
 
 impl<'a, C: CurveType + 'a> CurveIterator<'a, C> for Empty<Window<C::WindowKind>> {}
 
-pub mod curve;
-pub mod server;
-pub mod task;
-
 impl<'a, C: CurveType + 'a> CurveIterator<'a, C> for Box<dyn CurveIterator<'a, C>> {}
 
 impl<'a, C: CurveType, P: for<'r> FnMut(&'r I::Item) -> bool + 'a, I: CurveIterator<'a, C>>
     CurveIterator<'a, C> for TakeWhile<I, P>
 {
+}
+
+#[derive(Debug)]
+pub struct JoinAdjacentIterator<I, C>
+where
+    I: Iterator<Item = Window<C::WindowKind>> + FusedIterator,
+    C: CurveType,
+{
+    iter: I,
+    peek: Option<I::Item>,
+    curve_type: PhantomData<C>,
+}
+
+impl<I, C> JoinAdjacentIterator<I, C>
+where
+    I: Iterator<Item = Window<C::WindowKind>> + FusedIterator,
+    C: CurveType,
+{
+    pub unsafe fn new(iter: I) -> Self {
+        JoinAdjacentIterator {
+            iter,
+            peek: None,
+            curve_type: PhantomData,
+        }
+    }
+}
+
+impl<'a, C, I> CurveIterator<'a, C> for JoinAdjacentIterator<I, C>
+where
+    I: Iterator<Item = Window<C::WindowKind>> + FusedIterator + Debug + 'a,
+    C: CurveType<WindowKind = Demand> + 'a,
+{
+}
+
+impl<'a, C, I> FusedIterator for JoinAdjacentIterator<I, C>
+where
+    I: Iterator<Item = Window<C::WindowKind>> + FusedIterator,
+    C: CurveType<WindowKind = Demand> + 'a,
+{
+}
+
+impl<'a, C, I> Iterator for JoinAdjacentIterator<I, C>
+where
+    I: Iterator<Item = Window<C::WindowKind>> + FusedIterator,
+    C: CurveType<WindowKind = Demand> + 'a,
+{
+    type Item = I::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            let current = self.peek.take().or_else(|| self.iter.next());
+            self.peek = self.iter.next();
+
+            match (current, self.peek.as_ref()) {
+                (current, None) => break current,
+                (None, Some(_)) => {
+                    unreachable!("next is filled first")
+                }
+                (Some(current), Some(peek)) => {
+                    if let Some(overlap) = current.aggregate(peek) {
+                        assert!(overlap.start == current.start);
+                        assert!(overlap.end == peek.end);
+                        self.peek = Some(overlap);
+                    } else {
+                        break Some(current);
+                    }
+                }
+            }
+        }
+    }
 }
