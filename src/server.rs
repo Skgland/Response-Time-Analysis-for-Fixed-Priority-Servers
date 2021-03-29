@@ -102,7 +102,7 @@ impl Server {
 
     /// `CurveIterator` version of [`Self::constraint_demand_curve`]
     #[must_use]
-    pub fn constrain_demand_curve_iter(
+    pub fn constraint_demand_curve_iter(
         &self,
         up_to: TimeUnit,
     ) -> impl CurveIterator<ConstrainedServerDemand> {

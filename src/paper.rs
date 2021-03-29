@@ -3,11 +3,10 @@
 
 use std::collections::{HashMap, VecDeque};
 
-use crate::curve::curve_types::{CurveType, PrimitiveCurve};
-use crate::curve::{AggregateExt, Curve, PartitionResult};
+use crate::curve::curve_types::CurveType;
+use crate::curve::Curve;
 use crate::server::{
-    AggregatedServerDemand, AvailableServerExecution, ConstrainedServerDemand,
-    ConstrainedServerExecution, Server,
+    AvailableServerExecution, ConstrainedServerDemand, ConstrainedServerExecution, Server,
 };
 use crate::time::TimeUnit;
 use crate::window::window_types::WindowType;
@@ -118,73 +117,12 @@ pub fn aggregate_curve<
     curve_a
 }
 
-/// Calculate the Servers constrained demand curve,
-/// using the aggregated server demand curve
-/// based on the Algorithm 1. from the paper and described in Section 5.1 of the paper
-#[must_use]
-pub fn constrained_server_demand(
-    server: &Server,
-    aggregated_curve: Curve<AggregatedServerDemand>,
-) -> Curve<ConstrainedServerDemand> {
-    // (1)
-    let mut splits: HashMap<_, _> = aggregated_curve.split(server.interval);
-
-    let mut key = if let Some(&key) = splits.keys().min() {
-        key
-    } else {
-        // curve must be empty
-        return Curve::empty();
-    };
-
-    // (2)
-    while Some(&key) <= splits.keys().max() {
-        if let Some(curve) = splits.remove(&key) {
-            // index here is exclusive while the paper uses an inclusive index
-            let PartitionResult { index, head, tail } = curve.partition(key, server);
-
-            let mut windows = curve.into_windows();
-
-            let keep = windows
-                .drain(..index)
-                .chain(std::iter::once(head).filter(|window| !window.is_empty()))
-                .collect();
-
-            let constrained = unsafe { Curve::from_windows_unchecked(keep) };
-
-            // re-insert constrained split
-            splits.insert(key, constrained);
-
-            let delta_k = tail.length()
-                + windows
-                    .into_iter()
-                    .skip(1) // skip window split into tail and head
-                    .map(|window| window.length())
-                    .sum::<TimeUnit>();
-
-            if delta_k > TimeUnit::ZERO {
-                let old = splits.remove(&(key + 1)).unwrap_or_else(Curve::empty);
-                let transfer_start = (key + 1) * server.interval;
-                let updated = old.aggregate::<PrimitiveCurve<_>>(Curve::new(Window::new(
-                    transfer_start,
-                    transfer_start + delta_k,
-                )));
-                splits.insert(key + 1, updated);
-            }
-        }
-        key += 1;
-    }
-
-    splits
-        .into_iter()
-        .map(|(_, curve)| curve)
-        .aggregate::<Curve<_>>()
-        .reclassify()
-}
-
 /// Calculate the Constrained Execution Curve using Algorithm 4. from the paper
 ///
 /// For the server with priority `server_index` calculate th actual execution
 /// given the unconstrained execution and the constrained demand
+///
+/// TODO Iterify
 ///
 /// # Panics
 ///

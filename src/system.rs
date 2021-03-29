@@ -1,11 +1,16 @@
 //! Module for the System type
 
-use crate::curve::curve_types::PrimitiveCurve;
 use crate::curve::{AggregateExt, Curve};
+use crate::iterators::curve::{
+    CollectCurveExt, CurveDeltaIterator, RecursiveAggregatedDemandIterator,
+};
+
 use crate::paper::check_assumption;
 use crate::server::{
     AvailableServerExecution, ConstrainedServerExecution, HigherPriorityServerDemand, Server,
 };
+
+use crate::iterators::{CurveIterator, ReclassifyExt};
 use crate::time::TimeUnit;
 
 /// Type representing a System of Servers
@@ -36,15 +41,16 @@ impl System<'_> {
     ///
     /// Based on the papers Definition 12.
     #[must_use]
-    pub fn aggregated_higher_priority_demand_curve(
+    pub fn aggregated_higher_priority_demand_curve_iter(
         &self,
-        index: usize,
+        server_index: usize,
         up_to: TimeUnit,
-    ) -> Curve<HigherPriorityServerDemand> {
-        self.servers[..index]
+    ) -> impl CurveIterator<HigherPriorityServerDemand> {
+        self.servers[..server_index]
             .iter()
-            .map(|server| server.constraint_demand_curve(up_to))
-            .aggregate()
+            .map(move |server| server.constraint_demand_curve_iter(up_to))
+            .aggregate::<RecursiveAggregatedDemandIterator<_>>()
+            .reclassify()
     }
 
     /// Calculate the system wide hyper periode
@@ -53,6 +59,7 @@ impl System<'_> {
     ///
     /// Section 7.1 §2 Sentence 3, allows to exclude lower priority servers from the swh periode calculation,
     /// when analysing tasks of a server
+    #[must_use]
     pub fn system_wide_hyper_periode(&self, server_index: usize) -> TimeUnit {
         self.servers[..=server_index]
             .iter()
@@ -70,21 +77,24 @@ impl System<'_> {
     ///
     /// See Definition 14. (2) of the paper for reference
     #[must_use]
-    pub fn available_server_execution_curve(
+    pub fn available_server_execution_curve_iter(
         &self,
         server_index: usize,
         up_to: TimeUnit,
-    ) -> Curve<AvailableServerExecution> {
-        let result = Curve::delta::<_, PrimitiveCurve<_>>(
-            Curve::total(up_to),
-            self.aggregated_higher_priority_demand_curve(server_index, up_to),
-        );
+    ) -> impl CurveIterator<AvailableServerExecution> {
+        let total: Curve<AvailableServerExecution> = Curve::total(up_to);
 
-        result.remaining_supply
+        CurveDeltaIterator::new(
+            total.into_iter(),
+            self.aggregated_higher_priority_demand_curve_iter(server_index, up_to),
+        )
+        .remaining_supply::<AvailableServerExecution>()
     }
 
     /// Calculate the Constrained Execution Curve using Algorithm 4. from the paper
     /// TODO more detail, what do the parameters mean
+    ///
+    /// TODO Iterify
     ///
     /// # Panics
     /// When the assumption is violated that each server has it's capacity available
@@ -97,7 +107,9 @@ impl System<'_> {
     ) -> Curve<ConstrainedServerExecution> {
         // Input
 
-        let unconstrained_execution = self.available_server_execution_curve(server_index, up_to);
+        let unconstrained_execution: Curve<AvailableServerExecution> = self
+            .available_server_execution_curve_iter(server_index, up_to)
+            .collect_curve();
 
         assert!(
             check_assumption(
@@ -110,7 +122,10 @@ impl System<'_> {
             &self.as_servers()[server_index],
             unconstrained_execution
         );
-        let constrained_demand = self.servers[server_index].constraint_demand_curve(up_to);
+
+        let constrained_demand = self.servers[server_index]
+            .constraint_demand_curve_iter(up_to)
+            .collect_curve();
 
         crate::paper::actual_server_execution(
             self.servers,

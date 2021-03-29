@@ -1,6 +1,6 @@
 use crate::curve::Curve;
 use crate::iterators::curve::CollectCurveExt;
-use crate::server::{Server, ServerKind};
+use crate::server::{AvailableServerExecution, HigherPriorityServerDemand, Server, ServerKind};
 use crate::system::System;
 use crate::task::{Task, TaskDemand};
 use crate::time::TimeUnit;
@@ -23,7 +23,9 @@ fn unconstrained_curve() {
 
     let up_to = TimeUnit::from(16);
 
-    let aggregated_result = system.aggregated_higher_priority_demand_curve(1, up_to);
+    let aggregated_result: Curve<HigherPriorityServerDemand> = system
+        .aggregated_higher_priority_demand_curve_iter(1, up_to)
+        .collect_curve();
 
     let expected_aggregated_result = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -36,7 +38,9 @@ fn unconstrained_curve() {
 
     assert_eq!(aggregated_result, expected_aggregated_result);
 
-    let unconstrained_result = system.available_server_execution_curve(1, up_to);
+    let unconstrained_result: Curve<AvailableServerExecution> = system
+        .available_server_execution_curve_iter(1, up_to)
+        .collect_curve();
 
     let expected_unconstrained_result = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -86,7 +90,9 @@ fn executive_curve() {
 
     // Unconstrained execution supply curve
 
-    let uc_execution_result = system.available_server_execution_curve(1, up_to);
+    let uc_execution_result: Curve<AvailableServerExecution> = system
+        .available_server_execution_curve_iter(1, up_to)
+        .collect_curve();
 
     let expected_uc_execution = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -259,7 +265,9 @@ fn comparison() {
     assert_eq!(s2_aggregated_demand, expected_s2_demand);
     assert_eq!(s2_constrained_demand, expected_s2_demand.reclassify());
 
-    let s2_unconstrained_execution = system.available_server_execution_curve(1, up_to);
+    let s2_unconstrained_execution: Curve<AvailableServerExecution> = system
+        .available_server_execution_curve_iter(1, up_to)
+        .collect_curve();
 
     // Note: Paper lists 6,10 and 16,20 as the unconstrained curve
     // but contradicts itself later with actual curve 4,8 and 14,18

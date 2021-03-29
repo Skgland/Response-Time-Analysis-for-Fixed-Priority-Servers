@@ -8,11 +8,11 @@ use std::fmt::Debug;
 use curve_types::CurveType;
 
 use crate::iterators::curve::{CurveDeltaIterator, CurveSplitIterator, Delta};
-use crate::server::{ConstrainedServerDemand, HigherPriorityServerDemand, Server, ServerKind};
+use crate::server::{Server, ServerKind};
 
 use crate::time::TimeUnit;
 use crate::window::window_types::WindowType;
-use crate::window::{Demand, Overlap, Supply, Window};
+use crate::window::{Demand, Overlap, Window};
 
 pub mod curve_types;
 
@@ -262,16 +262,6 @@ impl<T: CurveType> Curve<T> {
     }
 }
 
-impl<T: CurveType<WindowKind = Supply>> Curve<T> {
-    /// Create a Curve of all provided Windows
-    pub fn supply_from_windows<I: IntoIterator<Item = Window<T::WindowKind>>>(windows: I) -> Self {
-        windows.into_iter().fold(Self::empty(), |mut acc, window| {
-            acc.insert(window);
-            acc
-        })
-    }
-}
-
 impl<P: WindowType, Q: WindowType, T: CurveType<WindowKind = Overlap<P, Q>>> Curve<T> {
     /// Create a Curve of all provided Windows
     pub fn overlap_from_windows<I: IntoIterator<Item = Window<T::WindowKind>>>(windows: I) -> Self {
@@ -283,11 +273,6 @@ impl<P: WindowType, Q: WindowType, T: CurveType<WindowKind = Overlap<P, Q>>> Cur
 }
 
 impl<T: CurveType<WindowKind = Demand>> Curve<T> {
-    /// Create an aggregated Curve of all provided Windows
-    pub fn demand_from_windows<I: IntoIterator<Item = Window<T::WindowKind>>>(windows: I) -> Self {
-        windows.into_iter().aggregate()
-    }
-
     /// Limited version of the curve aggregation defined in the paper
     ///
     /// Only defined for Demand Curves as it doesn't rely make sense for Overlap or Supply curves
@@ -448,35 +433,6 @@ where
     where
         I: Iterator<Item = A>,
         I::Item: 'a;
-}
-
-impl<'a, 'b: 'a, C: CurveType<WindowKind = Demand>> Aggregate<'a, Window<Demand>> for Curve<C> {
-    fn aggregate<I>(iter: I) -> Self
-    where
-        I: Iterator<Item = Window<Demand>>,
-    {
-        iter.map(Self::new).fold(Self::empty(), Self::aggregate)
-    }
-}
-
-/// Marker for `CurveTypes` that can be aggregated into other `CurveTypes`
-pub trait AggregatesTo<R: CurveType>: CurveType {}
-
-impl<T: CurveType> AggregatesTo<T> for T {}
-
-impl AggregatesTo<HigherPriorityServerDemand> for ConstrainedServerDemand {}
-
-impl<'a, N: CurveType<WindowKind = Demand> + 'a, O: CurveType<WindowKind = Demand>>
-    Aggregate<'a, Curve<N>> for Curve<O>
-where
-    N: AggregatesTo<O>,
-{
-    fn aggregate<I>(iter: I) -> Self
-    where
-        I: Iterator<Item = Curve<N>>,
-    {
-        iter.fold(Self::empty(), Self::aggregate)
-    }
 }
 
 #[cfg(test)]

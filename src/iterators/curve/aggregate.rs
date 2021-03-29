@@ -138,6 +138,8 @@ impl<'a, C: CurveType<WindowKind = Demand>, I1: CurveIterator<'a, C>, I2: CurveI
 {
 }
 
+/// Type alias to make it easier to refer to the Self type of the below
+/// impl of Aggregate
 pub type RecursiveAggregatedDemandIterator<'a, C> = AggregatedDemandIterator<
     'a,
     C,

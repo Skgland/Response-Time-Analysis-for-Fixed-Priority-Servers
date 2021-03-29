@@ -94,7 +94,7 @@ struct IterCurveWrapper<'a, C, I> {
 }
 
 impl<'a, C, I> IterCurveWrapper<'a, C, I> {
-    pub unsafe fn new(iter: I) -> Self {
+    pub const unsafe fn new(iter: I) -> Self {
         IterCurveWrapper {
             iter,
             phantom: PhantomData,

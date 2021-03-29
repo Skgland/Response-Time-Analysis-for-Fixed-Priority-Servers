@@ -19,6 +19,7 @@ pub struct ConstrainedServerDemandIterator<'a, I: CurveIterator<'a, AggregatedSe
 }
 
 impl<'a, I: CurveIterator<'a, AggregatedServerDemand>> ConstrainedServerDemandIterator<'a, I> {
+    /// Create a new `ConstrainedServerDemandIterator`
     pub fn new(server: &'a Server, aggregated_demand: I) -> Self {
         let internal = InternalConstrainedServerDemandIterator::new(server, aggregated_demand);
         let outer = unsafe { JoinAdjacentIterator::new(internal) };
@@ -49,6 +50,10 @@ impl<'a, I: CurveIterator<'a, AggregatedServerDemand>> Iterator
 /// Iterator used internally in the `ConstrainedServerDemandIterator`
 ///
 /// Not a [`CurveIterator`] as adjacent windows may not me aggregated
+///
+/// used to calculate a Servers constrained demand curve,
+/// using the aggregated server demand curve
+/// based on the Algorithm 1. from the paper and described in Section 5.1 of the paper
 #[derive(Debug)]
 struct InternalConstrainedServerDemandIterator<'a, I: CurveIterator<'a, AggregatedServerDemand>> {
     /// The Server for which to calculate the constrained demand
@@ -66,10 +71,14 @@ struct InternalConstrainedServerDemandIterator<'a, I: CurveIterator<'a, Aggregat
 impl<'a, I: CurveIterator<'a, AggregatedServerDemand>>
     InternalConstrainedServerDemandIterator<'a, I>
 {
+    /// Create a new `InternalConstrainedServerDemandIterator`
+    /// the main part for calculating the Constraint Server Demand Curve
     pub fn new(server: &'a Server, aggregated_demand: I) -> Self {
+        // Algorithm 1. (1)
+        let split = CurveSplitIterator::new(aggregated_demand, server.interval);
         InternalConstrainedServerDemandIterator {
             server,
-            groups: CurveSplitIterator::new(aggregated_demand, server.interval),
+            groups: split,
             group_peek: None,
             spill: None,
             remainder: VecDeque::new(),
@@ -87,6 +96,7 @@ impl<'a, I: CurveIterator<'a, AggregatedServerDemand>> Iterator
 {
     type Item = Window<<ConstrainedServerDemand as CurveType>::WindowKind>;
 
+    // Algorithm 1. (2)
     fn next(&mut self) -> Option<Self::Item> {
         #![allow(clippy::option_if_let_else)] // false positive, can't use map_or as the same value is moved in both branches
 

@@ -1,5 +1,6 @@
 use crate::curve::Curve;
-use crate::server::{Server, ServerKind};
+use crate::iterators::curve::CollectCurveExt;
+use crate::server::{ConstrainedServerDemand, Server, ServerKind};
 use crate::task::Task;
 use crate::time::TimeUnit;
 use crate::window::Window;
@@ -15,7 +16,9 @@ fn deferrable_server() {
         server_type: ServerKind::Deferrable,
     };
 
-    let result = server.constraint_demand_curve(TimeUnit::from(18));
+    let result: Curve<ConstrainedServerDemand> = server
+        .constraint_demand_curve_iter(TimeUnit::from(18))
+        .collect_curve();
 
     let expected_result = unsafe {
         // the example in the paper is confusing as
