@@ -3,6 +3,7 @@
 //! and functions to be used with one or multiple Servers
 
 use crate::curve::{AggregateExt, Curve};
+use crate::iterators::curve::AggregatedDemandIterator;
 use crate::task::Task;
 use crate::time::TimeUnit;
 
@@ -69,10 +70,13 @@ impl Server {
     /// As defined in Definition 11. in the paper
     #[must_use]
     pub fn aggregated_demand_curve(&self, up_to: TimeUnit) -> Curve<AggregatedServerDemand> {
-        self.tasks
+        let windows = self
+            .tasks
             .iter()
-            .map(|task| task.demand_curve(up_to))
-            .aggregate()
+            .map(|task| task.into_iter().take_while(|window| window.end <= up_to))
+            .aggregate::<AggregatedDemandIterator<_, _, _>>()
+            .collect();
+        unsafe { Curve::from_windows_unchecked(windows) }
     }
 
     /// Calculate the constrained demand curve

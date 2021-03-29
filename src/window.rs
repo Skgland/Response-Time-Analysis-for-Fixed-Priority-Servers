@@ -170,4 +170,4 @@ pub struct Demand;
 
 /// Marker Type for Window,indicating an Overlap between Supply and Demand
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Overlap<P: WindowType, Q: WindowType>(P, Q);
+pub struct Overlap<P: WindowType, Q: WindowType>(PhantomData<(P, Q)>);

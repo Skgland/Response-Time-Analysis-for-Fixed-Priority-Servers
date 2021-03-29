@@ -7,6 +7,7 @@ use std::fmt::Debug;
 
 use curve_types::CurveType;
 
+use crate::iterators::curve::CurveSplitIterator;
 use crate::server::{
     AggregatedServerDemand, ConstrainedServerDemand, HigherPriorityServerDemand, Server, ServerKind,
 };
@@ -187,40 +188,6 @@ impl<T: CurveType> Curve<T> {
                 windows: demand.into(),
             },
         }
-    }
-
-    /// Split the curve on every interval boundary as defined in Definition 8. of the paper
-    #[must_use]
-    pub fn split(self, interval: TimeUnit) -> HashMap<usize, Self> {
-        let mut curves: HashMap<_, Self> = HashMap::new();
-
-        for mut window in self.windows {
-            loop {
-                let k = window.start / interval; // integer division rounds down by default
-
-                if window.end <= (k + 1) * interval {
-                    curves
-                        .entry(k)
-                        .or_insert_with(Self::empty)
-                        .windows
-                        .push(window);
-                    // process next window from input Curve
-                    break;
-                } else {
-                    let init = Window::new(window.start, (k + 1) * interval);
-                    curves
-                        .entry(k)
-                        .or_insert_with(Self::empty)
-                        .windows
-                        .push(init);
-                    window = Window::new((k + 1) * interval, window.end);
-                    // reprocess updated remaining window
-                    continue;
-                }
-            }
-        }
-
-        curves
     }
 
     /// Validate using `debug_assert!` that the Types invariants are met
@@ -491,11 +458,23 @@ pub struct PartitionResult {
     pub tail: Window<Demand>,
 }
 
+impl<T: CurveType + Clone> Curve<T> {
+    /// Split the curve on every interval boundary as defined in Definition 8. of the paper
+    #[must_use]
+    pub fn split(self, interval: TimeUnit) -> HashMap<usize, Self> {
+        CurveSplitIterator::new(self.into_iter(), interval).collect()
+    }
+}
+
 /// Extension trait to allow calling aggregate on an iterator
 pub trait AggregateExt: Iterator + Sized {
     /// aggregate all iterator elements
     /// acts similar to [`std::iter::Iterator::sum`]
-    fn aggregate<A: Aggregate<Self::Item>>(self) -> A {
+    fn aggregate<'a, A: Aggregate<'a, Self::Item> + 'a>(self) -> A
+    where
+        Self: 'a,
+        Self::Item: 'a,
+    {
         A::aggregate(self)
     }
 }
@@ -503,15 +482,19 @@ pub trait AggregateExt: Iterator + Sized {
 impl<I: Iterator> AggregateExt for I {}
 
 /// Trait used by the `AggregateExt` Extension trait
-pub trait Aggregate<A = Self> {
+pub trait Aggregate<'a, A = Self>
+where
+    A: 'a,
+{
     /// aggregate all elements of `iter` into a new Self
     /// pendant to [`std::iter::Sum`]
     fn aggregate<I>(iter: I) -> Self
     where
-        I: Iterator<Item = A>;
+        I: Iterator<Item = A>,
+        I::Item: 'a;
 }
 
-impl<C: CurveType<WindowKind = Demand>> Aggregate<Window<Demand>> for Curve<C> {
+impl<'a, 'b: 'a, C: CurveType<WindowKind = Demand>> Aggregate<'a, Window<Demand>> for Curve<C> {
     fn aggregate<I>(iter: I) -> Self
     where
         I: Iterator<Item = Window<Demand>>,
@@ -529,8 +512,8 @@ impl AggregatesTo<AggregatedServerDemand> for TaskDemand {}
 impl AggregatesTo<HigherPriorityServerDemand> for ConstrainedServerDemand {}
 impl AggregatesTo<HigherPriorityTaskDemand> for TaskDemand {}
 
-impl<N: CurveType<WindowKind = Demand>, O: CurveType<WindowKind = Demand>> Aggregate<Curve<N>>
-    for Curve<O>
+impl<'a, N: CurveType<WindowKind = Demand> + 'a, O: CurveType<WindowKind = Demand>>
+    Aggregate<'a, Curve<N>> for Curve<O>
 where
     N: AggregatesTo<O>,
 {

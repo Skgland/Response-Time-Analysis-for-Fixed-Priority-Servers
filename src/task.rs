@@ -2,9 +2,11 @@
 
 use crate::curve::curve_types::PrimitiveCurve;
 use crate::curve::{AggregateExt, Curve};
+use crate::iterators::curve::AggregatedDemandIterator;
+use crate::iterators::task::TaskDemandIterator;
 use crate::system::System;
 use crate::time::TimeUnit;
-use crate::window::Window;
+use crate::window::{Demand, Window};
 
 /// Marker Type for Curves representing a Tasks Demand
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
@@ -63,16 +65,12 @@ impl Task {
     /// Based on Definition 10. of the paper
     #[must_use]
     pub fn demand_curve(&self, up_to: TimeUnit) -> Curve<TaskDemand> {
-        let mut start = self.offset;
-        let mut curve = Curve::empty();
+        let windows = self
+            .into_iter()
+            .take_while(|window| window.end <= up_to)
+            .collect();
 
-        while start <= (up_to - self.demand) {
-            curve =
-                curve.aggregate::<TaskDemand>(Curve::new(Window::new(start, start + self.demand)));
-            start += self.interval;
-        }
-
-        curve
+        unsafe { Curve::from_windows_unchecked(windows) }
     }
 
     /// calculate the Higher Priority task Demand for the task with priority `index` as defined in Definition 14. (1) in the paper,
@@ -83,10 +81,12 @@ impl Task {
         index: usize,
         up_to: TimeUnit,
     ) -> Curve<HigherPriorityTaskDemand> {
-        tasks[..index]
+        let windows = tasks[..index]
             .iter()
-            .map(|task| task.demand_curve(up_to))
-            .aggregate()
+            .map(|task| task.into_iter().take_while(|window| window.end <= up_to))
+            .aggregate::<AggregatedDemandIterator<_, _, _>>()
+            .collect();
+        unsafe { Curve::from_windows_unchecked(windows) }
     }
 
     /// Calculate the available execution Curve for the task with priority `task_index` of the server with priority `server_index`
@@ -232,6 +232,15 @@ impl Task {
     #[must_use]
     pub fn job_arrival(&self, job_index: usize) -> TimeUnit {
         self.offset + job_index * self.interval
+    }
+}
+
+impl<'a> IntoIterator for &'a Task {
+    type Item = Window<Demand>;
+    type IntoIter = TaskDemandIterator<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        TaskDemandIterator::new(self)
     }
 }
 
