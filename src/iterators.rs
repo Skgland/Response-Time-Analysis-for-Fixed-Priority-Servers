@@ -11,7 +11,10 @@ pub mod curve;
 pub mod server;
 pub mod task;
 
+/// Extension trait for reclassifying a `CurveIterator`
+/// to any compatible `CurveType`
 pub trait ReclassifyExt<'a, O: CurveType> {
+    /// reclassify a `CurveIterator`
     fn reclassify<C: CurveType<WindowKind = O::WindowKind>>(
         self,
     ) -> ReclassifyIterator<'a, O, Self, C>
@@ -89,6 +92,10 @@ impl<'a, C: CurveType, P: for<'r> FnMut(&'r I::Item) -> bool + 'a, I: CurveItera
 {
 }
 
+impl<'t, 'a, C: CurveType, T> CurveIterator<'t, C> for &'t mut T where T: CurveIterator<'a, C> {}
+
+/// `CurveIterator` for turning an Iterator that returns ordered windows,
+/// that may be adjacent but that don't overlap further into a `CurveIterator`
 #[derive(Debug)]
 pub struct JoinAdjacentIterator<I, C>
 where
@@ -105,6 +112,10 @@ where
     I: Iterator<Item = Window<C::WindowKind>> + FusedIterator,
     C: CurveType,
 {
+    /// Create a new `JoinAdjacentIterator`
+    /// # Safety
+    ///
+    /// The Iterator I must return Windows in order that are either don't overlap or at most adjacent
     pub unsafe fn new(iter: I) -> Self {
         JoinAdjacentIterator {
             iter,

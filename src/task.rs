@@ -4,7 +4,7 @@ use crate::curve::curve_types::PrimitiveCurve;
 use crate::curve::{AggregateExt, Curve};
 use crate::iterators::curve::AggregatedDemandIterator;
 use crate::iterators::task::TaskDemandIterator;
-use crate::iterators::CurveIterator;
+use crate::iterators::{CurveIterator, ReclassifyExt};
 use crate::system::System;
 use crate::time::TimeUnit;
 use crate::window::{Demand, Window};
@@ -85,12 +85,21 @@ impl Task {
         index: usize,
         up_to: TimeUnit,
     ) -> Curve<HigherPriorityTaskDemand> {
-        let windows = tasks[..index]
+        Self::higher_priority_task_demand_iter(tasks, index, up_to).collect()
+    }
+
+    /// `CurveIterator` version of [`higher_priority_task_demand`]
+    #[must_use]
+    pub fn higher_priority_task_demand_iter(
+        tasks: &[Self],
+        index: usize,
+        up_to: TimeUnit,
+    ) -> impl CurveIterator<HigherPriorityTaskDemand> {
+        tasks[..index]
             .iter()
-            .map(|task| task.into_iter().take_while(|window| window.end <= up_to))
+            .map(move |task| task.demand_curve_iter(up_to))
             .aggregate::<AggregatedDemandIterator<_, _, _>>()
-            .collect();
-        unsafe { Curve::from_windows_unchecked(windows) }
+            .reclassify()
     }
 
     /// Calculate the available execution Curve for the task with priority `task_index` of the server with priority `server_index`

@@ -8,10 +8,8 @@ use std::fmt::Debug;
 use curve_types::CurveType;
 
 use crate::iterators::curve::CurveSplitIterator;
-use crate::server::{
-    AggregatedServerDemand, ConstrainedServerDemand, HigherPriorityServerDemand, Server, ServerKind,
-};
-use crate::task::{HigherPriorityTaskDemand, TaskDemand};
+use crate::server::{ConstrainedServerDemand, HigherPriorityServerDemand, Server, ServerKind};
+
 use crate::time::TimeUnit;
 use crate::window::window_types::WindowType;
 use crate::window::{Demand, Overlap, Supply, Window};
@@ -508,9 +506,7 @@ pub trait AggregatesTo<R: CurveType>: CurveType {}
 
 impl<T: CurveType> AggregatesTo<T> for T {}
 
-impl AggregatesTo<AggregatedServerDemand> for TaskDemand {}
 impl AggregatesTo<HigherPriorityServerDemand> for ConstrainedServerDemand {}
-impl AggregatesTo<HigherPriorityTaskDemand> for TaskDemand {}
 
 impl<'a, N: CurveType<WindowKind = Demand> + 'a, O: CurveType<WindowKind = Demand>>
     Aggregate<'a, Curve<N>> for Curve<O>
