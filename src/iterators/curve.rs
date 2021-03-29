@@ -1,7 +1,7 @@
 //! Iterators for basic Curve Operations
 //!
 //! such as `IntoIter`, split, aggregate, TODO delta
-use std::iter::{Empty, FusedIterator};
+use std::iter::{Empty, FromIterator, FusedIterator};
 use std::marker::PhantomData;
 
 use crate::curve::curve_types::CurveType;
@@ -10,6 +10,13 @@ use crate::iterators::CurveIterator;
 use crate::time::TimeUnit;
 use crate::window::{Demand, Window};
 use std::collections::VecDeque;
+
+impl<C: CurveType> FromIterator<Window<C::WindowKind>> for Curve<C> {
+    fn from_iter<T: IntoIterator<Item = Window<C::WindowKind>>>(iter: T) -> Self {
+        let windows = iter.into_iter().collect();
+        unsafe { Curve::from_windows_unchecked(windows) }
+    }
+}
 
 /// Iterator for Aggregating two Curve Iterators
 #[derive(Debug)]
