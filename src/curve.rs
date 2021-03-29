@@ -2,12 +2,12 @@
 //!
 //! and all associated functions
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::fmt::Debug;
 
 use curve_types::CurveType;
 
-use crate::iterators::curve::CurveSplitIterator;
+use crate::iterators::curve::{CurveDeltaIterator, CurveSplitIterator, Delta};
 use crate::server::{ConstrainedServerDemand, HigherPriorityServerDemand, Server, ServerKind};
 
 use crate::time::TimeUnit;
@@ -26,7 +26,7 @@ pub struct Curve<C: CurveType> {
 }
 
 /// Return Type for [`Curve::delta`](Curve::delta)
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct CurveDeltaResult<
     P: CurveType,
     Q: CurveType,
@@ -122,70 +122,28 @@ impl<T: CurveType> Curve<T> {
     pub fn delta<Q: CurveType, R: CurveType<WindowKind = Overlap<T::WindowKind, Q::WindowKind>>>(
         supply: Self,
         demand: Curve<Q>,
-    ) -> CurveDeltaResult<T, Q, R> {
-        let mut demand: VecDeque<_> = demand.windows.into_iter().collect();
-        let mut supply: VecDeque<_> = supply.windows.into_iter().collect();
+    ) -> CurveDeltaResult<T, Q, R>
+    where
+        Self: Clone,
+        Curve<Q>: Clone,
+    {
+        let delta2 = CurveDeltaIterator::new(supply.into_iter(), demand.into_iter());
 
-        let mut overlap: Curve<_> = Curve::empty();
+        let mut result2 = CurveDeltaResult {
+            remaining_supply: Self { windows: vec![] },
+            overlap: Curve { windows: vec![] },
+            remaining_demand: Curve { windows: vec![] },
+        };
 
-        // get first demand window
-        // if None we are done <=> Condition C^'_q(t) = {}
-        while let Some(demand_window) = demand.front() {
-            // (1) find valid supply window
-            let maybe_j = supply
-                .iter()
-                .enumerate()
-                .find_map(|(i, supply)| (demand_window.start < supply.end).then(|| i));
-
-            let j = if let Some(j) = maybe_j {
-                j
-            } else {
-                // exhausted usable supply
-                // either we are done as supply.len() == 0 <=> Condition C^'_p(t) = {}
-                if !supply.is_empty() {
-                    // or all remaining supply is before remaining demand
-                    // The paper does not handle this case, as it should probably not occur
-                    panic!("Not enough useful supply for delta calculation!");
-                }
-                break;
-            };
-
-            // (3) removed used supply that will be used
-            let supply_window = supply
-                .remove(j)
-                .expect("sanity check: j should still be a valid index");
-
-            // (2) calculate delta
-            let result = Window::delta(&supply_window, demand_window);
-
-            // (3) add remaining supply
-            result
-                .remaining_supply
-                .windows
-                .into_iter()
-                .rev()
-                .filter(|w| !w.is_empty())
-                .for_each(|window| supply.insert(j, window));
-
-            // (4) add overlap windows
-            overlap.insert(Window::new(result.overlap.start, result.overlap.end));
-
-            // (5) remove completed demand and add remaining demand
-            demand.pop_front();
-            if !result.remaining_demand.is_empty() {
-                demand.push_front(result.remaining_demand)
+        for window in delta2 {
+            match window {
+                Delta::Overlap(overlap) => result2.overlap.windows.push(overlap),
+                Delta::RemainingSupply(supply) => result2.remaining_supply.windows.push(supply),
+                Delta::RemainingDemand(demand) => result2.remaining_demand.windows.push(demand),
             }
         }
 
-        CurveDeltaResult {
-            remaining_supply: Self {
-                windows: supply.into(),
-            },
-            overlap,
-            remaining_demand: Curve {
-                windows: demand.into(),
-            },
-        }
+        result2
     }
 
     /// Validate using `debug_assert!` that the Types invariants are met

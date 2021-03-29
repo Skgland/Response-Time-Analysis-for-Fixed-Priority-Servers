@@ -2,9 +2,10 @@
 
 use crate::curve::curve_types::PrimitiveCurve;
 use crate::curve::{AggregateExt, Curve};
-use crate::iterators::curve::AggregatedDemandIterator;
+use crate::iterators::curve::{AggregatedDemandIterator, CollectCurveExt, CurveDeltaIterator};
 use crate::iterators::task::TaskDemandIterator;
 use crate::iterators::{CurveIterator, ReclassifyExt};
+use crate::server::ConstrainedServerExecution;
 use crate::system::System;
 use crate::time::TimeUnit;
 use crate::window::{Demand, Window};
@@ -27,7 +28,7 @@ pub struct ActualTaskExecution;
 
 /// The Task type based on the Modeling described in the second paragraph
 /// of Chapter 3. in the paper
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Task {
     /// The offset of the tasks, O index i in the paper
     pub offset: TimeUnit,
@@ -65,30 +66,13 @@ impl Task {
     ///
     /// Based on Definition 10. of the paper
     #[must_use]
-    pub fn demand_curve(&self, up_to: TimeUnit) -> Curve<TaskDemand> {
-        let windows = self.demand_curve_iter(up_to).collect();
-        unsafe { Curve::from_windows_unchecked(windows) }
-    }
-
-    /// `CurveIterator` version of [`demand_curve`]
-    #[must_use]
-    pub fn demand_curve_iter(&self, up_to: TimeUnit) -> impl CurveIterator<TaskDemand> {
+    pub fn demand_curve_iter(&self, up_to: TimeUnit) -> impl CurveIterator<TaskDemand> + Clone {
         self.into_iter()
             .take_while(move |window| window.end <= up_to)
     }
 
     /// calculate the Higher Priority task Demand for the task with priority `index` as defined in Definition 14. (1) in the paper,
     /// for a set of tasks indexed by their priority (lower index <=> higher priority) and up to the specified limit
-    #[must_use]
-    pub fn higher_priority_task_demand(
-        tasks: &[Self],
-        index: usize,
-        up_to: TimeUnit,
-    ) -> Curve<HigherPriorityTaskDemand> {
-        Self::higher_priority_task_demand_iter(tasks, index, up_to).collect()
-    }
-
-    /// `CurveIterator` version of [`higher_priority_task_demand`]
     #[must_use]
     pub fn higher_priority_task_demand_iter(
         tasks: &[Self],
@@ -114,18 +98,23 @@ impl Task {
         up_to: TimeUnit,
     ) -> Curve<AvailableTaskExecution> {
         let constrained_server_execution_curve = system.actual_execution_curve(server_index, up_to);
-        let higher_priority_task_demand = Task::higher_priority_task_demand(
+
+        let higher_priority_task_demand = Task::higher_priority_task_demand_iter(
             system.as_servers()[server_index].as_tasks(),
             task_index,
             up_to,
         );
 
-        let result = Curve::delta::<_, PrimitiveCurve<_>>(
-            constrained_server_execution_curve,
+        let delta = CurveDeltaIterator::new(
+            constrained_server_execution_curve.into_iter(),
             higher_priority_task_demand,
         );
 
-        result.remaining_supply.reclassify()
+        let remaining_supply: Curve<ConstrainedServerExecution> = delta
+            .remaining_supply::<PrimitiveCurve<_>>()
+            .collect_curve();
+
+        remaining_supply.reclassify()
     }
 
     /// Calculate the actual execution Curve for the Task with priority `task_index` of the Server with priority `server_index`
@@ -142,10 +131,14 @@ impl Task {
         let available_execution_curve =
             Task::available_execution_curve(system, server_index, task_index, up_to);
         let task_demand_curve =
-            system.as_servers()[server_index].as_tasks()[task_index].demand_curve(up_to);
+            system.as_servers()[server_index].as_tasks()[task_index].demand_curve_iter(up_to);
 
-        let result = Curve::delta(available_execution_curve, task_demand_curve);
-        result.overlap
+        let overlap: Curve<_> =
+            CurveDeltaIterator::new(available_execution_curve.into_iter(), task_demand_curve)
+                .overlap::<ActualTaskExecution>()
+                .collect_curve();
+
+        overlap
     }
 
     /// Calculate the WCRT for the task with priority `task_index` for the Server with priority `server_index`

@@ -1,7 +1,8 @@
 use crate::curve::Curve;
+use crate::iterators::curve::CollectCurveExt;
 use crate::server::{Server, ServerKind};
 use crate::system::System;
-use crate::task::Task;
+use crate::task::{Task, TaskDemand};
 use crate::time::TimeUnit;
 use crate::window::Window;
 
@@ -169,10 +170,11 @@ fn response_time() {
 
     assert_eq!(c_s2, expected);
 
-    let t2_demand = Task::demand_curve(
+    let t2_demand: Curve<TaskDemand> = Task::demand_curve_iter(
         &servers[server_index].as_tasks()[task_index],
         TimeUnit::from(16),
-    );
+    )
+    .collect_curve();
 
     let expected = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -231,14 +233,18 @@ fn comparison() {
 
     let up_to = TimeUnit::from(20);
 
-    let t2_d = servers[1].as_tasks()[0].demand_curve(up_to);
+    let t2_d: Curve<TaskDemand> = servers[1].as_tasks()[0]
+        .demand_curve_iter(up_to)
+        .collect_curve();
 
     let expected_t2_d =
         unsafe { Curve::from_windows_unchecked(vec![Window::new(0, 3), Window::new(10, 13)]) };
 
     assert_eq!(t2_d, expected_t2_d);
 
-    let t3_d = servers[1].as_tasks()[1].demand_curve(up_to);
+    let t3_d: Curve<TaskDemand> = servers[1].as_tasks()[1]
+        .demand_curve_iter(up_to)
+        .collect_curve();
 
     let expected_t3_d =
         unsafe { Curve::from_windows_unchecked(vec![Window::new(0, 1), Window::new(10, 11)]) };

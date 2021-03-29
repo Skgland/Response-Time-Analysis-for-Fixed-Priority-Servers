@@ -8,7 +8,7 @@ use crate::task::{HigherPriorityTaskDemand, Task, TaskDemand};
 use crate::window::Window;
 
 /// `CurveIterator` for a Tasks Demand
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TaskDemandIterator<'a> {
     /// the Task this Iterator generates demand for
     task: &'a Task,

@@ -1,5 +1,6 @@
 use crate::curve::Curve;
-use crate::task::Task;
+use crate::iterators::curve::{AggregatedDemandIterator, CollectCurveExt};
+use crate::task::{Task, TaskDemand};
 use crate::time::TimeUnit;
 use crate::window::Window;
 
@@ -12,8 +13,8 @@ fn demand_curve() {
 
     let up_to = TimeUnit::from(18);
 
-    let c_2 = t_2.demand_curve(up_to);
-    let c_3 = t_3.demand_curve(up_to);
+    let c_2: Curve<TaskDemand> = t_2.demand_curve_iter(up_to).collect_curve();
+    let c_3: Curve<TaskDemand> = t_3.demand_curve_iter(up_to).collect_curve();
 
     let expected_c_2 = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -45,7 +46,9 @@ fn aggregated_demand_curve() {
 
     let up_to = TimeUnit::from(18);
 
-    let result = t_2.demand_curve(up_to).aggregate(t_3.demand_curve(up_to));
+    let result: Curve<TaskDemand> =
+        AggregatedDemandIterator::new(t_2.demand_curve_iter(up_to), t_3.demand_curve_iter(up_to))
+            .collect_curve();
 
     let expected_result = unsafe {
         Curve::from_windows_unchecked(vec![
