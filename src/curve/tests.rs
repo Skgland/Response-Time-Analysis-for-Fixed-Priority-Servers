@@ -68,7 +68,11 @@ fn delta_curves() {
 
     assert_eq!(result.remaining_supply, expected_remaining_supply);
     assert_eq!(result.overlap, expected_overlap);
-    assert!(result.remaining_demand.is_empty());
+    assert!(
+        result.remaining_demand.is_empty(),
+        "Expected empty remaining demand, got: {:#?}",
+        result.remaining_demand
+    );
 }
 
 #[test]

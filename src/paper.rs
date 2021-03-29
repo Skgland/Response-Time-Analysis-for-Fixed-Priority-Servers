@@ -94,9 +94,19 @@ pub fn aggregate_curve<
                 [prev, next] => {
                     // ordered
                     // assert is_sorted_by_key on .start once that is stable
-                    debug_assert!(prev.start < next.start);
+                    debug_assert!(
+                        prev.start < next.start,
+                        "Curve windows should be sorted but {:#?} and {:#?} are out of order!",
+                        prev,
+                        next
+                    );
                     // non-overlapping
-                    debug_assert!(!prev.overlaps(next));
+                    debug_assert!(
+                        !prev.overlaps(next),
+                        "Curve windows should not overlap but {:#?} and {:#?} do!",
+                        prev,
+                        next
+                    );
                 }
                 _ => unreachable!(
                     "Iteration over slice windows of size 2, can't have other slice lengths10"
@@ -214,13 +224,17 @@ pub fn actual_server_execution(
         split_execution
     };
 
-    debug_assert!(split_execution.as_slice().windows(2).all(|windows| {
-        if let [p, n] = windows {
-            p.start < n.start
-        } else {
-            false
-        }
-    }));
+    debug_assert!(
+        split_execution.as_slice().windows(2).all(|windows| {
+            if let [p, n] = windows {
+                p.start < n.start
+            } else {
+                false
+            }
+        }),
+        "Expected windows to be sorted in {:#?}",
+        split_execution
+    );
 
     // (2)
     let mut current_supply = split_execution;
@@ -290,7 +304,12 @@ pub fn actual_server_execution(
             let result = Window::delta(&current_supply.remove(index), &valid_demand_segment);
 
             // (e)
-            debug_assert!(budgets.contains_key(&bg));
+            debug_assert!(
+                budgets.contains_key(&bg),
+                "budget key {:#?} should already exist in {:#?}",
+                bg,
+                budgets
+            );
             budgets
                 .entry(bg)
                 .and_modify(|entry| *entry += result.overlap.length());
@@ -311,4 +330,25 @@ pub fn actual_server_execution(
     }
 
     Curve::overlap_from_windows(constrained_execution)
+}
+
+/// Check if the assumption holds that every server has it's full capacity available
+#[must_use]
+pub fn check_assumption(
+    server: &Server,
+    available: Curve<AvailableServerExecution>,
+    up_to: TimeUnit,
+) -> bool {
+    let groups = available.split(server.interval);
+
+    for interval_index in 0..=((up_to - TimeUnit::ONE) / server.interval) {
+        if !groups
+            .get(&interval_index)
+            .map_or(false, |curve| curve.capacity() >= server.capacity)
+        {
+            return false;
+        }
+    }
+
+    true
 }

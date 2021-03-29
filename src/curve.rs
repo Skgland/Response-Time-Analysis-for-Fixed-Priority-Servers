@@ -116,6 +116,9 @@ impl<T: CurveType> Curve<T> {
     }
 
     /// Calculate Delta between the Supply and the Demand based on Definition 7. from the paper
+    ///
+    /// # Panics
+    /// When the supply usable for the demand is less than the demand
     #[must_use]
     pub fn delta<Q: CurveType, R: CurveType<WindowKind = Overlap<T::WindowKind, Q::WindowKind>>>(
         supply: Self,
@@ -139,9 +142,12 @@ impl<T: CurveType> Curve<T> {
                 j
             } else {
                 // exhausted usable supply
-                // either supply.len() == 0 <=> Condition C^'_p(t) = {}
-                // or all remaining supply is before remaining demand
-                // TODO paper assumes later case to be absent, what to do?
+                // either we are done as supply.len() == 0 <=> Condition C^'_p(t) = {}
+                if !supply.is_empty() {
+                    // or all remaining supply is before remaining demand
+                    // The paper does not handle this case, as it should probably not occur
+                    panic!("Not enough useful supply for delta calculation!");
+                }
                 break;
             };
 
@@ -223,15 +229,18 @@ impl<T: CurveType> Curve<T> {
     ///
     /// Panics when the Curve contains overlapping or out of order windows
     pub fn debug_validate(&self) {
-        debug_assert!(self
-            .windows
-            .as_slice()
-            .windows(2)
-            .all(|windows| if let [p, n] = windows {
-                p.start < n.start && !p.overlaps(n)
-            } else {
-                false
-            }))
+        debug_assert!(
+            self.windows
+                .as_slice()
+                .windows(2) // use array_windows once stable
+                .all(|windows| if let [p, n] = windows {
+                    p.start < n.start && !p.overlaps(n)
+                } else {
+                    unreachable!("Branch can be eliminated once array_windows is stable")
+                }),
+            "Broken Curve Invariant! {:#?}",
+            self
+        )
     }
 
     /// Change the `CurveType` of the Curve,

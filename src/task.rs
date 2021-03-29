@@ -2,7 +2,7 @@
 
 use crate::curve::curve_types::PrimitiveCurve;
 use crate::curve::{AggregateExt, Curve};
-use crate::server::Server;
+use crate::system::System;
 use crate::time::TimeUnit;
 use crate::window::Window;
 
@@ -95,15 +95,17 @@ impl Task {
     /// Based on Definition 14. (2) of the paper
     #[must_use]
     pub fn available_execution_curve(
-        servers: &[Server],
+        system: &System,
         server_index: usize,
         task_index: usize,
         up_to: TimeUnit,
     ) -> Curve<AvailableTaskExecution> {
-        let constrained_server_execution_curve =
-            Server::actual_execution_curve(servers, server_index, up_to);
-        let higher_priority_task_demand =
-            Task::higher_priority_task_demand(servers[server_index].as_tasks(), task_index, up_to);
+        let constrained_server_execution_curve = system.actual_execution_curve(server_index, up_to);
+        let higher_priority_task_demand = Task::higher_priority_task_demand(
+            system.as_servers()[server_index].as_tasks(),
+            task_index,
+            up_to,
+        );
 
         let result = Curve::delta::<_, PrimitiveCurve<_>>(
             constrained_server_execution_curve,
@@ -119,14 +121,15 @@ impl Task {
     /// Based on Definition 14. (3) of the paper
     #[must_use]
     pub fn actual_execution_curve(
-        servers: &[Server],
+        system: &System,
         server_index: usize,
         task_index: usize,
         up_to: TimeUnit,
     ) -> Curve<ActualTaskExecution> {
         let available_execution_curve =
-            Task::available_execution_curve(servers, server_index, task_index, up_to);
-        let task_demand_curve = servers[server_index].as_tasks()[task_index].demand_curve(up_to);
+            Task::available_execution_curve(system, server_index, task_index, up_to);
+        let task_demand_curve =
+            system.as_servers()[server_index].as_tasks()[task_index].demand_curve(up_to);
 
         let result = Curve::delta(available_execution_curve, task_demand_curve);
         result.overlap
@@ -138,26 +141,35 @@ impl Task {
     /// When sanity checks fail
     #[must_use]
     pub fn worst_case_response_time(
-        servers: &[Server],
+        system: &System,
         server_index: usize,
         task_index: usize,
     ) -> TimeUnit {
-        let swh = Server::system_wide_hyper_periode(servers, server_index);
+        let swh = system.system_wide_hyper_periode(server_index);
 
         let actual_execution_time =
-            Task::actual_execution_curve(servers, server_index, task_index, swh);
+            Task::actual_execution_curve(system, server_index, task_index, swh);
 
-        let task = &servers[server_index].as_tasks()[task_index];
+        let task = &system.as_servers()[server_index].as_tasks()[task_index];
 
         let last_job = (swh - task.offset - TimeUnit::ONE) / task.interval;
 
         // sanity check that last_job arrival is before swh
-        assert!(task.job_arrival(last_job) < swh);
-        // sanity check that job after last_job is not before swh
-        assert!(task.job_arrival(last_job + 1) >= swh);
+        assert!(
+            task.job_arrival(last_job) < swh,
+            "Last job should arrive before the system wide hyper periode"
+        );
 
-        // check that there is enough capacity so that last_job is able to execute
-        assert!((last_job + 1) * task.demand <= actual_execution_time.capacity());
+        // sanity check that job after last_job is not before swh
+        assert!(
+            task.job_arrival(last_job + 1) >= swh,
+            "The job after the last job would arrive after or at the system wide hyper periode"
+        );
+
+        assert!(
+            (last_job + 1) * task.demand <= actual_execution_time.capacity(),
+            "There should be enough capacity for the last job"
+        );
 
         (0..=last_job)
             .into_iter()
@@ -176,8 +188,9 @@ impl Task {
     ///
     /// # Panics
     /// When the capacity of the curve is less than t
+    /// or t is [`TimeUnit::ZERO`]
     #[must_use]
-    pub(crate) fn time_to_provide(
+    pub fn time_to_provide(
         actual_execution_time: &Curve<ActualTaskExecution>,
         t: TimeUnit,
     ) -> TimeUnit {
@@ -204,7 +217,11 @@ impl Task {
         let b = t - sum;
 
         // this should hold as sum is the largest sum of head window lengths less than t
-        debug_assert!(b > TimeUnit::ZERO);
+        debug_assert!(
+            b > TimeUnit::ZERO,
+            "There should be remaining demand, but b = {:?}",
+            b
+        );
 
         actual_execution_time.as_windows()[index].start + b
     }

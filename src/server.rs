@@ -2,7 +2,6 @@
 //!
 //! and functions to be used with one or multiple Servers
 
-use crate::curve::curve_types::PrimitiveCurve;
 use crate::curve::{AggregateExt, Curve};
 use crate::task::Task;
 use crate::time::TimeUnit;
@@ -81,86 +80,6 @@ impl Server {
     pub fn constrain_demand_curve(&self, up_to: TimeUnit) -> Curve<ConstrainedServerDemand> {
         let aggregated_curve = self.aggregated_demand_curve(up_to);
         crate::paper::constrained_server_demand(self, aggregated_curve)
-    }
-
-    /// Calculate the aggregated higher priority demand curve
-    /// by aggregating the aggregated demand curves of all Servers with higher priority
-    /// (lower value) than `index`.
-    ///
-    /// The index in the `servers` slice corresponds to the priority of the Server
-    /// a lower index equals higher priority
-    ///
-    /// Based on the papers Definition 12.
-    #[must_use]
-    pub fn aggregated_higher_priority_demand_curve(
-        servers: &[Server],
-        index: usize,
-        up_to: TimeUnit,
-    ) -> Curve<HigherPriorityServerDemand> {
-        servers[..index]
-            .iter()
-            .map(|server| server.constrain_demand_curve(up_to))
-            .aggregate()
-    }
-
-    /// Calculate the unconstrained execution curve
-    /// for the server with priority `index`.
-    ///
-    /// The Priority of a server is its index in the `servers` slice,
-    /// a lower index entails a higher priority.
-    ///
-    /// See Definition 14. (2) of the paper for reference
-    #[must_use]
-    pub fn available_server_execution_curve(
-        servers: &[Server],
-        index: usize,
-        up_to: TimeUnit,
-    ) -> Curve<AvailableServerExecution> {
-        let result = Curve::delta::<_, PrimitiveCurve<_>>(
-            Curve::total(up_to),
-            Server::aggregated_higher_priority_demand_curve(servers, index, up_to),
-        );
-        result.remaining_supply
-    }
-
-    /// Calculate the Constrained Execution Curve using Algorithm 4. from the paper
-    /// TODO more detail, what do the parameters mean
-    #[must_use]
-    pub fn actual_execution_curve(
-        servers: &[Server],
-        index: usize,
-        up_to: TimeUnit,
-    ) -> Curve<ConstrainedServerExecution> {
-        // Input
-
-        let unconstrained_execution =
-            Server::available_server_execution_curve(servers, index, up_to);
-        let constrained_demand = servers[index].constrain_demand_curve(up_to);
-
-        crate::paper::actual_server_execution(
-            servers,
-            index,
-            unconstrained_execution,
-            constrained_demand,
-        )
-    }
-
-    /// Calculate the system wide hyper periode
-    /// accounting for all servers and tasks
-    /// up to and including the server with priority `server_index`
-    ///
-    /// Section 7.1 §2 Sentence 3, allows to exclude lower priority servers from the swh periode calculation,
-    /// when analysing tasks of a server
-    pub fn system_wide_hyper_periode(servers: &[Server], server_index: usize) -> TimeUnit {
-        servers[..=server_index]
-            .iter()
-            .map(|server| server.interval)
-            .chain(
-                servers
-                    .iter()
-                    .flat_map(|server| server.as_tasks().iter().map(|task| task.interval)),
-            )
-            .fold(TimeUnit::ONE, TimeUnit::lcm)
     }
 }
 

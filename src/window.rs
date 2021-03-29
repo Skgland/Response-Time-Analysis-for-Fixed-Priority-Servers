@@ -9,6 +9,8 @@ use crate::time::TimeUnit;
 use crate::window::window_types::WindowType;
 
 pub mod window_types {
+    //!  Module for the `WindowType` trait
+
     use crate::seal::Seal;
     use crate::window::{Demand, Overlap, Supply};
     use std::fmt::Debug;
