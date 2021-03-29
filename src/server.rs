@@ -76,8 +76,10 @@ impl Server {
         unsafe { Curve::from_windows_unchecked(windows) }
     }
 
-    pub fn aggregated_demand_curve_iter<'a>(
-        &'a self,
+    /// `CurveIterator` version of [`aggregated_demand_curve`]
+    #[must_use]
+    pub fn aggregated_demand_curve_iter(
+        &self,
         up_to: TimeUnit,
     ) -> impl CurveIterator<AggregatedServerDemand> {
         self.tasks
@@ -93,9 +95,18 @@ impl Server {
 
     /// Calculate the constrained demand curve
     #[must_use]
-    pub fn constrain_demand_curve(&self, up_to: TimeUnit) -> Curve<ConstrainedServerDemand> {
+    pub fn constraint_demand_curve(&self, up_to: TimeUnit) -> Curve<ConstrainedServerDemand> {
         let aggregated_curve = self.aggregated_demand_curve_iter(up_to);
         ConstrainedServerDemandIterator::new(self, aggregated_curve).collect()
+    }
+
+    /// `CurveIterator` version of [`constraint_demand_curve`]
+    #[must_use]
+    pub fn constrain_demand_curve_iter(
+        &self,
+        up_to: TimeUnit,
+    ) -> impl CurveIterator<ConstrainedServerDemand> {
+        ConstrainedServerDemandIterator::new(self, self.aggregated_demand_curve_iter(up_to))
     }
 }
 

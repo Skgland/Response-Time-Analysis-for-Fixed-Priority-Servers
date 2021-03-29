@@ -4,6 +4,7 @@ use crate::curve::curve_types::PrimitiveCurve;
 use crate::curve::{AggregateExt, Curve};
 use crate::iterators::curve::AggregatedDemandIterator;
 use crate::iterators::task::TaskDemandIterator;
+use crate::iterators::CurveIterator;
 use crate::system::System;
 use crate::time::TimeUnit;
 use crate::window::{Demand, Window};
@@ -65,12 +66,15 @@ impl Task {
     /// Based on Definition 10. of the paper
     #[must_use]
     pub fn demand_curve(&self, up_to: TimeUnit) -> Curve<TaskDemand> {
-        let windows = self
-            .into_iter()
-            .take_while(|window| window.end <= up_to)
-            .collect();
-
+        let windows = self.demand_curve_iter(up_to).collect();
         unsafe { Curve::from_windows_unchecked(windows) }
+    }
+
+    /// `CurveIterator` version of [`demand_curve`]
+    #[must_use]
+    pub fn demand_curve_iter(&self, up_to: TimeUnit) -> impl CurveIterator<TaskDemand> {
+        self.into_iter()
+            .take_while(move |window| window.end <= up_to)
     }
 
     /// calculate the Higher Priority task Demand for the task with priority `index` as defined in Definition 14. (1) in the paper,

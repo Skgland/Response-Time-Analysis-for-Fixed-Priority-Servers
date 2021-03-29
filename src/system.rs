@@ -43,7 +43,7 @@ impl System<'_> {
     ) -> Curve<HigherPriorityServerDemand> {
         self.servers[..index]
             .iter()
-            .map(|server| server.constrain_demand_curve(up_to))
+            .map(|server| server.constraint_demand_curve(up_to))
             .aggregate()
     }
 
@@ -110,7 +110,7 @@ impl System<'_> {
             &self.as_servers()[server_index],
             unconstrained_execution
         );
-        let constrained_demand = self.servers[server_index].constrain_demand_curve(up_to);
+        let constrained_demand = self.servers[server_index].constraint_demand_curve(up_to);
 
         crate::paper::actual_server_execution(
             self.servers,
