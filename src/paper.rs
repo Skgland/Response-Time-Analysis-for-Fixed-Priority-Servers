@@ -118,22 +118,6 @@ pub fn aggregate_curve<
     curve_a
 }
 
-#[must_use]
-pub fn actual_server_execution(
-    servers: &[Server],
-    server_index: usize,
-    unconstrained_execution: Curve<AvailableServerExecution>,
-    constrained_demand: Curve<ConstrainedServerDemand>,
-) -> Curve<ActualServerExecution> {
-    ActualExecutionIterator::new(
-        servers,
-        server_index,
-        unconstrained_execution.into_iter(),
-        constrained_demand.into_iter(),
-    )
-    .collect_curve()
-}
-
 /// Calculate the Constrained Execution Curve using Algorithm 4. from the paper
 ///
 /// For the server with priority `server_index` calculate th actual execution
