@@ -92,11 +92,11 @@ impl System<'_> {
     /// TODO more detail, what do the parameters mean
     ///
     #[must_use]
-    pub fn actual_execution_curve_iter<'a>(
-        &'a self,
+    pub fn actual_execution_curve_iter(
+        &self,
         server_index: usize,
         up_to: TimeUnit,
-    ) -> impl CurveIterator<'a, ActualServerExecution> + Clone {
+    ) -> impl CurveIterator<ActualServerExecution> + Clone {
         let unconstrained_execution =
             self.available_server_execution_curve_iter(server_index, up_to);
 
