@@ -19,6 +19,21 @@ pub enum Delta<S, D> {
     RemainingDemand(Window<D>),
 }
 
+impl<S, D> Delta<S, D> {
+    pub const fn overlap(self) -> Option<Window<Overlap<S, D>>> {
+        match self {
+            Delta::RemainingSupply(_) | Delta::RemainingDemand(_) => None,
+            Delta::Overlap(overlap) => Some(overlap),
+        }
+    }
+    pub const fn remaining_supply(self) -> Option<Window<S>> {
+        match self {
+            Delta::RemainingSupply(supply) => Some(supply),
+            Delta::Overlap(_) | Delta::RemainingDemand(_) => None,
+        }
+    }
+}
+
 /// TODO description
 #[derive(Debug)]
 pub struct CurveDeltaIterator<'a, DC: CurveType, SC: CurveType, DI, SI> {
@@ -74,7 +89,7 @@ impl<
     where
         Self: Clone,
     {
-        let inner = self.filter_map(filter_overlap);
+        let inner = self.filter_map(Delta::overlap);
         unsafe {
             // Safety
             // self is an iterator of three interleaved curves, but using filter_map
@@ -90,7 +105,7 @@ impl<
         C: CurveType<WindowKind = SC::WindowKind> + 'a,
         Self: Clone,
     {
-        let inner = self.filter_map(filter_remaining_supply as fn(_) -> _);
+        let inner = self.filter_map(Delta::remaining_supply);
 
         unsafe {
             // Safety
@@ -99,20 +114,6 @@ impl<
             // so the remaining iterator is a valid curve
             IterCurveWrapper::new(inner)
         }
-    }
-}
-
-fn filter_overlap<S, D>(delta: Delta<S, D>) -> Option<Window<Overlap<S, D>>> {
-    match delta {
-        Delta::RemainingSupply(_) | Delta::RemainingDemand(_) => None,
-        Delta::Overlap(overlap) => Some(overlap),
-    }
-}
-
-fn filter_remaining_supply<S, D>(delta: Delta<S, D>) -> Option<Window<S>> {
-    match delta {
-        Delta::RemainingSupply(supply) => Some(supply),
-        Delta::Overlap(_) | Delta::RemainingDemand(_) => None,
     }
 }
 
