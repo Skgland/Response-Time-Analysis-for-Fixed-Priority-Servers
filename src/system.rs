@@ -9,6 +9,7 @@ use crate::server::{
 
 use crate::iterators::{CurveIterator, ReclassifyExt};
 use crate::time::TimeUnit;
+use crate::window::Window;
 
 /// Type representing a System of Servers
 #[derive(Debug)]
@@ -79,7 +80,7 @@ impl System<'_> {
         server_index: usize,
         up_to: TimeUnit,
     ) -> impl CurveIterator<AvailableServerExecution> + Clone {
-        let total: Curve<AvailableServerExecution> = Curve::total(up_to);
+        let total: Curve<AvailableServerExecution> = Curve::new(Window::new(TimeUnit::ZERO, up_to));
 
         CurveDeltaIterator::new(
             total.into_iter(),
