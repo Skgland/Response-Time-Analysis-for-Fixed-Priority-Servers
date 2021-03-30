@@ -2,8 +2,8 @@
 
 use crate::curve::curve_types::{CurveType, OverlapCurve, PrimitiveCurve};
 use crate::server::{
-    AggregatedServerDemand, AvailableServerExecution, ConstrainedServerDemand,
-    ConstrainedServerExecution, HigherPriorityServerDemand,
+    ActualServerExecution, AggregatedServerDemand, AvailableServerExecution,
+    ConstrainedServerDemand, HigherPriorityServerDemand,
 };
 use crate::task::{
     ActualTaskExecution, AvailableTaskExecution, HigherPriorityTaskDemand, TaskDemand,
@@ -30,7 +30,7 @@ impl Seal for AggregatedServerDemand {}
 impl Seal for ConstrainedServerDemand {}
 impl Seal for HigherPriorityServerDemand {}
 impl Seal for AvailableServerExecution {}
-impl Seal for ConstrainedServerExecution {}
+impl Seal for ActualServerExecution {}
 
 // Task Curves
 impl Seal for TaskDemand {}

@@ -3,9 +3,9 @@
 use crate::curve::curve_types::PrimitiveCurve;
 use crate::curve::{AggregateExt, Curve};
 use crate::iterators::curve::{AggregatedDemandIterator, CollectCurveExt, CurveDeltaIterator};
+
 use crate::iterators::task::TaskDemandIterator;
 use crate::iterators::{CurveIterator, ReclassifyExt};
-use crate::server::ConstrainedServerExecution;
 use crate::system::System;
 use crate::time::TimeUnit;
 use crate::window::{Demand, Window};
@@ -67,8 +67,7 @@ impl Task {
     /// Based on Definition 10. of the paper
     #[must_use]
     pub fn demand_curve_iter(&self, up_to: TimeUnit) -> impl CurveIterator<TaskDemand> + Clone {
-        self.into_iter()
-            .take_while(move |window| window.end <= up_to)
+        self.into_iter().take_while(Window::limit(up_to))
     }
 
     /// calculate the Higher Priority task Demand for the task with priority `index` as defined in Definition 14. (1) in the paper,
@@ -78,7 +77,7 @@ impl Task {
         tasks: &[Self],
         index: usize,
         up_to: TimeUnit,
-    ) -> impl CurveIterator<HigherPriorityTaskDemand> {
+    ) -> impl CurveIterator<HigherPriorityTaskDemand> + Clone {
         tasks[..index]
             .iter()
             .map(move |task| task.demand_curve_iter(up_to))
@@ -91,13 +90,14 @@ impl Task {
     ///
     /// Based on Definition 14. (2) of the paper
     #[must_use]
-    pub fn available_execution_curve(
-        system: &System,
+    pub fn available_execution_curve_impl<'a>(
+        system: &'a System,
         server_index: usize,
         task_index: usize,
         up_to: TimeUnit,
-    ) -> Curve<AvailableTaskExecution> {
-        let constrained_server_execution_curve = system.actual_execution_curve(server_index, up_to);
+    ) -> impl CurveIterator<'a, AvailableTaskExecution> + Clone {
+        let constrained_server_execution_curve =
+            system.actual_execution_curve_iter(server_index, up_to);
 
         let higher_priority_task_demand = Task::higher_priority_task_demand_iter(
             system.as_servers()[server_index].as_tasks(),
@@ -106,21 +106,13 @@ impl Task {
         );
 
         let delta = CurveDeltaIterator::new(
-            constrained_server_execution_curve.into_iter(),
+            constrained_server_execution_curve,
             higher_priority_task_demand,
         );
 
-        let remaining_supply: Curve<ConstrainedServerExecution> = delta
-            .remaining_supply::<PrimitiveCurve<_>>()
-            .collect_curve();
-
-        remaining_supply.reclassify()
+        delta.remaining_supply::<PrimitiveCurve<_>>().reclassify()
     }
 
-    /// Calculate the actual execution Curve for the Task with priority `task_index` of the Server with priority `server_index`
-    /// up to the specified limit.
-    ///
-    /// Based on Definition 14. (3) of the paper
     #[must_use]
     pub fn actual_execution_curve(
         system: &System,
@@ -129,16 +121,35 @@ impl Task {
         up_to: TimeUnit,
     ) -> Curve<ActualTaskExecution> {
         let available_execution_curve =
-            Task::available_execution_curve(system, server_index, task_index, up_to);
+            Task::available_execution_curve_impl(system, server_index, task_index, up_to);
         let task_demand_curve =
             system.as_servers()[server_index].as_tasks()[task_index].demand_curve_iter(up_to);
-
         let overlap: Curve<_> =
-            CurveDeltaIterator::new(available_execution_curve.into_iter(), task_demand_curve)
+            CurveDeltaIterator::new(available_execution_curve, task_demand_curve)
                 .overlap::<ActualTaskExecution>()
                 .collect_curve();
 
         overlap
+    }
+
+    /// Calculate the actual execution Curve for the Task with priority `task_index` of the Server with priority `server_index`
+    /// up to the specified limit.
+    ///
+    /// Based on Definition 14. (3) of the paper
+    #[must_use]
+    pub fn actual_execution_curve_iter<'a>(
+        system: &'a System,
+        server_index: usize,
+        task_index: usize,
+        up_to: TimeUnit,
+    ) -> impl CurveIterator<'a, ActualTaskExecution> {
+        let available_execution_curve =
+            Task::available_execution_curve_impl(system, server_index, task_index, up_to);
+        let task_demand_curve =
+            system.as_servers()[server_index].as_tasks()[task_index].demand_curve_iter(up_to);
+
+        CurveDeltaIterator::new(available_execution_curve, task_demand_curve)
+            .overlap::<ActualTaskExecution>()
     }
 
     /// Calculate the WCRT for the task with priority `task_index` for the Server with priority `server_index`
@@ -153,11 +164,13 @@ impl Task {
     ) -> TimeUnit {
         let swh = system.system_wide_hyper_periode(server_index);
 
-        let actual_execution_time =
-            Task::actual_execution_curve(system, server_index, task_index, swh);
+        let actual_execution_time: Curve<ActualTaskExecution> =
+            Task::actual_execution_curve_iter(system, server_index, task_index, swh)
+                .collect_curve();
 
         let task = &system.as_servers()[server_index].as_tasks()[task_index];
 
+        // arrival of the last job that starts before the swh
         let last_job = (swh - task.offset - TimeUnit::ONE) / task.interval;
 
         // sanity check that last_job arrival is before swh
@@ -168,7 +181,7 @@ impl Task {
 
         // sanity check that job after last_job is not before swh
         assert!(
-            task.job_arrival(last_job + 1) >= swh,
+            swh <= task.job_arrival(last_job + 1),
             "The job after the last job would arrive after or at the system wide hyper periode"
         );
 

@@ -1,16 +1,17 @@
 //! Module defining some operations more closely to the paper
 //! used by the more constrained versions of the main implementation
 
-use std::collections::{HashMap, VecDeque};
-
 use crate::curve::curve_types::CurveType;
 use crate::curve::Curve;
+use crate::iterators::curve::CollectCurveExt;
+use crate::iterators::server::ActualExecutionIterator;
+use crate::iterators::CurveIterator;
 use crate::server::{
-    AvailableServerExecution, ConstrainedServerDemand, ConstrainedServerExecution, Server,
+    ActualServerExecution, AvailableServerExecution, ConstrainedServerDemand, Server,
 };
 use crate::time::TimeUnit;
 use crate::window::window_types::WindowType;
-use crate::window::{Overlap, Window};
+use crate::window::Window;
 
 /// Calculate the aggregation (⊕) of two windows as defined in Definition 4. of the paper
 #[must_use]
@@ -117,157 +118,42 @@ pub fn aggregate_curve<
     curve_a
 }
 
-/// Calculate the Constrained Execution Curve using Algorithm 4. from the paper
-///
-/// For the server with priority `server_index` calculate th actual execution
-/// given the unconstrained execution and the constrained demand
-///
-/// TODO Iterify
-///
-/// # Panics
-///
-/// When `debug_assertions` are enabled and invariants are violated
 #[must_use]
 pub fn actual_server_execution(
     servers: &[Server],
     server_index: usize,
     unconstrained_execution: Curve<AvailableServerExecution>,
     constrained_demand: Curve<ConstrainedServerDemand>,
-) -> Curve<ConstrainedServerExecution> {
-    // Input
+) -> Curve<ActualServerExecution> {
+    ActualExecutionIterator::new(
+        servers,
+        server_index,
+        unconstrained_execution.into_iter(),
+        constrained_demand.into_iter(),
+    )
+    .collect_curve()
+}
 
-    let server = &servers[server_index];
-
-    #[cfg(debug_assertions)]
-    {
-        constrained_demand.debug_validate();
-    }
-
-    // (1)
-    let split_execution = {
-        let mut split_execution: Vec<_> = unconstrained_execution
-            .split(server.interval)
-            .into_iter()
-            .flat_map(|(_, curve)| {
-                #[cfg(debug_assertions)]
-                {
-                    curve.debug_validate();
-                }
-
-                curve.into_windows().into_iter()
-            })
-            .collect();
-
-        split_execution.sort_by_key(|window| window.start);
-        split_execution
-    };
-
-    debug_assert!(
-        split_execution.as_slice().windows(2).all(|windows| {
-            if let [p, n] = windows {
-                p.start < n.start
-            } else {
-                false
-            }
-        }),
-        "Expected windows to be sorted in {:#?}",
-        split_execution
-    );
-
-    // (2)
-    let mut current_supply = split_execution;
-    let mut current_demand: VecDeque<_> = constrained_demand.into_windows().into();
-    let mut constrained_execution: Vec<Window<Overlap<_, _>>> = Vec::new();
-
-    // (3) initialization will be done on demand
-    let mut budgets = HashMap::new();
-
-    // (4)
-    // Note: Condition appears inverted in the paper as it is written it would be initially false
-    // skipping the loop immediately
-    //
-    // C^e'_S(t) != {}
-    while !current_supply.is_empty() {
-        // C^d'_S(t) != {}
-        if let Some(demand_window) = current_demand.pop_front() {
-            // (a)
-            let index = if let Some(index) =
-                current_supply
-                    .iter()
-                    .enumerate()
-                    .find_map(|(index, window)| {
-                        if window.end > demand_window.start
-                            && *budgets
-                                .entry(window.budget_group(server.interval))
-                                .or_insert(TimeUnit::ZERO)
-                                < server.capacity
-                        {
-                            Some(index)
-                        } else {
-                            None
-                        }
-                    }) {
-                index
-            } else {
-                // we still have supply and demand
-                // but the demand can't be fulfilled by the remaining supply
-                // TODO reflect this possibility in the return type and handle this case gracefully
-                // maybe return remaining supply, demand and already calculated overlap
-                // instead of just the calculated overlap
-                panic!()
-            };
-
-            let bg = current_supply[index].budget_group(server.interval);
-
-            // (b)
-            let remaining_budget = server.capacity
-                - budgets
-                    .get(&bg)
-                    .expect("Either already existed or initialized while finding the index!");
-
-            let valid_demand_segment = if demand_window.length() > remaining_budget {
-                let valid =
-                    Window::new(demand_window.start, demand_window.start + remaining_budget);
-                let residual = Window::new(valid.end, demand_window.end);
-
-                // (c)
-                current_demand.push_front(residual);
-
-                valid
-            } else {
-                demand_window
-            };
-
-            // (d) , (f) removal of W_e,j
-            let result = Window::delta(&current_supply.remove(index), &valid_demand_segment);
-
-            // (e)
-            debug_assert!(
-                budgets.contains_key(&bg),
-                "budget key {:#?} should already exist in {:#?}",
-                bg,
-                budgets
-            );
-            budgets
-                .entry(bg)
-                .and_modify(|entry| *entry += result.overlap.length());
-
-            // (f)
-            result
-                .remaining_supply
-                .into_windows()
-                .into_iter()
-                .rev()
-                .for_each(|window| current_supply.insert(index, window));
-
-            // (g)
-            constrained_execution.push(result.overlap);
-        } else {
-            break;
-        }
-    }
-
-    Curve::overlap_from_windows(constrained_execution)
+/// Calculate the Constrained Execution Curve using Algorithm 4. from the paper
+///
+/// For the server with priority `server_index` calculate th actual execution
+/// given the unconstrained execution and the constrained demand
+///
+/// # Panics
+///
+/// When `debug_assertions` are enabled and invariants are violated
+pub fn actual_server_execution_iter<'a>(
+    servers: &'a [Server],
+    server_index: usize,
+    available_execution: impl CurveIterator<'a, AvailableServerExecution> + Clone,
+    constrained_demand: impl CurveIterator<'a, ConstrainedServerDemand> + Clone,
+) -> impl CurveIterator<'a, ActualServerExecution> + Clone {
+    ActualExecutionIterator::new(
+        servers,
+        server_index,
+        available_execution,
+        constrained_demand,
+    )
 }
 
 /// Check if the assumption holds that every server has it's full capacity available

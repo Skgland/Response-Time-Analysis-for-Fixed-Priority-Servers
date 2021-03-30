@@ -1,6 +1,6 @@
 //! Iterators for basic Curve Operations
 //!
-//! such as `IntoIter`, split, aggregate, TODO delta
+//! such as `IntoIter`, split, aggregate, delta
 //!
 //! also `FromIterator` implementation for `Curve`
 //!
@@ -43,7 +43,11 @@ impl<'a, IC: CurveType, C: CurveType<WindowKind = IC::WindowKind>> FromCurveIter
         CI::IntoIter: CurveIterator<'a, IC>,
     {
         let windows = iter.into_iter().collect();
-        unsafe { Curve::from_windows_unchecked(windows) }
+        unsafe {
+            // windows collected from `CurveIterator`
+            // which invariants guarantee that this is safe
+            Curve::from_windows_unchecked(windows)
+        }
     }
 }
 
@@ -62,6 +66,14 @@ impl<'a, C: CurveType, CI: CurveIterator<'a, C>> CollectCurveExt<'a, C> for CI {
 pub struct CurveIter<C: CurveType> {
     /// The remaining windows of the Curve
     curve: VecDeque<Window<C::WindowKind>>,
+}
+
+impl<C: CurveType> Clone for CurveIter<C> {
+    fn clone(&self) -> Self {
+        CurveIter {
+            curve: self.curve.clone(),
+        }
+    }
 }
 
 impl<C: CurveType> IntoIterator for Curve<C> {
@@ -93,7 +105,21 @@ struct IterCurveWrapper<'a, C, I> {
     phantom: PhantomData<(&'a (), C)>,
 }
 
+impl<'a, C, I: Clone> Clone for IterCurveWrapper<'a, C, I> {
+    fn clone(&self) -> Self {
+        IterCurveWrapper {
+            iter: self.iter.clone(),
+            phantom: PhantomData,
+        }
+    }
+}
+
 impl<'a, C, I> IterCurveWrapper<'a, C, I> {
+    /// Wrap an Iterator into a `CurveIterator`
+    ///
+    /// # Safety
+    /// The invariants of a `CurveIterator` need to be upheld
+    ///
     pub const unsafe fn new(iter: I) -> Self {
         IterCurveWrapper {
             iter,

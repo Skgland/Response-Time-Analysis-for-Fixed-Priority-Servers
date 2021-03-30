@@ -4,8 +4,8 @@ use std::fmt::Debug;
 
 use crate::seal::Seal;
 use crate::server::{
-    AggregatedServerDemand, AvailableServerExecution, ConstrainedServerDemand,
-    ConstrainedServerExecution, HigherPriorityServerDemand,
+    ActualServerExecution, AggregatedServerDemand, AvailableServerExecution,
+    ConstrainedServerDemand, HigherPriorityServerDemand,
 };
 use crate::task::{
     ActualTaskExecution, AvailableTaskExecution, HigherPriorityTaskDemand, TaskDemand,
@@ -44,7 +44,7 @@ impl CurveType for AvailableServerExecution {
     type WindowKind = Overlap<Supply, Demand>;
 }
 
-impl CurveType for ConstrainedServerExecution {
+impl CurveType for ActualServerExecution {
     type WindowKind = Overlap<Overlap<Supply, Demand>, Demand>;
 }
 
@@ -57,7 +57,7 @@ impl CurveType for HigherPriorityTaskDemand {
 }
 
 impl CurveType for AvailableTaskExecution {
-    type WindowKind = <ConstrainedServerExecution as CurveType>::WindowKind;
+    type WindowKind = <ActualServerExecution as CurveType>::WindowKind;
 }
 
 impl CurveType for ActualTaskExecution {
@@ -69,8 +69,8 @@ impl CurveType for ActualTaskExecution {
 
 /// Marker Type for all [`WindowTypes`](WindowType) without further specificity
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
-pub struct PrimitiveCurve<W: WindowType>(PhantomData<W>);
+pub struct PrimitiveCurve<W>(PhantomData<W>);
 
 /// Marker Type for a Curve representing the overlap of two other Curves
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
-pub struct OverlapCurve<P: CurveType, Q: CurveType>(PhantomData<(P, Q)>);
+pub struct OverlapCurve<P, Q>(PhantomData<(P, Q)>);

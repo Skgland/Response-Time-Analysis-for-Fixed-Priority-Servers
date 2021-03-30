@@ -1,13 +1,10 @@
 //! Module for the System type
 
 use crate::curve::{AggregateExt, Curve};
-use crate::iterators::curve::{
-    CollectCurveExt, CurveDeltaIterator, RecursiveAggregatedDemandIterator,
-};
+use crate::iterators::curve::{CurveDeltaIterator, RecursiveAggregatedDemandIterator};
 
-use crate::paper::check_assumption;
 use crate::server::{
-    AvailableServerExecution, ConstrainedServerExecution, HigherPriorityServerDemand, Server,
+    ActualServerExecution, AvailableServerExecution, HigherPriorityServerDemand, Server,
 };
 
 use crate::iterators::{CurveIterator, ReclassifyExt};
@@ -45,7 +42,7 @@ impl System<'_> {
         &self,
         server_index: usize,
         up_to: TimeUnit,
-    ) -> impl CurveIterator<HigherPriorityServerDemand> {
+    ) -> impl CurveIterator<HigherPriorityServerDemand> + Clone {
         self.servers[..server_index]
             .iter()
             .map(move |server| server.constraint_demand_curve_iter(up_to))
@@ -81,7 +78,7 @@ impl System<'_> {
         &self,
         server_index: usize,
         up_to: TimeUnit,
-    ) -> impl CurveIterator<AvailableServerExecution> {
+    ) -> impl CurveIterator<AvailableServerExecution> + Clone {
         let total: Curve<AvailableServerExecution> = Curve::total(up_to);
 
         CurveDeltaIterator::new(
@@ -94,40 +91,20 @@ impl System<'_> {
     /// Calculate the Constrained Execution Curve using Algorithm 4. from the paper
     /// TODO more detail, what do the parameters mean
     ///
-    /// TODO Iterify
-    ///
-    /// # Panics
-    /// When the assumption is violated that each server has it's capacity available
-    /// each periode
     #[must_use]
-    pub fn actual_execution_curve(
-        &self,
+    pub fn actual_execution_curve_iter<'a>(
+        &'a self,
         server_index: usize,
         up_to: TimeUnit,
-    ) -> Curve<ConstrainedServerExecution> {
-        // Input
+    ) -> impl CurveIterator<'a, ActualServerExecution> + Clone {
+        let unconstrained_execution =
+            self.available_server_execution_curve_iter(server_index, up_to);
 
-        let unconstrained_execution: Curve<AvailableServerExecution> = self
-            .available_server_execution_curve_iter(server_index, up_to)
-            .collect_curve();
+        // TODO re-introduce check regarding guaranteed capacity each interval
 
-        assert!(
-            check_assumption(
-                &self.as_servers()[server_index],
-                unconstrained_execution.clone(),
-                up_to
-            ),
-            "Up to: {:?}\nServer: {:#?}\nSupply: {:#?}",
-            up_to,
-            &self.as_servers()[server_index],
-            unconstrained_execution
-        );
+        let constrained_demand = self.servers[server_index].constraint_demand_curve_iter(up_to);
 
-        let constrained_demand = self.servers[server_index]
-            .constraint_demand_curve_iter(up_to)
-            .collect_curve();
-
-        crate::paper::actual_server_execution(
+        crate::paper::actual_server_execution_iter(
             self.servers,
             server_index,
             unconstrained_execution,

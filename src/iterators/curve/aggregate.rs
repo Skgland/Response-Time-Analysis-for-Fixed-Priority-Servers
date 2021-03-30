@@ -8,12 +8,7 @@ use crate::window::{Demand, Window};
 
 /// Iterator for Aggregating two Curve Iterators
 #[derive(Debug)]
-pub struct AggregatedDemandIterator<
-    'a,
-    C: CurveType<WindowKind = Demand>,
-    I1: CurveIterator<'a, C>,
-    I2: CurveIterator<'a, C>,
-> {
+pub struct AggregatedDemandIterator<'a, C: CurveType<WindowKind = Demand>, I1, I2> {
     /// The first CurveIterator to aggregate
     curve1: I1,
     /// the peek of the first CurveIterator or
@@ -30,6 +25,21 @@ pub struct AggregatedDemandIterator<
     /// The minimum lifetime of the contained CurveIterators
     /// and as such the maximum lifetime of Self
     lifetime: PhantomData<&'a ()>,
+}
+
+impl<'a, C: CurveType<WindowKind = Demand>, I1: Clone, I2: Clone> Clone
+    for AggregatedDemandIterator<'a, C, I1, I2>
+{
+    fn clone(&self) -> Self {
+        AggregatedDemandIterator {
+            curve1: self.curve1.clone(),
+            peek1: self.peek1.clone(),
+            curve2: self.curve2.clone(),
+            peek2: self.peek2.clone(),
+            overlap: self.overlap.clone(),
+            lifetime: PhantomData,
+        }
+    }
 }
 
 impl<
@@ -53,17 +63,19 @@ impl<
     }
 }
 
-impl<
-        'a,
-        C: CurveType<WindowKind = Demand> + 'a,
-        I1: CurveIterator<'a, C>,
-        I2: CurveIterator<'a, C>,
-    > CurveIterator<'a, C> for AggregatedDemandIterator<'a, C, I1, I2>
+impl<'a, C, I1, I2> CurveIterator<'a, C> for AggregatedDemandIterator<'a, C, I1, I2>
+where
+    C: CurveType<WindowKind = Demand> + 'a,
+    I1: CurveIterator<'a, C>,
+    I2: CurveIterator<'a, C>,
 {
 }
 
-impl<'a, C: CurveType<WindowKind = Demand>, I1: CurveIterator<'a, C>, I2: CurveIterator<'a, C>>
-    Iterator for AggregatedDemandIterator<'a, C, I1, I2>
+impl<'a, C, I1, I2> Iterator for AggregatedDemandIterator<'a, C, I1, I2>
+where
+    C: CurveType<WindowKind = Demand>,
+    I1: CurveIterator<'a, C>,
+    I2: CurveIterator<'a, C>,
 {
     type Item = Window<C::WindowKind>;
 
@@ -147,8 +159,10 @@ pub type RecursiveAggregatedDemandIterator<'a, C> = AggregatedDemandIterator<
     Box<dyn (CurveIterator<'a, C>)>,
 >;
 
-impl<'a, C: CurveType<WindowKind = Demand> + 'a, CI: CurveIterator<'a, C> + 'a> Aggregate<'a, CI>
-    for RecursiveAggregatedDemandIterator<'a, C>
+impl<'a, C, CI> Aggregate<'a, CI> for RecursiveAggregatedDemandIterator<'a, C>
+where
+    C: CurveType<WindowKind = Demand> + 'a,
+    CI: CurveIterator<'a, C> + 'a,
 {
     fn aggregate<I>(iter: I) -> Self
     where

@@ -1,14 +1,16 @@
 use crate::curve::curve_types::CurveType;
 use crate::iterators::curve::IterCurveWrapper;
 use crate::iterators::CurveIterator;
-use crate::window::window_types::WindowType;
+
 use crate::window::{Overlap, Window, WindowDeltaResult};
 use std::collections::VecDeque;
+use std::fmt::Debug;
+
 use std::marker::PhantomData;
 
 /// Item type of the `CurveDeltaIterator`
 #[derive(Debug)]
-pub enum Delta<S: WindowType, D: WindowType> {
+pub enum Delta<S, D> {
     /// Indicate a Window of remaining supply
     RemainingSupply(Window<S>),
     /// Indicate a Window of overlapping supply and demand
@@ -18,14 +20,8 @@ pub enum Delta<S: WindowType, D: WindowType> {
 }
 
 /// TODO description
-#[derive(Debug, Clone)]
-pub struct CurveDeltaIterator<
-    'a,
-    DC: CurveType,
-    SC: CurveType,
-    DI: CurveIterator<'a, DC>,
-    SI: CurveIterator<'a, SC>,
-> {
+#[derive(Debug)]
+pub struct CurveDeltaIterator<'a, DC: CurveType, SC: CurveType, DI, SI> {
     /// remaining demand curve
     demand: DI,
     /// remaining supply curve
@@ -36,6 +32,20 @@ pub struct CurveDeltaIterator<
     remaining_supply: VecDeque<Window<SC::WindowKind>>,
     /// lifetime
     lifetime: PhantomData<&'a ()>,
+}
+
+impl<'a, DC: CurveType, SC: CurveType, DI: Clone, SI: Clone> Clone
+    for CurveDeltaIterator<'a, DC, SC, DI, SI>
+{
+    fn clone(&self) -> Self {
+        CurveDeltaIterator {
+            demand: self.demand.clone(),
+            supply: self.supply.clone(),
+            remaining_demand: self.remaining_demand.clone(),
+            remaining_supply: self.remaining_supply.clone(),
+            lifetime: PhantomData,
+        }
+    }
 }
 
 impl<
@@ -60,29 +70,58 @@ impl<
     /// Turn the `CurveDeltaIterator` into a `CurveIterator` that returns only the Overlap Windows
     pub fn overlap<C: CurveType<WindowKind = Overlap<SC::WindowKind, DC::WindowKind>> + 'a>(
         self,
-    ) -> impl CurveIterator<'a, C> {
-        let inner = self.filter_map(|delta| match delta {
-            Delta::RemainingSupply(_) | Delta::RemainingDemand(_) => None,
-            Delta::Overlap(overlap) => Some(overlap),
-        });
-        unsafe { IterCurveWrapper::new(inner) }
+    ) -> impl CurveIterator<'a, C> + Clone
+    where
+        Self: Clone,
+    {
+        let inner = self.filter_map(filter_overlap);
+        unsafe {
+            // Safety
+            // self is an iterator of three interleaved curves, but using filter_map
+            // we filter only one out
+            // so the remaining iterator is a valid curve
+            IterCurveWrapper::new(inner)
+        }
     }
 
     /// Turn the `CurveDeltaIterator` into a `CurveIterator` that returns only the Remaining Supply Windows
-    pub fn remaining_supply<C: CurveType<WindowKind = SC::WindowKind> + 'a>(
-        self,
-    ) -> impl CurveIterator<'a, C> {
-        let inner = self.filter_map(|delta| match delta {
-            Delta::RemainingSupply(supply) => Some(supply),
-            Delta::Overlap(_) | Delta::RemainingDemand(_) => None,
-        });
+    pub fn remaining_supply<C>(self) -> impl CurveIterator<'a, C> + Clone
+    where
+        C: CurveType<WindowKind = SC::WindowKind> + 'a,
+        Self: Clone,
+    {
+        let inner = self.filter_map(filter_remaining_supply as fn(_) -> _);
 
-        unsafe { IterCurveWrapper::new(inner) }
+        unsafe {
+            // Safety
+            // self is an iterator of three interleaved curves, but using filter_map
+            // we filter only one out
+            // so the remaining iterator is a valid curve
+            IterCurveWrapper::new(inner)
+        }
     }
 }
 
-impl<'a, DC: CurveType, SC: CurveType, DI: CurveIterator<'a, DC>, SI: CurveIterator<'a, SC>>
-    Iterator for CurveDeltaIterator<'a, DC, SC, DI, SI>
+fn filter_overlap<S, D>(delta: Delta<S, D>) -> Option<Window<Overlap<S, D>>> {
+    match delta {
+        Delta::RemainingSupply(_) | Delta::RemainingDemand(_) => None,
+        Delta::Overlap(overlap) => Some(overlap),
+    }
+}
+
+fn filter_remaining_supply<S, D>(delta: Delta<S, D>) -> Option<Window<S>> {
+    match delta {
+        Delta::RemainingSupply(supply) => Some(supply),
+        Delta::Overlap(_) | Delta::RemainingDemand(_) => None,
+    }
+}
+
+impl<'a, DC, SC, DI, SI> Iterator for CurveDeltaIterator<'a, DC, SC, DI, SI>
+where
+    DC: CurveType,
+    SC: CurveType,
+    DI: CurveIterator<'a, DC>,
+    SI: CurveIterator<'a, SC>,
 {
     type Item = Delta<SC::WindowKind, DC::WindowKind>;
 

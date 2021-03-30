@@ -1,6 +1,8 @@
 use crate::curve::Curve;
 use crate::iterators::curve::CollectCurveExt;
-use crate::server::{AvailableServerExecution, HigherPriorityServerDemand, Server, ServerKind};
+use crate::server::{
+    ActualServerExecution, AvailableServerExecution, HigherPriorityServerDemand, Server, ServerKind,
+};
 use crate::system::System;
 use crate::task::{Task, TaskDemand};
 use crate::time::TimeUnit;
@@ -122,7 +124,8 @@ fn executive_curve() {
 
     assert_eq!(demand_result, expected_demand, "Constrained demand Curve");
 
-    let c_execution_result = system.actual_execution_curve(1, up_to);
+    let c_execution_result: Curve<ActualServerExecution> =
+        system.actual_execution_curve_iter(1, up_to).collect_curve();
 
     let expected_c_execution = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -162,7 +165,9 @@ fn response_time() {
     let server_index = 1;
     let task_index = 0;
 
-    let c_s2 = system.actual_execution_curve(server_index, TimeUnit::from(16));
+    let c_s2: Curve<ActualServerExecution> = system
+        .actual_execution_curve_iter(server_index, TimeUnit::from(16))
+        .collect_curve();
 
     let expected = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -283,7 +288,8 @@ fn comparison() {
         expected_s2_unconstrained_execution
     );
 
-    let s2_constrained_execution = system.actual_execution_curve(1, up_to);
+    let s2_constrained_execution: Curve<ActualServerExecution> =
+        system.actual_execution_curve_iter(1, up_to).collect_curve();
     let expected_s2_constrained_execution =
         unsafe { Curve::from_windows_unchecked(vec![Window::new(4, 8), Window::new(14, 18)]) };
 

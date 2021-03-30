@@ -19,10 +19,18 @@ pub mod curve_types;
 /// A Curve is an ordered Set of non-overlapping Windows
 ///
 /// The windows are ordered by their start
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct Curve<C: CurveType> {
     /// windows contains an ordered Set of non-overlapping non-empty windows
     windows: Vec<Window<C::WindowKind>>,
+}
+
+impl<C: CurveType> Clone for Curve<C> {
+    fn clone(&self) -> Self {
+        Curve {
+            windows: self.windows.clone(),
+        }
+    }
 }
 
 /// Return Type for [`Curve::delta`](Curve::delta)
@@ -38,6 +46,37 @@ pub struct CurveDeltaResult<
     pub overlap: Curve<R>,
     /// The remaining Demand that could not be fulfilled by the Supply
     pub remaining_demand: Curve<Q>,
+}
+
+impl<DC: CurveType, SC: CurveType, DI, SI> CurveDeltaIterator<'_, DC, SC, DI, SI> {
+    /// collect the complete `CurveDeltaIterator`
+    ///
+    /// # Warning
+    ///
+    /// Won't terminate of `CurveDelaIterator` if infinite as it will try to consume the complete iterator
+    ///
+    pub fn collect<R: CurveType<WindowKind = Overlap<SC::WindowKind, DC::WindowKind>>>(
+        self,
+    ) -> CurveDeltaResult<SC, DC, R>
+    where
+        Self: Iterator<Item = Delta<SC::WindowKind, DC::WindowKind>>,
+    {
+        let mut result = CurveDeltaResult {
+            remaining_supply: Curve::empty(),
+            overlap: Curve::empty(),
+            remaining_demand: Curve::empty(),
+        };
+
+        for delta in self {
+            match delta {
+                Delta::RemainingSupply(supply) => result.remaining_supply.windows.push(supply),
+                Delta::Overlap(overlap) => result.overlap.windows.push(overlap),
+                Delta::RemainingDemand(demand) => result.remaining_demand.windows.push(demand),
+            }
+        }
+
+        result
+    }
 }
 
 impl<T: CurveType> Curve<T> {
@@ -122,28 +161,8 @@ impl<T: CurveType> Curve<T> {
     pub fn delta<Q: CurveType, R: CurveType<WindowKind = Overlap<T::WindowKind, Q::WindowKind>>>(
         supply: Self,
         demand: Curve<Q>,
-    ) -> CurveDeltaResult<T, Q, R>
-    where
-        Self: Clone,
-        Curve<Q>: Clone,
-    {
-        let delta2 = CurveDeltaIterator::new(supply.into_iter(), demand.into_iter());
-
-        let mut result2 = CurveDeltaResult {
-            remaining_supply: Self { windows: vec![] },
-            overlap: Curve { windows: vec![] },
-            remaining_demand: Curve { windows: vec![] },
-        };
-
-        for window in delta2 {
-            match window {
-                Delta::Overlap(overlap) => result2.overlap.windows.push(overlap),
-                Delta::RemainingSupply(supply) => result2.remaining_supply.windows.push(supply),
-                Delta::RemainingDemand(demand) => result2.remaining_demand.windows.push(demand),
-            }
-        }
-
-        result2
+    ) -> CurveDeltaResult<T, Q, R> {
+        CurveDeltaIterator::new(supply.into_iter(), demand.into_iter()).collect()
     }
 
     /// Validate using `debug_assert!` that the Types invariants are met
@@ -399,7 +418,7 @@ pub struct PartitionResult {
     pub tail: Window<Demand>,
 }
 
-impl<T: CurveType + Clone> Curve<T> {
+impl<T: CurveType> Curve<T> {
     /// Split the curve on every interval boundary as defined in Definition 8. of the paper
     #[must_use]
     pub fn split(self, interval: TimeUnit) -> HashMap<usize, Self> {

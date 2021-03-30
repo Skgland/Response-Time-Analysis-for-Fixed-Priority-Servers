@@ -1,6 +1,7 @@
 use rta_for_fps::curve::curve_types::CurveType;
 use rta_for_fps::curve::Curve;
-use rta_for_fps::server::{Server, ServerKind};
+use rta_for_fps::iterators::curve::CollectCurveExt;
+use rta_for_fps::server::{ActualServerExecution, Server, ServerKind};
 use rta_for_fps::system::System;
 use rta_for_fps::task::Task;
 use rta_for_fps::time::TimeUnit;
@@ -154,9 +155,15 @@ fn execution_overlap_too_high() {
 
     let system = System::new(servers);
 
-    let s1 = system.actual_execution_curve(0, 48.into());
-    let s2 = system.actual_execution_curve(1, 48.into());
-    let s3 = system.actual_execution_curve(2, 48.into());
+    let s1: Curve<ActualServerExecution> = system
+        .actual_execution_curve_iter(0, 48.into())
+        .collect_curve();
+    let s2: Curve<ActualServerExecution> = system
+        .actual_execution_curve_iter(1, 48.into())
+        .collect_curve();
+    let s3: Curve<ActualServerExecution> = system
+        .actual_execution_curve_iter(2, 48.into())
+        .collect_curve();
 
     assert!(
         curve_has_no_non_trivial_overlap(&s1, &s2),
@@ -211,10 +218,18 @@ fn execution_overlap_too_low() {
 
     let system = System::new(servers);
 
-    let s1 = system.actual_execution_curve(0, 48.into());
-    let s2 = system.actual_execution_curve(1, 48.into());
-    let s3 = system.actual_execution_curve(2, 48.into());
-    let s4 = system.actual_execution_curve(3, 48.into());
+    let s1: Curve<ActualServerExecution> = system
+        .actual_execution_curve_iter(0, 48.into())
+        .collect_curve();
+    let s2: Curve<ActualServerExecution> = system
+        .actual_execution_curve_iter(1, 48.into())
+        .collect_curve();
+    let s3: Curve<ActualServerExecution> = system
+        .actual_execution_curve_iter(2, 48.into())
+        .collect_curve();
+    let s4: Curve<ActualServerExecution> = system
+        .actual_execution_curve_iter(3, 48.into())
+        .collect_curve();
 
     //TODO assert messages
     assert!(curve_has_no_non_trivial_overlap(&s1, &s2));

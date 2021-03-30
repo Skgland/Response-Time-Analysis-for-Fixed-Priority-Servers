@@ -8,6 +8,7 @@ use crate::iterators::server::ConstrainedServerDemandIterator;
 use crate::iterators::{CurveIterator, ReclassifyExt};
 use crate::task::Task;
 use crate::time::TimeUnit;
+use crate::window::Window;
 
 /// Marker Type for aggregated server demand curve
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
@@ -27,7 +28,7 @@ pub struct AvailableServerExecution;
 
 /// Marker Type for constrained server execution curve
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
-pub struct ConstrainedServerExecution;
+pub struct ActualServerExecution;
 
 /// Type Representing a Server
 /// with a given set of tasks,
@@ -72,8 +73,7 @@ impl Server {
     /// As defined in Definition 11. in the paper
     #[must_use]
     pub fn aggregated_demand_curve(&self, up_to: TimeUnit) -> Curve<AggregatedServerDemand> {
-        let windows = self.aggregated_demand_curve_iter(up_to).collect();
-        unsafe { Curve::from_windows_unchecked(windows) }
+        self.aggregated_demand_curve_iter(up_to).collect_curve()
     }
 
     /// `CurveIterator` version of [`Self::aggregated_demand_curve`]
@@ -81,14 +81,10 @@ impl Server {
     pub fn aggregated_demand_curve_iter(
         &self,
         up_to: TimeUnit,
-    ) -> impl CurveIterator<AggregatedServerDemand> {
+    ) -> impl CurveIterator<AggregatedServerDemand> + Clone {
         self.tasks
             .iter()
-            .map(move |task| {
-                let up_to = up_to;
-                task.into_iter()
-                    .take_while(move |window| window.end <= up_to)
-            })
+            .map(move |task| task.into_iter().take_while(Window::limit(up_to)))
             .aggregate::<AggregatedDemandIterator<_, _, _>>()
             .reclassify()
     }
@@ -105,7 +101,7 @@ impl Server {
     pub fn constraint_demand_curve_iter(
         &self,
         up_to: TimeUnit,
-    ) -> impl CurveIterator<ConstrainedServerDemand> {
+    ) -> impl CurveIterator<ConstrainedServerDemand> + Clone {
         ConstrainedServerDemandIterator::new(self, self.aggregated_demand_curve_iter(up_to))
     }
 }

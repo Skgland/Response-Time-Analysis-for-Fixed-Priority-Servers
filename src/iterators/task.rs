@@ -32,17 +32,23 @@ impl Iterator for TaskDemandIterator<'_> {
     type Item = Window<<TaskDemand as CurveType>::WindowKind>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        // TODO handle overflow, don't advance and return None, when overflow would occur
-        let job = self.next_job;
-        self.next_job += 1;
-        let start = self.task.offset + job * self.task.interval;
-        let end = start + self.task.demand;
-        Some(Window::new(start, end))
+        if self.next_job == usize::MAX {
+            // prevent overflow of self.next_job
+            eprintln!("Task reached overflow! {:?}", self.task);
+            None
+        } else {
+            // TODO this will overflow before self.next_job
+            // unless interval is 1 and offset 0
+            let start = self.task.offset + self.next_job * self.task.interval;
+            let end = start + self.task.demand;
+            self.next_job += 1;
+            Some(Window::new(start, end))
+        }
     }
 }
 
 /// `CurveIterator` for Higher Priority Task Demand
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct HigherPriorityTaskDemandIterator<'a> {
     /// The wrapped curve iterator
     iterator: AggregatedDemandIterator<

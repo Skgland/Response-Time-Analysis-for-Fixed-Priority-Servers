@@ -29,14 +29,24 @@ pub mod window_types {
 ///
 /// With an extra Type Parameter to indicate the Window type
 // Not Copy to prevent accidental errors due to implicit copy
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub struct Window<T: WindowType> {
+#[derive(Debug, Eq, PartialEq, Hash)]
+pub struct Window<T> {
     /// The Start point of the Window
     pub start: TimeUnit,
     /// The End Point of the Window
     pub end: TimeUnit,
     /// The Kind of the Window
     window_type: PhantomData<T>,
+}
+
+impl<T> Clone for Window<T> {
+    fn clone(&self) -> Self {
+        Window {
+            start: self.start,
+            end: self.end,
+            window_type: PhantomData,
+        }
+    }
 }
 
 impl<T: WindowType> Window<T> {
@@ -107,6 +117,8 @@ impl<T: WindowType> Window<T> {
                             // Safety: Invariants fulfilled by construction,
                             // 1. Order: head always before tail
                             // 2. Non-Overlapping, as supply and demand overlap
+                            //    and the remaining supply is split into head which is before the overlap
+                            //    and tail which is after the overlap
                             Curve::from_windows_unchecked(windows)
                         }
                     }
@@ -131,10 +143,10 @@ impl<T: WindowType> Window<T> {
         self.start / interval
     }
 
-    /// Convert one Window type into another
-    #[must_use]
-    pub fn to_other<I: WindowType>(&self) -> Window<I> {
-        Window::new(self.start, self.end)
+    /// Create a funktion that returns true for all Windows that
+    /// end below or at the limit
+    pub fn limit(limit: TimeUnit) -> impl Fn(&Self) -> bool + Clone {
+        move |window| window.end <= limit
     }
 }
 
@@ -150,6 +162,7 @@ impl Window<Demand> {
 #[derive(Debug, Eq, PartialEq)] // Eq for tests
 pub struct WindowDeltaResult<T: WindowType, Q: WindowType> {
     /// The unused "supply"
+    /// TODO spilt into two windows remaining_head_supply and remaining_tail_supply
     pub remaining_supply: Curve<PrimitiveCurve<T>>,
     /// The Windows Overlap
     pub overlap: Window<Overlap<T, Q>>,
@@ -170,4 +183,4 @@ pub struct Demand;
 
 /// Marker Type for Window,indicating an Overlap between Supply and Demand
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Overlap<P: WindowType, Q: WindowType>(PhantomData<(P, Q)>);
+pub struct Overlap<P, Q>(PhantomData<(P, Q)>);

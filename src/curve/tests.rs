@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use crate::curve::curve_types::{OverlapCurve, PrimitiveCurve};
 use crate::curve::Curve;
+use crate::iterators::curve::CurveDeltaIterator;
 use crate::time::TimeUnit;
 use crate::window::{Demand, Supply, Window};
 
@@ -29,7 +30,7 @@ fn aggregate_curves() {
 #[test]
 fn delta_curves() {
     // Example 3.
-    let c_p = unsafe {
+    let c_p: Curve<PrimitiveCurve<Supply>> = unsafe {
         Curve::from_windows_unchecked(vec![
             Window::new(0, 5),
             Window::new(12, 15),
@@ -38,7 +39,7 @@ fn delta_curves() {
         ])
     };
 
-    let c_q: Curve<PrimitiveCurve<_>> = unsafe {
+    let c_q: Curve<PrimitiveCurve<Demand>> = unsafe {
         Curve::from_windows_unchecked(vec![
             Window::new(2, 4),
             Window::new(14, 17),
@@ -64,8 +65,7 @@ fn delta_curves() {
         ])
     };
 
-    let result = Curve::delta(c_p, c_q);
-
+    let result = CurveDeltaIterator::new(c_p.into_iter(), c_q.into_iter()).collect();
     assert_eq!(result.remaining_supply, expected_remaining_supply);
     assert_eq!(result.overlap, expected_overlap);
     assert!(
