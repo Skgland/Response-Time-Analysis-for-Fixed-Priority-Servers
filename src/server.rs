@@ -105,6 +105,3 @@ impl Server {
         ConstrainedServerDemandIterator::new(self, self.aggregated_demand_curve_iter(up_to))
     }
 }
-
-#[cfg(test)]
-mod tests;

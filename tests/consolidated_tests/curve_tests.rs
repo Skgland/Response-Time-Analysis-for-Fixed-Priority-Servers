@@ -1,10 +1,10 @@
-use std::collections::HashMap;
+use rta_for_fps::curve::curve_types::{OverlapCurve, PrimitiveCurve};
+use rta_for_fps::curve::Curve;
+use rta_for_fps::iterators::curve::CurveDeltaIterator;
+use rta_for_fps::time::TimeUnit;
+use rta_for_fps::window::{Demand, Supply, Window};
 
-use crate::curve::curve_types::{OverlapCurve, PrimitiveCurve};
-use crate::curve::Curve;
-use crate::iterators::curve::CurveDeltaIterator;
-use crate::time::TimeUnit;
-use crate::window::{Demand, Supply, Window};
+use std::collections::HashMap;
 
 #[test]
 fn aggregate_curves() {

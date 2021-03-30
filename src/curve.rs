@@ -319,6 +319,3 @@ where
         I: Iterator<Item = A>,
         I::Item: 'a;
 }
-
-#[cfg(test)]
-mod tests;

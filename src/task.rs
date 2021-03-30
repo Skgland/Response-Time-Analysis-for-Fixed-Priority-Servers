@@ -262,6 +262,3 @@ impl<'a> IntoIterator for &'a Task {
         TaskDemandIterator::new(self)
     }
 }
-
-#[cfg(test)]
-mod tests;

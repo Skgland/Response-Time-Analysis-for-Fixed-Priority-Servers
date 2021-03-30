@@ -170,9 +170,6 @@ pub struct WindowDeltaResult<T: WindowType, Q: WindowType> {
     pub remaining_demand: Window<Q>,
 }
 
-#[cfg(test)]
-mod tests;
-
 /// Marker Type for Window, indicating a Supply Window
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Supply;

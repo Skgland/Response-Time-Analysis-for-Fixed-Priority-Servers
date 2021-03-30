@@ -1,9 +1,9 @@
-use crate::curve::Curve;
-use crate::iterators::curve::CollectCurveExt;
-use crate::server::{ConstrainedServerDemand, Server, ServerKind};
-use crate::task::Task;
-use crate::time::TimeUnit;
-use crate::window::Window;
+use rta_for_fps::curve::Curve;
+use rta_for_fps::iterators::curve::CollectCurveExt;
+use rta_for_fps::server::{ConstrainedServerDemand, Server, ServerKind};
+use rta_for_fps::task::Task;
+use rta_for_fps::time::TimeUnit;
+use rta_for_fps::window::Window;
 
 #[test]
 fn deferrable_server() {

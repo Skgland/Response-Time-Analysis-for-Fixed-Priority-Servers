@@ -1,5 +1,5 @@
-use crate::curve::Curve;
-use crate::window::{Demand, Supply, Window, WindowDeltaResult};
+use rta_for_fps::curve::Curve;
+use rta_for_fps::window::{Demand, Supply, Window, WindowDeltaResult};
 
 #[test]
 fn aggregate_windows() {

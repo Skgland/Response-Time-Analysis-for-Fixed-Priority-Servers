@@ -1,8 +1,8 @@
-use crate::curve::Curve;
-use crate::iterators::curve::{AggregatedDemandIterator, CollectCurveExt};
-use crate::task::{Task, TaskDemand};
-use crate::time::TimeUnit;
-use crate::window::Window;
+use rta_for_fps::curve::Curve;
+use rta_for_fps::iterators::curve::{AggregatedDemandIterator, CollectCurveExt};
+use rta_for_fps::task::{Task, TaskDemand};
+use rta_for_fps::time::TimeUnit;
+use rta_for_fps::window::Window;
 
 #[test]
 fn demand_curve() {
