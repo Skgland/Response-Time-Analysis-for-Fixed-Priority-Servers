@@ -20,12 +20,17 @@ pub enum Delta<S, D> {
 }
 
 impl<S, D> Delta<S, D> {
+    /// turn delta into some overlap or none otherwise
+    #[must_use]
     pub const fn overlap(self) -> Option<Window<Overlap<S, D>>> {
         match self {
             Delta::RemainingSupply(_) | Delta::RemainingDemand(_) => None,
             Delta::Overlap(overlap) => Some(overlap),
         }
     }
+
+    /// turn dela into some remaining supply or none otherwise
+    #[must_use]
     pub const fn remaining_supply(self) -> Option<Window<S>> {
         match self {
             Delta::RemainingSupply(supply) => Some(supply),
@@ -34,7 +39,11 @@ impl<S, D> Delta<S, D> {
     }
 }
 
-/// TODO description
+/// An Iterator for calculating the Delta between
+/// the Supply and the Demand based on Definition 7. from the paper
+///
+/// Returns interleaved with no fixed pattern the remaining supply, remaining demand and the overlap
+///
 #[derive(Debug)]
 pub struct CurveDeltaIterator<'a, DC: CurveType, SC: CurveType, DI, SI> {
     /// remaining demand curve
