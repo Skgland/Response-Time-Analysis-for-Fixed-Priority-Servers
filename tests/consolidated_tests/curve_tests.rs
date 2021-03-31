@@ -1,10 +1,10 @@
-use rta_for_fps::curve::curve_types::{OverlapCurve, PrimitiveCurve};
+use rta_for_fps::curve::curve_types::UnspecifiedCurve;
 use rta_for_fps::curve::Curve;
 use rta_for_fps::iterators::curve::{
     AggregatedDemandIterator, CollectCurveExt, CurveDeltaIterator,
 };
 use rta_for_fps::time::TimeUnit;
-use rta_for_fps::window::{Demand, Supply, Window};
+use rta_for_fps::window::{Demand, Overlap, Supply, Window};
 
 use std::collections::HashMap;
 
@@ -12,7 +12,7 @@ use std::collections::HashMap;
 fn aggregate_curves() {
     // Example 2.
     let c1 = unsafe { Curve::from_windows_unchecked(vec![Window::new(0, 4)]) };
-    let c2: Curve<PrimitiveCurve<Demand>> = unsafe {
+    let c2: Curve<UnspecifiedCurve<Demand>> = unsafe {
         Curve::from_windows_unchecked(vec![
             Window::new(0, 1),
             Window::new(5, 6),
@@ -20,7 +20,7 @@ fn aggregate_curves() {
         ])
     };
     let c3 = unsafe {
-        Curve::<PrimitiveCurve<Demand>>::from_windows_unchecked(vec![
+        Curve::<UnspecifiedCurve<Demand>>::from_windows_unchecked(vec![
             Window::new(0, 6),
             Window::new(10, 11),
         ])
@@ -35,7 +35,7 @@ fn aggregate_curves() {
 #[test]
 fn delta_curves() {
     // Example 3.
-    let c_p: Curve<PrimitiveCurve<Supply>> = unsafe {
+    let c_p: Curve<UnspecifiedCurve<Supply>> = unsafe {
         Curve::from_windows_unchecked(vec![
             Window::new(0, 5),
             Window::new(12, 15),
@@ -44,7 +44,7 @@ fn delta_curves() {
         ])
     };
 
-    let c_q: Curve<PrimitiveCurve<Demand>> = unsafe {
+    let c_q: Curve<UnspecifiedCurve<Demand>> = unsafe {
         Curve::from_windows_unchecked(vec![
             Window::new(2, 4),
             Window::new(14, 17),
@@ -52,7 +52,7 @@ fn delta_curves() {
         ])
     };
 
-    let expected_overlap: Curve<OverlapCurve<PrimitiveCurve<Supply>, PrimitiveCurve<Demand>>> = unsafe {
+    let expected_overlap: Curve<UnspecifiedCurve<Overlap<Supply, Demand>>> = unsafe {
         Curve::from_windows_unchecked(vec![
             Window::new(2, 4),
             Window::new(14, 15),
@@ -61,7 +61,7 @@ fn delta_curves() {
         ])
     };
 
-    let expected_remaining_supply: Curve<PrimitiveCurve<Supply>> = unsafe {
+    let expected_remaining_supply: Curve<UnspecifiedCurve<Supply>> = unsafe {
         Curve::from_windows_unchecked(vec![
             Window::new(0, 2),
             Window::new(4, 5),
@@ -84,7 +84,7 @@ fn delta_curves() {
 fn split_curves() {
     // Example 4.
 
-    let c_p: Curve<PrimitiveCurve<Supply>> = unsafe {
+    let c_p: Curve<UnspecifiedCurve<Supply>> = unsafe {
         Curve::from_windows_unchecked(vec![
             Window::new(2, 4),
             Window::new(5, 6),

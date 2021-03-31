@@ -163,16 +163,18 @@ where
 
 impl<'a, W, C, I> CurveIterator<'a, C> for JoinAdjacentIterator<I, W, C>
 where
+    Self: Debug,
     W: WindowType + 'a,
-    I: Iterator<Item = Window<W>> + FusedIterator + Debug + 'a,
+    I: Iterator<Item = Window<W>> + FusedIterator + 'a,
     C: CurveType<WindowKind = W> + 'a,
 {
 }
 
 impl<'a, W, C, I> FusedIterator for JoinAdjacentIterator<I, W, C>
 where
+    Self: Debug,
     W: WindowType,
-    I: Iterator<Item = Window<C::WindowKind>> + FusedIterator + Debug + 'a,
+    I: Iterator<Item = Window<C::WindowKind>> + FusedIterator + 'a,
     C: CurveType<WindowKind = W> + 'a,
 {
 }

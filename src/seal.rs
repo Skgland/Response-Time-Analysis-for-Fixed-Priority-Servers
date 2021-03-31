@@ -1,6 +1,6 @@
 //! Non pub Module for Sealing Traits
 
-use crate::curve::curve_types::{CurveType, OverlapCurve, PrimitiveCurve};
+use crate::curve::curve_types::UnspecifiedCurve;
 use crate::server::{
     ActualServerExecution, AggregatedServerDemand, AvailableServerExecution,
     ConstrainedServerDemand, HigherPriorityServerDemand,
@@ -21,9 +21,7 @@ impl Seal for Supply {}
 impl Seal for Demand {}
 
 // CurveKind
-
-impl<P: CurveType, Q: CurveType> Seal for OverlapCurve<P, Q> {}
-impl<W: WindowType> Seal for PrimitiveCurve<W> {}
+impl<W: WindowType> Seal for UnspecifiedCurve<W> {}
 
 // Serve Curves
 impl Seal for AggregatedServerDemand {}

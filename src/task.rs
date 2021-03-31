@@ -1,6 +1,6 @@
 //! Module for the Task definition
 
-use crate::curve::curve_types::PrimitiveCurve;
+use crate::curve::curve_types::UnspecifiedCurve;
 use crate::curve::{AggregateExt, Curve};
 use crate::iterators::curve::{AggregatedDemandIterator, CollectCurveExt, CurveDeltaIterator};
 
@@ -110,7 +110,7 @@ impl Task {
             higher_priority_task_demand,
         );
 
-        delta.remaining_supply::<PrimitiveCurve<_>>().reclassify()
+        delta.remaining_supply::<UnspecifiedCurve<_>>().reclassify()
     }
 
     #[must_use]

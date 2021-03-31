@@ -15,16 +15,12 @@ use crate::window::{Demand, Overlap, Supply};
 use std::marker::PhantomData;
 
 /// Sealed Marker Trait for Curve Types
-pub trait CurveType: Seal + Debug + Eq {
+pub trait CurveType: Seal + Debug {
     /// The [`WindowKind`](CurveType::WindowKind) for the Windows of the Curve
     type WindowKind: WindowType;
 }
 
-impl<P: CurveType, Q: CurveType> CurveType for OverlapCurve<P, Q> {
-    type WindowKind = Overlap<P::WindowKind, Q::WindowKind>;
-}
-
-impl<W: WindowType> CurveType for PrimitiveCurve<W> {
+impl<W: WindowType> CurveType for UnspecifiedCurve<W> {
     type WindowKind = W;
 }
 
@@ -67,10 +63,6 @@ impl CurveType for ActualTaskExecution {
     >;
 }
 
-/// Marker Type for all [`WindowTypes`](WindowType) without further specificity
+/// Marker Type for unspecified Curves
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
-pub struct PrimitiveCurve<W>(PhantomData<W>);
-
-/// Marker Type for a Curve representing the overlap of two other Curves
-#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
-pub struct OverlapCurve<P, Q>(PhantomData<(P, Q)>);
+pub struct UnspecifiedCurve<W>(PhantomData<W>);

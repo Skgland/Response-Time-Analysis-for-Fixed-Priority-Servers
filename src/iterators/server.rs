@@ -1,4 +1,4 @@
-use crate::curve::curve_types::{CurveType, PrimitiveCurve};
+use crate::curve::curve_types::{CurveType, UnspecifiedCurve};
 use crate::curve::{Curve, PartitionResult};
 use crate::iterators::curve::{AggregatedDemandIterator, CollectCurveExt, CurveSplitIterator};
 use crate::iterators::{CurveIterator, JoinAdjacentIterator};
@@ -171,11 +171,11 @@ impl<'a, I: CurveIterator<'a, AggregatedServerDemand>> Iterator
                 (Some(_), None) => unreachable!("handled in previous case!"),
                 (next_group, Some(spill)) => {
                     self.group_peek = next_group;
-                    // only spill left or spill not spilled into next_group
+                    // only spill remaining or spill not spilled into next_group
 
                     let k = spill.start / self.server.interval;
 
-                    let curve = Curve::<PrimitiveCurve<_>>::new(spill);
+                    let curve = Curve::<UnspecifiedCurve<_>>::new(spill);
 
                     let PartitionResult { index, head, tail } = curve.partition(k, self.server);
 

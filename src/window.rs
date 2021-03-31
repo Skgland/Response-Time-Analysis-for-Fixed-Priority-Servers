@@ -3,7 +3,7 @@
 use std::fmt::Debug;
 use std::marker::PhantomData;
 
-use crate::curve::curve_types::PrimitiveCurve;
+use crate::curve::curve_types::UnspecifiedCurve;
 use crate::curve::Curve;
 use crate::time::TimeUnit;
 use crate::window::window_types::WindowType;
@@ -16,7 +16,7 @@ pub mod window_types {
     use std::fmt::Debug;
 
     /// Marker Trait for Window Types
-    pub trait WindowType: Seal + Clone + Debug + Eq {}
+    pub trait WindowType: Seal + Debug {}
 
     impl WindowType for Supply {}
 
@@ -29,7 +29,7 @@ pub mod window_types {
 ///
 /// With an extra Type Parameter to indicate the Window type
 // Not Copy to prevent accidental errors due to implicit copy
-#[derive(Debug, Eq, PartialEq, Hash)]
+#[derive(Debug, Eq, Hash)]
 pub struct Window<T> {
     /// The Start point of the Window
     pub start: TimeUnit,
@@ -37,6 +37,12 @@ pub struct Window<T> {
     pub end: TimeUnit,
     /// The Kind of the Window
     window_type: PhantomData<T>,
+}
+
+impl<W> PartialEq for Window<W> {
+    fn eq(&self, other: &Self) -> bool {
+        self.start == other.start && self.end == other.end
+    }
 }
 
 impl<T> Clone for Window<T> {
@@ -168,7 +174,7 @@ impl Window<Demand> {
 pub struct WindowDeltaResult<T: WindowType, Q: WindowType> {
     /// The unused "supply"
     /// TODO spilt into two windows remaining_head_supply and remaining_tail_supply
-    pub remaining_supply: Curve<PrimitiveCurve<T>>,
+    pub remaining_supply: Curve<UnspecifiedCurve<T>>,
     /// The Windows Overlap
     pub overlap: Window<Overlap<T, Q>>,
     /// The unfulfilled "demand"

@@ -18,10 +18,16 @@ pub mod curve_types;
 /// A Curve is an ordered Set of non-overlapping Windows
 ///
 /// The windows are ordered by their start
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq)]
 pub struct Curve<C: CurveType> {
     /// windows contains an ordered Set of non-overlapping non-empty windows
     windows: Vec<Window<C::WindowKind>>,
+}
+
+impl<C: CurveType> PartialEq for Curve<C> {
+    fn eq(&self, other: &Self) -> bool {
+        self.windows.eq(&other.windows)
+    }
 }
 
 impl<C: CurveType> Clone for Curve<C> {
