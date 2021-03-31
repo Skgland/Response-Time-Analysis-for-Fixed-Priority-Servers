@@ -95,6 +95,7 @@ struct IterCurveWrapper<I, C> {
     /// the wrapped iterator
     iter: I,
 
+    /// the curve type of this `CurveIterator`
     curve_kind: PhantomData<C>,
 }
 

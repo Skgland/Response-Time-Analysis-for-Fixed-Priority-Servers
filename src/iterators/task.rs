@@ -1,10 +1,8 @@
 use std::iter::FusedIterator;
 
 use crate::curve::curve_types::CurveType;
-use crate::curve::AggregateExt;
-use crate::iterators::curve::RecursiveAggregatedDemandIterator;
 use crate::iterators::CurveIterator;
-use crate::task::{HigherPriorityTaskDemand, Task, TaskDemand};
+use crate::task::{Task, TaskDemand};
 use crate::time::UnitNumber;
 use crate::window::{Demand, Window};
 
@@ -47,56 +45,5 @@ impl Iterator for TaskDemandIterator<'_> {
             self.next_job += 1;
             Some(Window::new(start, end))
         }
-    }
-}
-
-/// `CurveIterator` for Higher Priority Task Demand
-#[derive(Debug)]
-pub struct HigherPriorityTaskDemandIterator<'a> {
-    /// The wrapped curve iterator
-    iterator: RecursiveAggregatedDemandIterator<'a, TaskDemand>,
-}
-
-impl<'a> Clone for HigherPriorityTaskDemandIterator<'a> {
-    fn clone(&self) -> Self {
-        HigherPriorityTaskDemandIterator {
-            iterator: self.iterator.clone(),
-        }
-    }
-}
-
-impl<'a> HigherPriorityTaskDemandIterator<'a> {
-    /// Create a `CurveIterator` for the aggregated Demand of
-    /// all task with higher priority than `task_index`
-    #[must_use]
-    pub fn new(tasks: &'a [Task], task_index: usize) -> Self {
-        let aggregate = tasks[..task_index]
-            .iter()
-            .map(|task| task.into_iter())
-            .aggregate();
-        Self {
-            iterator: aggregate,
-        }
-    }
-}
-
-impl<'a> CurveIterator<<HigherPriorityTaskDemand as CurveType>::WindowKind>
-    for HigherPriorityTaskDemandIterator<'a>
-{
-    type CurveKind = HigherPriorityTaskDemand;
-}
-
-impl<'a> FusedIterator for HigherPriorityTaskDemandIterator<'a>
-where
-    Self: Iterator,
-    RecursiveAggregatedDemandIterator<'a, TaskDemand>: FusedIterator,
-{
-}
-
-impl<'a> Iterator for HigherPriorityTaskDemandIterator<'a> {
-    type Item = Window<<HigherPriorityTaskDemand as CurveType>::WindowKind>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iterator.next()
     }
 }
