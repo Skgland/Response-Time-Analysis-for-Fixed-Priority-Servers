@@ -7,24 +7,29 @@ use crate::iterators::curve::{AggregatedDemandIterator, CurveDeltaIterator};
 use crate::iterators::task::TaskDemandIterator;
 use crate::iterators::CurveIterator;
 use crate::system::System;
+use crate::task::curve_types::{
+    ActualTaskExecution, AvailableTaskExecution, HigherPriorityTaskDemand, TaskDemand,
+};
 use crate::time::{TimeUnit, UnitNumber};
 use crate::window::{Demand, Window};
 
-/// Marker Type for Curves representing a Tasks Demand
-#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
-pub struct TaskDemand;
+pub mod curve_types {
+    /// Marker Type for Curves representing a Tasks Demand
+    #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
+    pub struct TaskDemand;
 
-/// Mark Type for Curves representing aggregated higher priority task demand
-#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
-pub struct HigherPriorityTaskDemand;
+    /// Mark Type for Curves representing aggregated higher priority task demand
+    #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
+    pub struct HigherPriorityTaskDemand;
 
-/// Marker type for Curves representing the available execution for a task
-#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
-pub struct AvailableTaskExecution;
+    /// Marker type for Curves representing the available execution for a task
+    #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
+    pub struct AvailableTaskExecution;
 
-/// Marker type for Curves representing the actual execution for a task
-#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
-pub struct ActualTaskExecution;
+    /// Marker type for Curves representing the actual execution for a task
+    #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
+    pub struct ActualTaskExecution;
+}
 
 /// The Task type based on the Modeling described in the second paragraph
 /// of Chapter 3. in the paper

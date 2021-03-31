@@ -1,4 +1,4 @@
-//! Module that defined Curve
+//! Module that defines the finite Curve type
 //!
 //! and all associated functions
 

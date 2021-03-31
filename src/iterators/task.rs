@@ -2,7 +2,8 @@ use std::iter::FusedIterator;
 
 use crate::curve::curve_types::CurveType;
 use crate::iterators::CurveIterator;
-use crate::task::{Task, TaskDemand};
+use crate::task::curve_types::TaskDemand;
+use crate::task::Task;
 use crate::time::UnitNumber;
 use crate::window::{Demand, Window};
 

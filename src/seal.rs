@@ -5,7 +5,7 @@ use crate::server::{
     ActualServerExecution, AggregatedServerDemand, AvailableServerExecution,
     ConstrainedServerDemand, HigherPriorityServerDemand,
 };
-use crate::task::{
+use crate::task::curve_types::{
     ActualTaskExecution, AvailableTaskExecution, HigherPriorityTaskDemand, TaskDemand,
 };
 use crate::window::window_types::WindowType;
