@@ -156,7 +156,7 @@ fn execution_overlap_too_high() {
 
     let system = System::new(servers);
 
-    let s1: Curve<ActualServerExecution> = system
+    let s1 = system
         .actual_execution_curve_iter(0, 48.into())
         .collect_curve();
     let s2: Curve<ActualServerExecution> = system

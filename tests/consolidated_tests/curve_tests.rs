@@ -1,7 +1,6 @@
 use rta_for_fps::curve::curve_types::UnspecifiedCurve;
 use rta_for_fps::curve::Curve;
 use rta_for_fps::iterators::curve::{AggregatedDemandIterator, CurveDeltaIterator};
-use rta_for_fps::iterators::CurveIterator;
 use rta_for_fps::time::TimeUnit;
 use rta_for_fps::window::{Demand, Overlap, Supply, Window};
 
@@ -25,10 +24,9 @@ fn aggregate_curves() {
         ])
     };
 
-    let result: Curve<_> =
-        AggregatedDemandIterator::new(c1.into_iter(), c2.into_iter()).collect_curve();
+    let result = AggregatedDemandIterator::new(c1.into_iter(), c2.into_iter());
 
-    assert_eq!(result, c3);
+    assert!(c3.eq_curve_iterator(result));
 }
 
 #[test]

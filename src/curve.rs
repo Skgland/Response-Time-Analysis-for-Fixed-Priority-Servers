@@ -10,6 +10,7 @@ use curve_types::CurveType;
 use crate::iterators::curve::{CurveDeltaIterator, CurveSplitIterator, Delta};
 use crate::server::{Server, ServerKind};
 
+use crate::iterators::CurveIterator;
 use crate::time::TimeUnit;
 use crate::window::{Demand, Overlap, Window};
 
@@ -153,6 +154,27 @@ impl<T: CurveType> Curve<T> {
     pub fn reclassify<C: CurveType<WindowKind = T::WindowKind>>(self) -> Curve<C> {
         Curve {
             windows: self.windows,
+        }
+    }
+
+    /// compare the curve to a curve iterator
+    /// consuming the iterator in the process
+    pub fn eq_curve_iterator<CI: CurveIterator<T::WindowKind, CurveKind = T>>(
+        &self,
+        mut other: CI,
+    ) -> bool {
+        let mut windows = self.as_windows().iter();
+
+        loop {
+            match (windows.next(), other.next()) {
+                (None, None) => break true,
+                (Some(_), None) | (None, Some(_)) => break false,
+                (Some(left), Some(right)) => {
+                    if left.ne(&right) {
+                        break false;
+                    }
+                }
+            }
         }
     }
 }
