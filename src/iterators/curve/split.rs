@@ -1,9 +1,7 @@
-use std::marker::PhantomData;
-
-use crate::curve::curve_types::CurveType;
 use crate::curve::Curve;
 use crate::iterators::CurveIterator;
 use crate::time::{TimeUnit, UnitNumber};
+use crate::window::window_types::WindowType;
 use crate::window::Window;
 use std::iter::FusedIterator;
 
@@ -11,21 +9,18 @@ use std::iter::FusedIterator;
 ///
 /// Will yield the Groups in order
 #[derive(Debug, Clone)]
-pub struct CurveSplitIterator<W, C, CI> {
+pub struct CurveSplitIterator<W, CI> {
     /// The remaining Curve to be split
     iter: CI,
     /// The remaining tail from the head of the last split
     tail: Option<Window<W>>,
     /// The interval at which to perform the splits
     interval: TimeUnit,
-    /// The `CurveType` of the wrapped `CurveIterator`
-    curve_type: PhantomData<C>,
 }
 
-impl<C, CI> CurveSplitIterator<C::WindowKind, C, CI>
+impl<W: WindowType, CI> CurveSplitIterator<W, CI>
 where
-    C: CurveType,
-    CI: CurveIterator<C::WindowKind>,
+    CI: CurveIterator<W>,
 {
     /// Split the `CurveIterator` at every interval
     pub fn new(iter: CI, interval: TimeUnit) -> Self {
@@ -33,24 +28,22 @@ where
             iter,
             tail: None,
             interval,
-            curve_type: PhantomData,
         }
     }
 }
 
-impl<W, C, CI> FusedIterator for CurveSplitIterator<W, C, CI>
+impl<W, CI> FusedIterator for CurveSplitIterator<W, CI>
 where
     Self: Iterator,
     CI: FusedIterator,
 {
 }
 
-impl<C, CI> Iterator for CurveSplitIterator<C::WindowKind, C, CI>
+impl<W: WindowType, CI> Iterator for CurveSplitIterator<W, CI>
 where
-    C: CurveType,
-    CI: CurveIterator<C::WindowKind>,
+    CI: CurveIterator<W>,
 {
-    type Item = (UnitNumber, Curve<C>);
+    type Item = (UnitNumber, Curve<CI::CurveKind>);
 
     fn next(&mut self) -> Option<Self::Item> {
         let first = self.tail.take().or_else(|| self.iter.next());

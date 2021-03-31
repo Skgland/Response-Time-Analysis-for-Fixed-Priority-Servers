@@ -107,11 +107,7 @@ where
 /// type alias for the type used in `InternalActualExecutionIterator`
 /// for easier naming
 type FlattenedSplitAvailableSupply<AC> = FlatMap<
-    CurveSplitIterator<
-        <AvailableServerExecution as CurveType>::WindowKind,
-        AvailableServerExecution,
-        AC,
-    >,
+    CurveSplitIterator<<AvailableServerExecution as CurveType>::WindowKind, AC>,
     Curve<AvailableServerExecution>,
     fn((UnitNumber, Curve<AvailableServerExecution>)) -> Curve<AvailableServerExecution>,
 >;

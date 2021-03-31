@@ -79,11 +79,7 @@ pub struct InternalConstrainedServerDemandIterator<'a, I> {
     /// The Server for which to calculate the constrained demand
     server: &'a Server,
     /// The remaining aggregated Demand of the Server
-    groups: CurveSplitIterator<
-        <AggregatedServerDemand as CurveType>::WindowKind,
-        AggregatedServerDemand,
-        I,
-    >,
+    groups: CurveSplitIterator<<AggregatedServerDemand as CurveType>::WindowKind, I>,
     /// The next group
     group_peek: Option<(UnitNumber, Curve<AggregatedServerDemand>)>,
     /// The spill from the previous group
@@ -118,11 +114,7 @@ impl<I: CurveIterator<AggregatedServerDemand>> FusedIterator
     for InternalConstrainedServerDemandIterator<'_, I>
 where
     Self: Iterator,
-    CurveSplitIterator<
-        <AggregatedServerDemand as CurveType>::WindowKind,
-        AggregatedServerDemand,
-        I,
-    >: FusedIterator,
+    CurveSplitIterator<<AggregatedServerDemand as CurveType>::WindowKind, I>: FusedIterator,
 {
 }
 
