@@ -3,9 +3,9 @@
 //! and functions to be used with one or multiple Servers
 
 use crate::curve::{AggregateExt, Curve};
-use crate::iterators::curve::{AggregatedDemandIterator, CollectCurveExt};
+use crate::iterators::curve::AggregatedDemandIterator;
 use crate::iterators::server::ConstrainedServerDemandIterator;
-use crate::iterators::{CurveIterator, ReclassifyExt};
+use crate::iterators::CurveIterator;
 use crate::task::Task;
 use crate::time::TimeUnit;
 use crate::window::{Demand, Window};

@@ -9,7 +9,7 @@ use crate::server::{
 
 use crate::curve::curve_types::CurveType;
 use crate::iterators::server::ActualServerExecutionIterator;
-use crate::iterators::{CurveIterator, ReclassifyExt};
+use crate::iterators::CurveIterator;
 use crate::time::TimeUnit;
 use crate::window::Window;
 

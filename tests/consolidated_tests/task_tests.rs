@@ -1,5 +1,6 @@
 use rta_for_fps::curve::Curve;
-use rta_for_fps::iterators::curve::{AggregatedDemandIterator, CollectCurveExt};
+use rta_for_fps::iterators::curve::AggregatedDemandIterator;
+use rta_for_fps::iterators::CurveIterator;
 use rta_for_fps::task::{Task, TaskDemand};
 use rta_for_fps::time::TimeUnit;
 use rta_for_fps::window::Window;

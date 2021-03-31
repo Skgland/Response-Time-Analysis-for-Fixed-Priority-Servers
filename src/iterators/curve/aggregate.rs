@@ -2,7 +2,7 @@ use std::iter::{Empty, Fuse, FusedIterator};
 
 use crate::curve::curve_types::CurveType;
 use crate::curve::Aggregate;
-use crate::iterators::{CurveIterator, ReclassifyExt};
+use crate::iterators::CurveIterator;
 use crate::window::{Demand, Window};
 
 /// Iterator for Aggregating two Curve Iterators

@@ -1,5 +1,5 @@
 use rta_for_fps::curve::Curve;
-use rta_for_fps::iterators::curve::CollectCurveExt;
+use rta_for_fps::iterators::CurveIterator;
 use rta_for_fps::server::{
     ActualServerExecution, AvailableServerExecution, HigherPriorityServerDemand, Server, ServerKind,
 };

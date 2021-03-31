@@ -4,6 +4,7 @@ use std::fmt::Debug;
 use std::iter::{Empty, Fuse, FusedIterator, TakeWhile};
 
 use crate::curve::curve_types::{CurveType, UnspecifiedCurve};
+use crate::iterators::curve::FromCurveIterator;
 use crate::window::window_types::WindowType;
 use crate::window::Window;
 use std::marker::PhantomData;
@@ -11,31 +12,6 @@ use std::marker::PhantomData;
 pub mod curve;
 pub mod server;
 pub mod task;
-
-/// Extension trait for reclassifying a `CurveIterator`
-/// to any compatible `CurveType`
-pub trait ReclassifyExt<C>: CurveIterator<C::WindowKind>
-where
-    C: CurveType,
-{
-    /// reclassify a `CurveIterator`
-    fn reclassify<O>(self) -> ReclassifyIterator<Self, C, O>
-    where
-        Self: Sized;
-}
-
-impl<C, T> ReclassifyExt<C> for T
-where
-    T: CurveIterator<C::WindowKind, CurveKind = C>,
-    C: CurveType,
-{
-    fn reclassify<O>(self) -> ReclassifyIterator<Self, C, O> {
-        ReclassifyIterator {
-            iter: self,
-            phantom: PhantomData,
-        }
-    }
-}
 
 /// `CurveIterator` wrapper to change the Curve type to any compatibly `CurveType`
 #[derive(Debug)]
@@ -114,6 +90,25 @@ where
 {
     /// The type of the curve being iterated
     type CurveKind: CurveType<WindowKind = W>;
+
+    /// collect the iterator mirroring [`std::iter::Iterator::collect`]
+    fn collect_curve<R: FromCurveIterator<Self::CurveKind>>(self) -> R
+    where
+        Self: Sized,
+    {
+        R::from_curve_iter(self)
+    }
+
+    /// reclassify a `CurveIterator`
+    fn reclassify<O>(self) -> ReclassifyIterator<Self, Self::CurveKind, O>
+    where
+        Self: Sized,
+    {
+        ReclassifyIterator {
+            iter: self,
+            phantom: PhantomData,
+        }
+    }
 }
 
 impl<W> CurveIterator<W> for Empty<Window<W>>

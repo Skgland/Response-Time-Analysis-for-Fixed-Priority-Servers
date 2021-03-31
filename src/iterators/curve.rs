@@ -18,7 +18,6 @@ pub use split::CurveSplitIterator;
 use crate::curve::curve_types::CurveType;
 use crate::curve::Curve;
 use crate::iterators::CurveIterator;
-use crate::window::window_types::WindowType;
 use crate::window::Window;
 use std::fmt::Debug;
 use std::marker::PhantomData;
@@ -29,17 +28,17 @@ mod split;
 
 /// Trait to construct a value of a type from a `CurveIterator`
 /// Mirroring [`std::iter::FromIterator`]
-pub trait FromCurveIterator<W: WindowType> {
+pub trait FromCurveIterator<C: CurveType> {
     /// Construct a value from iter
     fn from_curve_iter<CI: IntoIterator>(iter: CI) -> Self
     where
-        CI::IntoIter: CurveIterator<W>;
+        CI::IntoIter: CurveIterator<C::WindowKind, CurveKind = C>;
 }
 
-impl<W: WindowType, C: CurveType<WindowKind = W>> FromCurveIterator<W> for Curve<C> {
+impl<C: CurveType> FromCurveIterator<C> for Curve<C> {
     fn from_curve_iter<CI: IntoIterator>(iter: CI) -> Self
     where
-        CI::IntoIter: CurveIterator<W>,
+        CI::IntoIter: CurveIterator<C::WindowKind, CurveKind = C>,
     {
         let windows = iter.into_iter().collect();
         unsafe {
@@ -49,16 +48,6 @@ impl<W: WindowType, C: CurveType<WindowKind = W>> FromCurveIterator<W> for Curve
         }
     }
 }
-
-/// Extension trait mirroring [`std::iter::Iterator::collect`]
-pub trait CollectCurveExt<W: WindowType>: CurveIterator<W> + Sized {
-    /// collect the iterator
-    fn collect_curve<R: FromCurveIterator<W>>(self) -> R {
-        R::from_curve_iter(self)
-    }
-}
-
-impl<W: WindowType, CI: CurveIterator<W>> CollectCurveExt<W> for CI {}
 
 /// `CurveIterator` for iterating a [`Curve`]
 #[derive(Debug)]

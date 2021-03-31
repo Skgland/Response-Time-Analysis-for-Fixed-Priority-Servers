@@ -1,6 +1,6 @@
 use rta_for_fps::curve::curve_types::CurveType;
 use rta_for_fps::curve::Curve;
-use rta_for_fps::iterators::curve::CollectCurveExt;
+use rta_for_fps::iterators::CurveIterator;
 use rta_for_fps::server::{ActualServerExecution, Server, ServerKind};
 use rta_for_fps::system::System;
 use rta_for_fps::task::Task;

@@ -1,6 +1,6 @@
 use crate::curve::curve_types::{CurveType, UnspecifiedCurve};
 use crate::curve::{Curve, PartitionResult};
-use crate::iterators::curve::{AggregatedDemandIterator, CollectCurveExt, CurveSplitIterator};
+use crate::iterators::curve::{AggregatedDemandIterator, CurveSplitIterator};
 use crate::iterators::{CurveIterator, JoinAdjacentIterator};
 use crate::server::{
     ActualServerExecution, AggregatedServerDemand, AvailableServerExecution,

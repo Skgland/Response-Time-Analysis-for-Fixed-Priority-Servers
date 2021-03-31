@@ -2,10 +2,10 @@
 
 use crate::curve::curve_types::CurveType;
 use crate::curve::{AggregateExt, Curve};
-use crate::iterators::curve::{AggregatedDemandIterator, CollectCurveExt, CurveDeltaIterator};
+use crate::iterators::curve::{AggregatedDemandIterator, CurveDeltaIterator};
 
 use crate::iterators::task::TaskDemandIterator;
-use crate::iterators::{CurveIterator, ReclassifyExt};
+use crate::iterators::CurveIterator;
 use crate::system::System;
 use crate::time::TimeUnit;
 use crate::window::{Demand, Window};

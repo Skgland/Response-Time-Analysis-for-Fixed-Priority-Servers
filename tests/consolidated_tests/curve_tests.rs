@@ -1,8 +1,7 @@
 use rta_for_fps::curve::curve_types::UnspecifiedCurve;
 use rta_for_fps::curve::Curve;
-use rta_for_fps::iterators::curve::{
-    AggregatedDemandIterator, CollectCurveExt, CurveDeltaIterator,
-};
+use rta_for_fps::iterators::curve::{AggregatedDemandIterator, CurveDeltaIterator};
+use rta_for_fps::iterators::CurveIterator;
 use rta_for_fps::time::TimeUnit;
 use rta_for_fps::window::{Demand, Overlap, Supply, Window};
 
