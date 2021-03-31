@@ -147,14 +147,14 @@ where
 /// Type alias to make it easier to refer to the Self type of the below
 /// impl of Aggregate
 pub type RecursiveAggregatedDemandIterator<'a, C> = AggregatedDemandIterator<
-    Box<dyn FusedCurveIterator<<C as CurveType>::WindowKind, C> + 'a>,
-    Box<dyn FusedCurveIterator<<C as CurveType>::WindowKind, C> + 'a>,
+    Box<dyn FusedCurveIterator<'a, C> + 'a>,
+    Box<dyn FusedCurveIterator<'a, C> + 'a>,
 >;
 
 impl<'a, C, CI> Aggregate<CI> for RecursiveAggregatedDemandIterator<'a, C>
 where
     C: CurveType<WindowKind = Demand> + 'a,
-    CI: CurveIterator<Demand, CurveKind = C> + 'a,
+    CI: CurveIterator<Demand, CurveKind = C> + Clone + 'a,
 {
     fn aggregate<I>(iter: I) -> Self
     where

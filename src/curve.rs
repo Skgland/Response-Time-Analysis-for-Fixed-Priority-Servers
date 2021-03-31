@@ -70,7 +70,7 @@ where
         self,
     ) -> CurveDeltaResult<SI::CurveKind, DI::CurveKind, R>
     where
-        Self: Iterator<Item = Delta<SW, DW>>,
+        Self: Iterator<Item = Delta<SW, DW, SI, DI>>,
     {
         let mut result = CurveDeltaResult {
             remaining_supply: Curve::empty(),
@@ -83,6 +83,12 @@ where
                 Delta::RemainingSupply(supply) => result.remaining_supply.windows.push(supply),
                 Delta::Overlap(overlap) => result.overlap.windows.push(overlap),
                 Delta::RemainingDemand(demand) => result.remaining_demand.windows.push(demand),
+                Delta::EndSupply(supply) => {
+                    supply.for_each(|window| result.remaining_supply.windows.push(window))
+                }
+                Delta::EndDemand(demand) => {
+                    demand.for_each(|window| result.remaining_demand.windows.push(window))
+                }
             }
         }
 

@@ -47,7 +47,13 @@ fn unconstrained_curve() {
         ])
     };
 
-    assert!(expected_unconstrained_result.eq_curve_iterator(unconstrained_result));
+    if !expected_unconstrained_result.eq_curve_iterator(unconstrained_result.clone()) {
+        panic!(
+            "Expected: {:?}\nGot: {:?}",
+            expected_unconstrained_result,
+            unconstrained_result.collect_curve::<Curve<_>>()
+        )
+    }
 }
 
 #[test]
@@ -272,7 +278,13 @@ fn comparison() {
     let expected_s2_unconstrained_execution =
         unsafe { Curve::from_windows_unchecked(vec![Window::new(4, 10), Window::new(14, 20)]) };
 
-    assert!(expected_s2_unconstrained_execution.eq_curve_iterator(s2_unconstrained_execution));
+    if !expected_s2_unconstrained_execution.eq_curve_iterator(s2_unconstrained_execution.clone()) {
+        panic!(
+            "Expected: {:?} \n Got: {:?}",
+            expected_s2_unconstrained_execution,
+            s2_unconstrained_execution.collect_curve::<Curve<_>>()
+        )
+    }
 
     let s2_constrained_execution = system.actual_execution_curve_iter(1, up_to);
     let expected_s2_constrained_execution =

@@ -8,6 +8,7 @@ use crate::iterators::curve::FromCurveIterator;
 use crate::window::window_types::WindowType;
 use crate::window::Window;
 use std::marker::PhantomData;
+use std::ops::Deref;
 
 pub mod curve;
 pub mod server;
@@ -53,59 +54,29 @@ where
     }
 }
 
-/// A trait to allow the Cloning of Boxed dyn `CurveIterator`s
-pub trait DynBoxCurveClone<'a, C: CurveType>: CurveIterator<C::WindowKind> {
-    /// get a clone inside a box
-    fn box_clone(&self) -> Box<dyn CurveIterator<C::WindowKind, CurveKind = C> + 'a>;
-
-    /// get a clone of a fused box
-    fn fused_box_clone(&self) -> Box<dyn FusedCurveIterator<C::WindowKind, C> + 'a>
-    where
-        Self: FusedCurveIterator<C::WindowKind, C>;
-}
-
 /// trait used for boxing CurveIterators that are FusedIterators
-pub trait FusedCurveIterator<W, C>: CurveIterator<W, CurveKind = C> + FusedIterator {}
-
-impl<C: CurveType, T> FusedCurveIterator<C::WindowKind, C> for T where
-    Self: FusedIterator + CurveIterator<C::WindowKind, CurveKind = C>
+pub trait FusedCurveIterator<'a, C: CurveType>:
+    CurveIterator<C::WindowKind, CurveKind = C> + FusedIterator
 {
+    fn fused_boxed_clone(&self) -> Box<dyn FusedCurveIterator<'a, C> + 'a>;
 }
 
-impl<'a, C: CurveType> CurveIterator<C::WindowKind>
-    for Box<dyn FusedCurveIterator<C::WindowKind, C> + 'a>
+impl<'a, C: CurveType, T: Clone> FusedCurveIterator<'a, C> for T
+where
+    Self: FusedIterator + CurveIterator<C::WindowKind, CurveKind = C> + Clone + 'a,
 {
+    fn fused_boxed_clone(&self) -> Box<dyn FusedCurveIterator<'a, C> + 'a> {
+        Box::new(self.clone())
+    }
+}
+
+impl<'a, C: CurveType> CurveIterator<C::WindowKind> for Box<dyn FusedCurveIterator<'a, C> + 'a> {
     type CurveKind = C;
 }
 
-impl<'a, C: CurveType + 'a> Clone for Box<dyn FusedCurveIterator<C::WindowKind, C> + 'a> {
+impl<'a, C: CurveType + 'a> Clone for Box<dyn FusedCurveIterator<'a, C> + 'a> {
     fn clone(&self) -> Self {
-        self.fused_box_clone()
-    }
-}
-
-impl<'a, C: CurveType, T: CurveIterator<C::WindowKind, CurveKind = C>> DynBoxCurveClone<'a, C> for T
-where
-    T: Clone + 'a,
-{
-    fn box_clone(&self) -> Box<dyn CurveIterator<C::WindowKind, CurveKind = C> + 'a> {
-        Box::new(self.clone())
-    }
-
-    fn fused_box_clone(&self) -> Box<dyn FusedCurveIterator<<C as CurveType>::WindowKind, C> + 'a>
-    where
-        Self: FusedCurveIterator<C::WindowKind, C> + 'a,
-    {
-        Box::new(self.clone())
-    }
-}
-
-impl<'a, C: CurveType> Clone for Box<dyn CurveIterator<C::WindowKind, CurveKind = C> + 'a>
-where
-    C: 'a,
-{
-    fn clone(&self) -> Self {
-        self.box_clone()
+        self.deref().fused_boxed_clone()
     }
 }
 
