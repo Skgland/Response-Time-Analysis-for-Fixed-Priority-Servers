@@ -45,6 +45,9 @@ impl<W: WindowType, CI> Iterator for CurveSplitIterator<W, CI>
 where
     CI: CurveIterator<W>,
 {
+    // TODO return (UnitNumber, Window<W>) instead
+    // this will save us the temporary curves
+    // will be annoying on the other end but probably worth it to save the allocation
     type Item = (UnitNumber, Curve<CI::CurveKind>);
 
     fn next(&mut self) -> Option<Self::Item> {
