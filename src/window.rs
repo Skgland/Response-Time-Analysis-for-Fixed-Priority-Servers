@@ -151,10 +151,15 @@ impl<T: WindowType> Window<T> {
 }
 
 impl Window<Demand> {
-    /// Version of [`crate::paper::aggregate_window`] that is constrained to `Window<Demand>`
+    /// Calculate the aggregation (⊕) of two windows as defined in Definition 4. of the paper
     #[must_use]
     pub fn aggregate(&self, other: &Self) -> Option<Self> {
-        crate::paper::aggregate_window(self, other)
+        // only defined for overlapping windows, return None when not overlapping
+        self.overlaps(other).then(|| {
+            let start = TimeUnit::min(self.start, other.start);
+            let end = start + self.length() + other.length();
+            Window::new(start, end)
+        })
     }
 }
 

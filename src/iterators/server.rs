@@ -1,6 +1,6 @@
 use crate::curve::curve_types::{CurveType, PrimitiveCurve};
 use crate::curve::{Curve, PartitionResult};
-use crate::iterators::curve::CurveSplitIterator;
+use crate::iterators::curve::{AggregatedDemandIterator, CollectCurveExt, CurveSplitIterator};
 use crate::iterators::{CurveIterator, JoinAdjacentIterator};
 use crate::server::{
     ActualServerExecution, AggregatedServerDemand, AvailableServerExecution,
@@ -131,7 +131,11 @@ impl<'a, I: CurveIterator<'a, AggregatedServerDemand>> Iterator
                 {
                     // Handle only next_group or spill into next_group
                     let curve = if let Some(spill) = spill {
-                        next_group.aggregate::<PrimitiveCurve<_>>(Curve::new(spill))
+                        AggregatedDemandIterator::new(
+                            next_group.into_iter(),
+                            Curve::new(spill).into_iter(),
+                        )
+                        .collect_curve()
                     } else {
                         next_group
                     };
@@ -197,6 +201,11 @@ impl<'a, I: CurveIterator<'a, AggregatedServerDemand>> Iterator
 }
 
 /// `CurveIterator` for `ActualServerExecution`
+///
+/// Calculate the Constrained Execution Curve using Algorithm 4. from the paper
+///
+/// For the server with priority `server_index` calculate th actual execution
+/// given the unconstrained execution and the constrained demand
 #[derive(Debug, Clone)]
 pub struct ActualExecutionIterator<'a, AC, DC> {
     /// internal Iterator

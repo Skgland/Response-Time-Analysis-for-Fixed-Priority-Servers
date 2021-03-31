@@ -1,6 +1,8 @@
 use rta_for_fps::curve::curve_types::{OverlapCurve, PrimitiveCurve};
 use rta_for_fps::curve::Curve;
-use rta_for_fps::iterators::curve::CurveDeltaIterator;
+use rta_for_fps::iterators::curve::{
+    AggregatedDemandIterator, CollectCurveExt, CurveDeltaIterator,
+};
 use rta_for_fps::time::TimeUnit;
 use rta_for_fps::window::{Demand, Supply, Window};
 
@@ -24,7 +26,10 @@ fn aggregate_curves() {
         ])
     };
 
-    assert_eq!(c1.aggregate(c2), c3);
+    let result: Curve<_> =
+        AggregatedDemandIterator::new(c1.into_iter(), c2.into_iter()).collect_curve();
+
+    assert_eq!(result, c3);
 }
 
 #[test]

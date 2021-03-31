@@ -7,6 +7,7 @@ use crate::server::{
     ActualServerExecution, AvailableServerExecution, HigherPriorityServerDemand, Server,
 };
 
+use crate::iterators::server::ActualExecutionIterator;
 use crate::iterators::{CurveIterator, ReclassifyExt};
 use crate::time::TimeUnit;
 use crate::window::Window;
@@ -102,10 +103,30 @@ impl System<'_> {
             self.available_server_execution_curve_iter(server_index, up_to);
 
         // TODO re-introduce check regarding guaranteed capacity each interval
+        /*
+        pub fn check_assumption(
+            server: &Server,
+            available: Curve<AvailableServerExecution>,
+            up_to: TimeUnit,
+        ) -> bool {
+            let groups = available.split(server.interval);
+
+            for interval_index in 0..=((up_to - TimeUnit::ONE) / server.interval) {
+                if !groups
+                    .get(&interval_index)
+                    .map_or(false, |curve| curve.capacity() >= server.capacity)
+                {
+                    return false;
+                }
+            }
+
+            true
+        }
+        */
 
         let constrained_demand = self.servers[server_index].constraint_demand_curve_iter(up_to);
 
-        crate::paper::actual_server_execution_iter(
+        ActualExecutionIterator::new(
             self.servers,
             server_index,
             unconstrained_execution,

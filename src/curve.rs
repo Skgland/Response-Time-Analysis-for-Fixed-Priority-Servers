@@ -102,12 +102,6 @@ impl<T: CurveType> Curve<T> {
         self.windows.as_slice()
     }
 
-    /// Return a mutabel reference to the contained window container
-    /// TODO make unsafe as one can violate the curves invariants
-    pub(crate) fn as_mut_windows(&mut self) -> &mut Vec<Window<T::WindowKind>> {
-        &mut self.windows
-    }
-
     /// Consumes self and returns the contained Windows
     #[must_use]
     pub fn into_windows(self) -> Vec<Window<T::WindowKind>> {
@@ -158,15 +152,6 @@ impl<T: CurveType> Curve<T> {
 }
 
 impl<T: CurveType<WindowKind = Demand>> Curve<T> {
-    /// Limited version of the curve aggregation defined in the paper
-    ///
-    /// Only defined for Demand Curves as it doesn't rely make sense for Overlap or Supply curves
-    /// As overlapping Supply may not be available later and Overlap may not Overlap later
-    #[must_use]
-    pub fn aggregate<R: CurveType<WindowKind = T::WindowKind>>(self, other: Curve<R>) -> Self {
-        crate::paper::aggregate_curve(self, other)
-    }
-
     /// Partition the Curve as Defined by Algorithms 2. and 3. of the paper
     ///
     /// The implementation here deviates from the paper by returning an exclusive index while the paper uses an inclusive index

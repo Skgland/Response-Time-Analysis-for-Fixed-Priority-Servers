@@ -7,6 +7,9 @@ use crate::iterators::CurveIterator;
 use crate::window::{Demand, Window};
 
 /// Iterator for Aggregating two Curve Iterators
+///
+/// Aggregate two (Demand) Curves as defined in Definition 5. of the paper
+///
 #[derive(Debug)]
 pub struct AggregatedDemandIterator<'a, C: CurveType<WindowKind = Demand>, I1, I2> {
     /// The first CurveIterator to aggregate

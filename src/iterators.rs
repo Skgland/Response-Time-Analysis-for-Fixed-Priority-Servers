@@ -196,11 +196,13 @@ where
                     unreachable!("next is filled first")
                 }
                 (Some(current), Some(peek)) => {
-                    if let Some(overlap) = crate::paper::aggregate_window(&current, peek) {
+                    // assert correct order
+                    assert!(current.start <= peek.start);
+                    if current.overlaps(peek) {
+                        let overlap = Window::new(current.start, peek.end);
                         // assert that windows where adjacent and didn't overlap further as this
                         // as that is assumed by `JoinAdjacentIterator`
-                        assert_eq!(overlap.start, current.start);
-                        assert_eq!(overlap.end, peek.end);
+                        assert_eq!(overlap.length(), current.length() + peek.length());
                         self.peek = Some(overlap);
                     } else {
                         break Some(current);
