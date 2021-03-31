@@ -2,7 +2,7 @@ use std::iter::{Empty, Fuse, FusedIterator};
 
 use crate::curve::curve_types::CurveType;
 use crate::curve::Aggregate;
-use crate::iterators::CurveIterator;
+use crate::iterators::{CurveIterator, FusedCurveIterator};
 use crate::window::{Demand, Window};
 
 /// Iterator for Aggregating two Curve Iterators
@@ -147,8 +147,8 @@ where
 /// Type alias to make it easier to refer to the Self type of the below
 /// impl of Aggregate
 pub type RecursiveAggregatedDemandIterator<'a, C> = AggregatedDemandIterator<
-    Box<dyn CurveIterator<Demand, CurveKind = C> + 'a>,
-    Box<dyn CurveIterator<Demand, CurveKind = C> + 'a>,
+    Box<dyn FusedCurveIterator<<C as CurveType>::WindowKind, C> + 'a>,
+    Box<dyn FusedCurveIterator<<C as CurveType>::WindowKind, C> + 'a>,
 >;
 
 impl<'a, C, CI> Aggregate<CI> for RecursiveAggregatedDemandIterator<'a, C>
@@ -162,10 +162,10 @@ where
     {
         iter.fold(
             AggregatedDemandIterator::new(
-                Box::new(Empty::default().reclassify()),
-                Box::new(Empty::default().reclassify()),
+                Box::new(Empty::default().reclassify().fuse()),
+                Box::new(Empty::default().reclassify().fuse()),
             ),
-            |acc, window| AggregatedDemandIterator::new(Box::new(acc), Box::new(window)),
+            |acc, window| AggregatedDemandIterator::new(Box::new(acc), Box::new(window.fuse())),
         )
     }
 }
