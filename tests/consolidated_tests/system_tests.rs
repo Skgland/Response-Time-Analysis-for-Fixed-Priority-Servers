@@ -104,9 +104,7 @@ fn executive_curve() {
 
     // Constrained demand curve
 
-    let demand_result: Curve<_> = system.as_servers()[1]
-        .constraint_demand_curve_iter(up_to)
-        .collect_curve();
+    let demand_result = system.as_servers()[1].constraint_demand_curve_iter(up_to);
 
     let expected_demand = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -116,7 +114,10 @@ fn executive_curve() {
         ])
     };
 
-    assert_eq!(demand_result, expected_demand, "Constrained demand Curve");
+    assert!(
+        expected_demand.eq_curve_iterator(demand_result),
+        "Constrained demand Curve"
+    );
 
     let c_execution_result = system.actual_execution_curve_iter(1, up_to);
 
@@ -248,17 +249,16 @@ fn comparison() {
 
     assert!(expected_t3_d.eq_curve_iterator(t3_d));
 
-    let s2_aggregated_demand: Curve<_> = servers[1]
-        .aggregated_demand_curve_iter(up_to)
-        .collect_curve();
-    let s2_constrained_demand: Curve<_> = servers[1]
-        .constraint_demand_curve_iter(up_to)
-        .collect_curve();
+    let s2_aggregated_demand = servers[1].aggregated_demand_curve_iter(up_to);
+    let s2_constrained_demand = servers[1].constraint_demand_curve_iter(up_to);
+
     let expected_s2_demand =
         unsafe { Curve::from_windows_unchecked(vec![Window::new(0, 4), Window::new(10, 14)]) };
 
-    assert_eq!(s2_aggregated_demand, expected_s2_demand);
-    assert_eq!(s2_constrained_demand, expected_s2_demand.reclassify());
+    assert!(expected_s2_demand.eq_curve_iterator(s2_aggregated_demand));
+    assert!(expected_s2_demand
+        .reclassify()
+        .eq_curve_iterator(s2_constrained_demand));
 
     let s2_unconstrained_execution = system.available_server_execution_curve_iter(1, up_to);
 

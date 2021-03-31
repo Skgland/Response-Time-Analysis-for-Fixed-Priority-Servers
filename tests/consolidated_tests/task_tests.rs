@@ -15,8 +15,7 @@ fn demand_curve() {
 
     let up_to = TimeUnit::from(18);
 
-    let c_2: Curve<TaskDemand> = t_2.demand_curve_iter(up_to).collect_curve();
-    let c_3: Curve<TaskDemand> = t_3.demand_curve_iter(up_to).collect_curve();
+    let c_2 = t_2.demand_curve_iter(up_to);
 
     let expected_c_2 = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -27,6 +26,10 @@ fn demand_curve() {
         ])
     };
 
+    assert!(expected_c_2.eq_curve_iterator(c_2));
+
+    let c_3 = t_3.demand_curve_iter(up_to);
+
     let expected_c_3 = unsafe {
         Curve::from_windows_unchecked(vec![
             Window::new(0, 2),
@@ -35,8 +38,7 @@ fn demand_curve() {
         ])
     };
 
-    assert_eq!(c_2, expected_c_2);
-    assert_eq!(c_3, expected_c_3);
+    assert!(expected_c_3.eq_curve_iterator(c_3));
 }
 
 #[test]
