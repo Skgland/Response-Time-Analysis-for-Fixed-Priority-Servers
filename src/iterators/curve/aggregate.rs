@@ -1,5 +1,4 @@
-use std::iter::{Empty, FusedIterator};
-use std::marker::PhantomData;
+use std::iter::{Empty, Fuse, FusedIterator};
 
 use crate::curve::curve_types::CurveType;
 use crate::curve::Aggregate;
@@ -11,27 +10,23 @@ use crate::window::{Demand, Window};
 /// Aggregate two (Demand) Curves as defined in Definition 5. of the paper
 ///
 #[derive(Debug)]
-pub struct AggregatedDemandIterator<'a, C: CurveType<WindowKind = Demand>, I1, I2> {
+pub struct AggregatedDemandIterator<C: CurveType<WindowKind = Demand>, I1, I2> {
     /// The first CurveIterator to aggregate
-    curve1: I1,
+    curve1: Fuse<I1>,
     /// the peek of the first CurveIterator or
     /// if only one iterator is remaining the peek of the remaining iterator
     peek1: Option<Window<C::WindowKind>>,
     /// The second CurveIterator to aggregate
-    curve2: I2,
+    curve2: Fuse<I2>,
     /// the peek of the second CurveIterator,
     /// unless only one iterator is remaining
     peek2: Option<Window<C::WindowKind>>,
     /// The peek overlap of both iterators
     overlap: Option<Window<C::WindowKind>>,
-
-    /// The minimum lifetime of the contained CurveIterators
-    /// and as such the maximum lifetime of Self
-    lifetime: PhantomData<&'a ()>,
 }
 
-impl<'a, C: CurveType<WindowKind = Demand>, I1: Clone, I2: Clone> Clone
-    for AggregatedDemandIterator<'a, C, I1, I2>
+impl<C: CurveType<WindowKind = Demand>, I1: Clone, I2: Clone> Clone
+    for AggregatedDemandIterator<C, I1, I2>
 {
     fn clone(&self) -> Self {
         AggregatedDemandIterator {
@@ -40,7 +35,6 @@ impl<'a, C: CurveType<WindowKind = Demand>, I1: Clone, I2: Clone> Clone
             curve2: self.curve2.clone(),
             peek2: self.peek2.clone(),
             overlap: self.overlap.clone(),
-            lifetime: PhantomData,
         }
     }
 }
@@ -50,23 +44,22 @@ impl<
         C: CurveType<WindowKind = Demand> + 'a,
         I1: CurveIterator<'a, C>,
         I2: CurveIterator<'a, C>,
-    > AggregatedDemandIterator<'a, C, I1, I2>
+    > AggregatedDemandIterator<C, I1, I2>
 {
     /// Create aggregated `CurveIterator` for two `CurveIterator`s
     #[must_use]
-    pub fn new(curve1: I1, curve2: I2) -> AggregatedDemandIterator<'a, C, I1, I2> {
+    pub fn new(curve1: I1, curve2: I2) -> AggregatedDemandIterator<C, I1, I2> {
         AggregatedDemandIterator {
-            curve1,
-            curve2,
+            curve1: curve1.fuse(),
+            curve2: curve2.fuse(),
             peek1: None,
             peek2: None,
             overlap: None,
-            lifetime: PhantomData,
         }
     }
 }
 
-impl<'a, C, I1, I2> CurveIterator<'a, C> for AggregatedDemandIterator<'a, C, I1, I2>
+impl<'a, C, I1, I2> CurveIterator<'a, C> for AggregatedDemandIterator<C, I1, I2>
 where
     C: CurveType<WindowKind = Demand> + 'a,
     I1: CurveIterator<'a, C>,
@@ -74,7 +67,7 @@ where
 {
 }
 
-impl<'a, C, I1, I2> Iterator for AggregatedDemandIterator<'a, C, I1, I2>
+impl<'a, C, I1, I2> Iterator for AggregatedDemandIterator<C, I1, I2>
 where
     C: CurveType<WindowKind = Demand>,
     I1: CurveIterator<'a, C>,
@@ -148,18 +141,21 @@ where
     }
 }
 
-impl<'a, C: CurveType<WindowKind = Demand>, I1: CurveIterator<'a, C>, I2: CurveIterator<'a, C>>
-    FusedIterator for AggregatedDemandIterator<'a, C, I1, I2>
+impl<'a, C, I1, I2> FusedIterator for AggregatedDemandIterator<C, I1, I2>
+where
+    Self: Iterator,
+    C: CurveType<WindowKind = Demand>,
+    I1: FusedIterator,
+    I2: FusedIterator,
 {
 }
 
 /// Type alias to make it easier to refer to the Self type of the below
 /// impl of Aggregate
 pub type RecursiveAggregatedDemandIterator<'a, C> = AggregatedDemandIterator<
-    'a,
     C,
-    Box<dyn (CurveIterator<'a, C>)>,
-    Box<dyn (CurveIterator<'a, C>)>,
+    Box<dyn CurveIterator<'a, C> + 'a>,
+    Box<dyn CurveIterator<'a, C> + 'a>,
 >;
 
 impl<'a, C, CI> Aggregate<'a, CI> for RecursiveAggregatedDemandIterator<'a, C>

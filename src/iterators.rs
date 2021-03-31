@@ -1,7 +1,7 @@
 //! Module for the Iterator based implementation
 
 use std::fmt::Debug;
-use std::iter::{Empty, FusedIterator, TakeWhile};
+use std::iter::{Empty, Fuse, FusedIterator, TakeWhile};
 
 use crate::curve::curve_types::CurveType;
 use crate::window::window_types::WindowType;
@@ -104,13 +104,15 @@ impl<'a, C: CurveType + 'a> Clone for Box<dyn CurveIterator<'a, C>> {
 /// Or in other words all finite prefixes of the Iterator are a valid Curves
 ///
 pub trait CurveIterator<'a, C: CurveType>:
-    Iterator<Item = Window<C::WindowKind>> + Debug + FusedIterator + 'a
+    Iterator<Item = Window<C::WindowKind>> + Debug + 'a
 {
 }
 
 impl<'a, C> CurveIterator<'a, C> for Empty<Window<C::WindowKind>> where C: CurveType + 'a {}
 
 impl<'a, C> CurveIterator<'a, C> for Box<dyn CurveIterator<'a, C>> where C: CurveType + 'a {}
+
+impl<'a, C: CurveType, CI> CurveIterator<'a, C> for Fuse<CI> where CI: CurveIterator<'a, C> {}
 
 impl<'a, C, P, I> CurveIterator<'a, C> for TakeWhile<I, P>
 where
@@ -125,7 +127,9 @@ where
 #[derive(Debug)]
 pub struct JoinAdjacentIterator<I, W, C> {
     /// the Iterator to join into a `CurveIterator`
-    iter: I,
+    /// forced to be fused as otherwise we might
+    /// violate a `CurveIterator` invariants
+    iter: Fuse<I>,
     /// the peek of the wrapped iterator
     peek: Option<Window<W>>,
     /// The `CurveType` this produces
@@ -142,19 +146,17 @@ impl<I: Clone, W, C> Clone for JoinAdjacentIterator<I, W, C> {
     }
 }
 
-impl<I, W, C> JoinAdjacentIterator<I, W, C>
-where
-    W: WindowType,
-    I: Iterator<Item = Window<C::WindowKind>> + FusedIterator,
-    C: CurveType<WindowKind = W>,
-{
+impl<I, W, C> JoinAdjacentIterator<I, W, C> {
     /// Create a new `JoinAdjacentIterator`
     /// # Safety
     ///
     /// The Iterator I must return Windows in order that are either don't overlap or at most adjacent
-    pub unsafe fn new(iter: I) -> Self {
+    pub unsafe fn new(iter: I) -> Self
+    where
+        I: Iterator,
+    {
         JoinAdjacentIterator {
-            iter,
+            iter: iter.fuse(),
             peek: None,
             curve_type: PhantomData,
         }
@@ -165,25 +167,17 @@ impl<'a, W, C, I> CurveIterator<'a, C> for JoinAdjacentIterator<I, W, C>
 where
     Self: Debug,
     W: WindowType + 'a,
-    I: Iterator<Item = Window<W>> + FusedIterator + 'a,
+    I: Iterator<Item = Window<W>> + 'a,
     C: CurveType<WindowKind = W> + 'a,
 {
 }
 
-impl<'a, W, C, I> FusedIterator for JoinAdjacentIterator<I, W, C>
-where
-    Self: Debug,
-    W: WindowType,
-    I: Iterator<Item = Window<C::WindowKind>> + FusedIterator + 'a,
-    C: CurveType<WindowKind = W> + 'a,
-{
-}
+impl<'a, W, C, I> FusedIterator for JoinAdjacentIterator<I, W, C> where Self: Iterator {}
 
 impl<'a, W, C, I> Iterator for JoinAdjacentIterator<I, W, C>
 where
     W: WindowType,
-    I: Iterator<Item = Window<C::WindowKind>> + FusedIterator,
-    C: CurveType<WindowKind = W> + 'a,
+    I: Iterator<Item = Window<W>>,
 {
     type Item = I::Item;
 

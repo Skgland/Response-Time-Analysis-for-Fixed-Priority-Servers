@@ -42,15 +42,22 @@ impl<'a, I> CurveIterator<'a, ConstrainedServerDemand> for ConstrainedServerDema
 {
 }
 
-impl<'a, I: CurveIterator<'a, AggregatedServerDemand>> FusedIterator
-    for ConstrainedServerDemandIterator<'a, I>
+impl<'a, I> FusedIterator for ConstrainedServerDemandIterator<'a, I>
+where
+    Self: Iterator,
+    JoinAdjacentIterator<
+        InternalConstrainedServerDemandIterator<'a, I>,
+        Demand,
+        ConstrainedServerDemand,
+    >: FusedIterator,
 {
 }
 
-impl<'a, I: CurveIterator<'a, AggregatedServerDemand>> Iterator
-    for ConstrainedServerDemandIterator<'a, I>
+impl<'a, I> Iterator for ConstrainedServerDemandIterator<'a, I>
+where
+    I: CurveIterator<'a, AggregatedServerDemand>,
 {
-    type Item = Window<<ConstrainedServerDemand as CurveType>::WindowKind>;
+    type Item = I::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next()
@@ -65,12 +72,11 @@ impl<'a, I: CurveIterator<'a, AggregatedServerDemand>> Iterator
 /// using the aggregated server demand curve
 /// based on the Algorithm 1. from the paper and described in Section 5.1 of the paper
 #[derive(Debug, Clone)]
-struct InternalConstrainedServerDemandIterator<'a, I> {
+pub struct InternalConstrainedServerDemandIterator<'a, I> {
     /// The Server for which to calculate the constrained demand
     server: &'a Server,
     /// The remaining aggregated Demand of the Server
     groups: CurveSplitIterator<
-        'a,
         <AggregatedServerDemand as CurveType>::WindowKind,
         AggregatedServerDemand,
         I,
@@ -103,11 +109,18 @@ impl<'a, I: CurveIterator<'a, AggregatedServerDemand>>
 
 impl<'a, I: CurveIterator<'a, AggregatedServerDemand>> FusedIterator
     for InternalConstrainedServerDemandIterator<'a, I>
+where
+    CurveSplitIterator<
+        <AggregatedServerDemand as CurveType>::WindowKind,
+        AggregatedServerDemand,
+        I,
+    >: FusedIterator,
 {
 }
 
-impl<'a, I: CurveIterator<'a, AggregatedServerDemand>> Iterator
-    for InternalConstrainedServerDemandIterator<'a, I>
+impl<'a, I> Iterator for InternalConstrainedServerDemandIterator<'a, I>
+where
+    I: CurveIterator<'a, AggregatedServerDemand>,
 {
     type Item = Window<<ConstrainedServerDemand as CurveType>::WindowKind>;
 
@@ -256,8 +269,9 @@ where
 
 impl<'a, AC, DC> FusedIterator for ActualExecutionIterator<'a, AC, DC>
 where
-    AC: CurveIterator<'a, AvailableServerExecution>,
-    DC: CurveIterator<'a, ConstrainedServerDemand>,
+    Self: Iterator,
+    AC: FusedIterator,
+    DC: FusedIterator,
 {
 }
 
@@ -277,7 +291,6 @@ where
 /// for easier naming
 type FlattenedSplitAvailableSupply<'a, AC> = FlatMap<
     CurveSplitIterator<
-        'a,
         <AvailableServerExecution as CurveType>::WindowKind,
         AvailableServerExecution,
         AC,
@@ -355,8 +368,9 @@ impl<'a, AC, CDC> InternalActualExecutionIterator<'a, AC, CDC> {
 
 impl<'a, AC, CDC> FusedIterator for InternalActualExecutionIterator<'a, AC, CDC>
 where
-    AC: CurveIterator<'a, AvailableServerExecution>,
-    CDC: CurveIterator<'a, ConstrainedServerDemand>,
+    Self: Iterator,
+    FlattenedSplitAvailableSupply<'a, AC>: FusedIterator,
+    CDC: FusedIterator,
 {
 }
 

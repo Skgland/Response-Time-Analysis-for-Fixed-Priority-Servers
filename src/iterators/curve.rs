@@ -88,6 +88,8 @@ impl<C: CurveType> IntoIterator for Curve<C> {
 
 impl<'a, C: CurveType + 'a> CurveIterator<'a, C> for CurveIter<C> {}
 
+impl<C: CurveType> FusedIterator for CurveIter<C> {}
+
 impl<C: CurveType> Iterator for CurveIter<C> {
     type Item = Window<C::WindowKind>;
 
@@ -95,8 +97,6 @@ impl<C: CurveType> Iterator for CurveIter<C> {
         self.curve.pop_front()
     }
 }
-
-impl<C: CurveType> FusedIterator for CurveIter<C> {}
 
 /// Wrapper for wrapping an Iterator into a `CurveIterator`
 #[derive(Debug, Clone)]
@@ -120,11 +120,11 @@ impl<'a, C, I> CurveIterator<'a, C> for IterCurveWrapper<I>
 where
     Self: Debug,
     C: CurveType + 'a,
-    I: Iterator<Item = Window<C::WindowKind>> + FusedIterator + 'a,
+    I: Iterator<Item = Window<C::WindowKind>> + 'a,
 {
 }
 
-impl<'a, I: FusedIterator> FusedIterator for IterCurveWrapper<I> {}
+impl<'a, I> FusedIterator for IterCurveWrapper<I> where I: FusedIterator {}
 
 impl<'a, I: Iterator> Iterator for IterCurveWrapper<I> {
     type Item = I::Item;

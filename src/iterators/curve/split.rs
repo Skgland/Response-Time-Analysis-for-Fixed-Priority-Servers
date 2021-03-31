@@ -4,40 +4,47 @@ use crate::curve::curve_types::CurveType;
 use crate::curve::Curve;
 use crate::iterators::CurveIterator;
 use crate::time::TimeUnit;
-use crate::window::window_types::WindowType;
 use crate::window::Window;
+use std::iter::FusedIterator;
 
 /// Curve Iterator for splitting a Curve in fixed Intervalls
 ///
 /// Will yield the Groups in order
 #[derive(Debug, Clone)]
-pub struct CurveSplitIterator<'a, W, C, CI> {
+pub struct CurveSplitIterator<W, C, CI> {
     /// The remaining Curve to be split
     iter: CI,
     /// The remaining tail from the head of the last split
     tail: Option<Window<W>>,
     /// The interval at which to perform the splits
     interval: TimeUnit,
-    /// The lifetime of the `CurveIterator`
-    lifetime: PhantomData<(&'a (), C)>,
+    /// The `CurveType` of the wrapped `CurveIterator`
+    curve_type: PhantomData<C>,
 }
 
-impl<'a, W: WindowType, C: CurveType<WindowKind = W>, CI: CurveIterator<'a, C>>
-    CurveSplitIterator<'a, W, C, CI>
-{
+impl<'a, C: CurveType, CI: CurveIterator<'a, C>> CurveSplitIterator<C::WindowKind, C, CI> {
     /// Split the `CurveIterator` at every interval
     pub fn new(iter: CI, interval: TimeUnit) -> Self {
         CurveSplitIterator {
             iter,
             tail: None,
             interval,
-            lifetime: PhantomData,
+            curve_type: PhantomData,
         }
     }
 }
 
-impl<'a, W: WindowType, C: CurveType<WindowKind = W>, CI: CurveIterator<'a, C>> Iterator
-    for CurveSplitIterator<'a, W, C, CI>
+impl<'a, W, C, CI> FusedIterator for CurveSplitIterator<W, C, CI>
+where
+    Self: Iterator,
+    CI: FusedIterator,
+{
+}
+
+impl<'a, C, CI> Iterator for CurveSplitIterator<C::WindowKind, C, CI>
+where
+    C: CurveType,
+    CI: CurveIterator<'a, C>,
 {
     type Item = (usize, Curve<C>);
 

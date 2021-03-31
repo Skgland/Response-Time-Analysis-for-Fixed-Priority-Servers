@@ -2,7 +2,7 @@ use std::iter::FusedIterator;
 
 use crate::curve::curve_types::CurveType;
 use crate::curve::AggregateExt;
-use crate::iterators::curve::AggregatedDemandIterator;
+use crate::iterators::curve::RecursiveAggregatedDemandIterator;
 use crate::iterators::CurveIterator;
 use crate::task::{HigherPriorityTaskDemand, Task, TaskDemand};
 use crate::window::Window;
@@ -51,12 +51,7 @@ impl Iterator for TaskDemandIterator<'_> {
 #[derive(Debug, Clone)]
 pub struct HigherPriorityTaskDemandIterator<'a> {
     /// The wrapped curve iterator
-    iterator: AggregatedDemandIterator<
-        'a,
-        TaskDemand,
-        Box<dyn CurveIterator<'a, TaskDemand>>,
-        Box<dyn CurveIterator<'a, TaskDemand>>,
-    >,
+    iterator: RecursiveAggregatedDemandIterator<'a, TaskDemand>,
 }
 
 impl<'a> HigherPriorityTaskDemandIterator<'a> {
@@ -76,7 +71,12 @@ impl<'a> HigherPriorityTaskDemandIterator<'a> {
 
 impl<'a> CurveIterator<'a, HigherPriorityTaskDemand> for HigherPriorityTaskDemandIterator<'a> {}
 
-impl<'a> FusedIterator for HigherPriorityTaskDemandIterator<'a> {}
+impl<'a> FusedIterator for HigherPriorityTaskDemandIterator<'a>
+where
+    Self: Iterator,
+    RecursiveAggregatedDemandIterator<'a, TaskDemand>: FusedIterator,
+{
+}
 
 impl<'a> Iterator for HigherPriorityTaskDemandIterator<'a> {
     type Item = Window<<HigherPriorityTaskDemand as CurveType>::WindowKind>;
