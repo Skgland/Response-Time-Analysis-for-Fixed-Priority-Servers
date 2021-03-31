@@ -88,7 +88,7 @@ impl Task {
         tasks[..index]
             .iter()
             .map(move |task| task.demand_curve_iter(up_to))
-            .aggregate::<AggregatedDemandIterator<_, _, _>>()
+            .aggregate::<AggregatedDemandIterator<_, _>>()
             .reclassify()
     }
 

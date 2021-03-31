@@ -10,24 +10,22 @@ use crate::window::{Demand, Window};
 /// Aggregate two (Demand) Curves as defined in Definition 5. of the paper
 ///
 #[derive(Debug)]
-pub struct AggregatedDemandIterator<C: CurveType<WindowKind = Demand>, I1, I2> {
+pub struct AggregatedDemandIterator<I1, I2> {
     /// The first CurveIterator to aggregate
     curve1: Fuse<I1>,
     /// the peek of the first CurveIterator or
     /// if only one iterator is remaining the peek of the remaining iterator
-    peek1: Option<Window<C::WindowKind>>,
+    peek1: Option<Window<Demand>>,
     /// The second CurveIterator to aggregate
     curve2: Fuse<I2>,
     /// the peek of the second CurveIterator,
     /// unless only one iterator is remaining
-    peek2: Option<Window<C::WindowKind>>,
+    peek2: Option<Window<Demand>>,
     /// The peek overlap of both iterators
-    overlap: Option<Window<C::WindowKind>>,
+    overlap: Option<Window<Demand>>,
 }
 
-impl<C: CurveType<WindowKind = Demand>, I1: Clone, I2: Clone> Clone
-    for AggregatedDemandIterator<C, I1, I2>
-{
+impl<I1: Clone, I2: Clone> Clone for AggregatedDemandIterator<I1, I2> {
     fn clone(&self) -> Self {
         AggregatedDemandIterator {
             curve1: self.curve1.clone(),
@@ -39,14 +37,14 @@ impl<C: CurveType<WindowKind = Demand>, I1: Clone, I2: Clone> Clone
     }
 }
 
-impl<I1, I2> AggregatedDemandIterator<I1::CurveKind, I1, I2>
+impl<I1, I2> AggregatedDemandIterator<I1, I2>
 where
     I1: CurveIterator<Demand>,
     I2: CurveIterator<Demand, CurveKind = I1::CurveKind>,
 {
     /// Create aggregated `CurveIterator` for two `CurveIterator`s
     #[must_use]
-    pub fn new(curve1: I1, curve2: I2) -> AggregatedDemandIterator<I1::CurveKind, I1, I2> {
+    pub fn new(curve1: I1, curve2: I2) -> AggregatedDemandIterator<I1, I2> {
         AggregatedDemandIterator {
             curve1: curve1.fuse(),
             curve2: curve2.fuse(),
@@ -57,7 +55,7 @@ where
     }
 }
 
-impl<I1, I2> CurveIterator<Demand> for AggregatedDemandIterator<I1::CurveKind, I1, I2>
+impl<I1, I2> CurveIterator<Demand> for AggregatedDemandIterator<I1, I2>
 where
     I1: CurveIterator<Demand>,
     I2: CurveIterator<Demand, CurveKind = I1::CurveKind>,
@@ -65,7 +63,7 @@ where
     type CurveKind = I1::CurveKind;
 }
 
-impl<I1, I2> Iterator for AggregatedDemandIterator<I1::CurveKind, I1, I2>
+impl<I1, I2> Iterator for AggregatedDemandIterator<I1, I2>
 where
     I1: CurveIterator<Demand>,
     I2: CurveIterator<Demand, CurveKind = I1::CurveKind>,
@@ -138,10 +136,9 @@ where
     }
 }
 
-impl<C, I1, I2> FusedIterator for AggregatedDemandIterator<C, I1, I2>
+impl<I1, I2> FusedIterator for AggregatedDemandIterator<I1, I2>
 where
     Self: Iterator,
-    C: CurveType<WindowKind = Demand>,
     I1: FusedIterator,
     I2: FusedIterator,
 {
@@ -150,7 +147,6 @@ where
 /// Type alias to make it easier to refer to the Self type of the below
 /// impl of Aggregate
 pub type RecursiveAggregatedDemandIterator<'a, C> = AggregatedDemandIterator<
-    C,
     Box<dyn CurveIterator<Demand, CurveKind = C> + 'a>,
     Box<dyn CurveIterator<Demand, CurveKind = C> + 'a>,
 >;

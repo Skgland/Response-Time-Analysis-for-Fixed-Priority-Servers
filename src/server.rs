@@ -85,7 +85,7 @@ impl Server {
         self.tasks
             .iter()
             .map(move |task| task.into_iter().take_while(Window::limit(up_to)))
-            .aggregate::<AggregatedDemandIterator<_, _, _>>()
+            .aggregate::<AggregatedDemandIterator<_, _>>()
             .reclassify()
     }
 
