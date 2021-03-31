@@ -23,7 +23,7 @@ pub struct ConstrainedServerDemandIterator<'a, I> {
     >,
 }
 
-impl<'a, I: CurveIterator<'a, AggregatedServerDemand>> ConstrainedServerDemandIterator<'a, I> {
+impl<'a, I: CurveIterator<AggregatedServerDemand>> ConstrainedServerDemandIterator<'a, I> {
     /// Create a new `ConstrainedServerDemandIterator`
     pub fn new(server: &'a Server, aggregated_demand: I) -> Self {
         let internal = InternalConstrainedServerDemandIterator::new(server, aggregated_demand);
@@ -37,8 +37,8 @@ impl<'a, I: CurveIterator<'a, AggregatedServerDemand>> ConstrainedServerDemandIt
     }
 }
 
-impl<'a, I> CurveIterator<'a, ConstrainedServerDemand> for ConstrainedServerDemandIterator<'a, I> where
-    I: CurveIterator<'a, AggregatedServerDemand>
+impl<'a, I> CurveIterator<ConstrainedServerDemand> for ConstrainedServerDemandIterator<'a, I> where
+    I: CurveIterator<AggregatedServerDemand>
 {
 }
 
@@ -55,7 +55,7 @@ where
 
 impl<'a, I> Iterator for ConstrainedServerDemandIterator<'a, I>
 where
-    I: CurveIterator<'a, AggregatedServerDemand>,
+    I: CurveIterator<AggregatedServerDemand>,
 {
     type Item = I::Item;
 
@@ -89,9 +89,7 @@ pub struct InternalConstrainedServerDemandIterator<'a, I> {
     remainder: VecDeque<Window<<ConstrainedServerDemand as CurveType>::WindowKind>>,
 }
 
-impl<'a, I: CurveIterator<'a, AggregatedServerDemand>>
-    InternalConstrainedServerDemandIterator<'a, I>
-{
+impl<'a, I: CurveIterator<AggregatedServerDemand>> InternalConstrainedServerDemandIterator<'a, I> {
     /// Create a new `InternalConstrainedServerDemandIterator`
     /// the main part for calculating the Constraint Server Demand Curve
     pub fn new(server: &'a Server, aggregated_demand: I) -> Self {
@@ -107,7 +105,7 @@ impl<'a, I: CurveIterator<'a, AggregatedServerDemand>>
     }
 }
 
-impl<'a, I: CurveIterator<'a, AggregatedServerDemand>> FusedIterator
+impl<'a, I: CurveIterator<AggregatedServerDemand>> FusedIterator
     for InternalConstrainedServerDemandIterator<'a, I>
 where
     CurveSplitIterator<
@@ -120,7 +118,7 @@ where
 
 impl<'a, I> Iterator for InternalConstrainedServerDemandIterator<'a, I>
 where
-    I: CurveIterator<'a, AggregatedServerDemand>,
+    I: CurveIterator<AggregatedServerDemand>,
 {
     type Item = Window<<ConstrainedServerDemand as CurveType>::WindowKind>;
 
@@ -240,8 +238,8 @@ impl<'a, AC, DC> ActualExecutionIterator<'a, AC, DC> {
         constrained_demand: DC,
     ) -> Self
     where
-        AC: CurveIterator<'a, AvailableServerExecution>,
-        DC: CurveIterator<'a, ConstrainedServerDemand>,
+        AC: CurveIterator<AvailableServerExecution>,
+        DC: CurveIterator<ConstrainedServerDemand>,
     {
         let inner = InternalActualExecutionIterator::new(
             servers,
@@ -259,11 +257,11 @@ impl<'a, AC, DC> ActualExecutionIterator<'a, AC, DC> {
     }
 }
 
-impl<'a, AC: 'a, DC: 'a> CurveIterator<'a, ActualServerExecution>
+impl<'a, AC: 'a, DC: 'a> CurveIterator<ActualServerExecution>
     for ActualExecutionIterator<'a, AC, DC>
 where
-    AC: CurveIterator<'a, AvailableServerExecution>,
-    DC: CurveIterator<'a, ConstrainedServerDemand>,
+    AC: CurveIterator<AvailableServerExecution>,
+    DC: CurveIterator<ConstrainedServerDemand>,
 {
 }
 
@@ -277,8 +275,8 @@ where
 
 impl<'a, AC, DC> Iterator for ActualExecutionIterator<'a, AC, DC>
 where
-    AC: CurveIterator<'a, AvailableServerExecution>,
-    DC: CurveIterator<'a, ConstrainedServerDemand>,
+    AC: CurveIterator<AvailableServerExecution>,
+    DC: CurveIterator<ConstrainedServerDemand>,
 {
     type Item = Window<<ActualServerExecution as CurveType>::WindowKind>;
 
@@ -346,7 +344,7 @@ impl<'a, AC, CDC> InternalActualExecutionIterator<'a, AC, CDC> {
         constrained_demand: CDC,
     ) -> Self
     where
-        AC: CurveIterator<'a, AvailableServerExecution>,
+        AC: CurveIterator<AvailableServerExecution>,
     {
         let server = &servers[server_index];
 
@@ -376,8 +374,8 @@ where
 
 impl<'a, AC, CDC> Iterator for InternalActualExecutionIterator<'a, AC, CDC>
 where
-    AC: CurveIterator<'a, AvailableServerExecution>,
-    CDC: CurveIterator<'a, ConstrainedServerDemand>,
+    AC: CurveIterator<AvailableServerExecution>,
+    CDC: CurveIterator<ConstrainedServerDemand>,
 {
     type Item = Window<<ActualServerExecution as CurveType>::WindowKind>;
 

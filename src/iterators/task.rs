@@ -24,7 +24,7 @@ impl<'a> TaskDemandIterator<'a> {
     }
 }
 
-impl<'a> CurveIterator<'a, TaskDemand> for TaskDemandIterator<'a> {}
+impl<'a> CurveIterator<TaskDemand> for TaskDemandIterator<'a> {}
 
 impl FusedIterator for TaskDemandIterator<'_> {}
 
@@ -48,10 +48,18 @@ impl Iterator for TaskDemandIterator<'_> {
 }
 
 /// `CurveIterator` for Higher Priority Task Demand
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct HigherPriorityTaskDemandIterator<'a> {
     /// The wrapped curve iterator
     iterator: RecursiveAggregatedDemandIterator<'a, TaskDemand>,
+}
+
+impl<'a> Clone for HigherPriorityTaskDemandIterator<'a> {
+    fn clone(&self) -> Self {
+        HigherPriorityTaskDemandIterator {
+            iterator: self.iterator.clone(),
+        }
+    }
 }
 
 impl<'a> HigherPriorityTaskDemandIterator<'a> {
@@ -69,7 +77,7 @@ impl<'a> HigherPriorityTaskDemandIterator<'a> {
     }
 }
 
-impl<'a> CurveIterator<'a, HigherPriorityTaskDemand> for HigherPriorityTaskDemandIterator<'a> {}
+impl<'a> CurveIterator<HigherPriorityTaskDemand> for HigherPriorityTaskDemandIterator<'a> {}
 
 impl<'a> FusedIterator for HigherPriorityTaskDemandIterator<'a>
 where

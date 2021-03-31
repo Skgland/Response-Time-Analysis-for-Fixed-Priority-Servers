@@ -40,11 +40,11 @@ impl System<'_> {
     ///
     /// Based on the papers Definition 12.
     #[must_use]
-    pub fn aggregated_higher_priority_demand_curve_iter(
-        &self,
+    pub fn aggregated_higher_priority_demand_curve_iter<'a>(
+        &'a self,
         server_index: usize,
         up_to: TimeUnit,
-    ) -> impl CurveIterator<HigherPriorityServerDemand> + Clone {
+    ) -> impl CurveIterator<HigherPriorityServerDemand> + Clone + 'a {
         self.servers[..server_index]
             .iter()
             .map(move |server| server.constraint_demand_curve_iter(up_to))
@@ -76,11 +76,11 @@ impl System<'_> {
     ///
     /// See Definition 14. (2) of the paper for reference
     #[must_use]
-    pub fn available_server_execution_curve_iter(
-        &self,
+    pub fn available_server_execution_curve_iter<'a>(
+        &'a self,
         server_index: usize,
         up_to: TimeUnit,
-    ) -> impl CurveIterator<AvailableServerExecution> + Clone {
+    ) -> impl CurveIterator<AvailableServerExecution> + Clone + 'a {
         let total: Curve<AvailableServerExecution> = Curve::new(Window::new(TimeUnit::ZERO, up_to));
 
         CurveDeltaIterator::new(
@@ -94,11 +94,11 @@ impl System<'_> {
     /// TODO more detail, what do the parameters mean
     ///
     #[must_use]
-    pub fn actual_execution_curve_iter(
-        &self,
+    pub fn actual_execution_curve_iter<'a>(
+        &'a self,
         server_index: usize,
         up_to: TimeUnit,
-    ) -> impl CurveIterator<ActualServerExecution> + Clone {
+    ) -> impl CurveIterator<ActualServerExecution> + Clone + 'a {
         let unconstrained_execution =
             self.available_server_execution_curve_iter(server_index, up_to);
 

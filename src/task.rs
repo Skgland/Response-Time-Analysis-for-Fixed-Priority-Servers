@@ -66,18 +66,21 @@ impl Task {
     ///
     /// Based on Definition 10. of the paper
     #[must_use]
-    pub fn demand_curve_iter(&self, up_to: TimeUnit) -> impl CurveIterator<TaskDemand> + Clone {
+    pub fn demand_curve_iter<'a>(
+        &'a self,
+        up_to: TimeUnit,
+    ) -> impl CurveIterator<TaskDemand> + Clone + 'a {
         self.into_iter().take_while(Window::limit(up_to))
     }
 
     /// calculate the Higher Priority task Demand for the task with priority `index` as defined in Definition 14. (1) in the paper,
     /// for a set of tasks indexed by their priority (lower index <=> higher priority) and up to the specified limit
     #[must_use]
-    pub fn higher_priority_task_demand_iter(
-        tasks: &[Self],
+    pub fn higher_priority_task_demand_iter<'a>(
+        tasks: &'a [Self],
         index: usize,
         up_to: TimeUnit,
-    ) -> impl CurveIterator<HigherPriorityTaskDemand> + Clone {
+    ) -> impl CurveIterator<HigherPriorityTaskDemand> + Clone + 'a {
         tasks[..index]
             .iter()
             .map(move |task| task.demand_curve_iter(up_to))
@@ -95,7 +98,7 @@ impl Task {
         server_index: usize,
         task_index: usize,
         up_to: TimeUnit,
-    ) -> impl CurveIterator<'a, AvailableTaskExecution> + Clone {
+    ) -> impl CurveIterator<AvailableTaskExecution> + Clone + 'a {
         let constrained_server_execution_curve =
             system.actual_execution_curve_iter(server_index, up_to);
 
@@ -142,7 +145,7 @@ impl Task {
         server_index: usize,
         task_index: usize,
         up_to: TimeUnit,
-    ) -> impl CurveIterator<'a, ActualTaskExecution> {
+    ) -> impl CurveIterator<ActualTaskExecution> + Clone + 'a {
         let available_execution_curve =
             Task::available_execution_curve_impl(system, server_index, task_index, up_to);
         let task_demand_curve =

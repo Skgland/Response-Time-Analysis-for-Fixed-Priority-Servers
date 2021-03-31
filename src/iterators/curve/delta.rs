@@ -7,7 +7,6 @@ use std::collections::VecDeque;
 use std::fmt::Debug;
 
 use std::iter::FusedIterator;
-use std::marker::PhantomData;
 
 /// Item type of the `CurveDeltaIterator`
 #[derive(Debug)]
@@ -46,7 +45,7 @@ impl<S, D> Delta<S, D> {
 /// Returns interleaved with no fixed pattern the remaining supply, remaining demand and the overlap
 ///
 #[derive(Debug)]
-pub struct CurveDeltaIterator<'a, DC: CurveType, SC: CurveType, DI, SI> {
+pub struct CurveDeltaIterator<DC: CurveType, SC: CurveType, DI, SI> {
     /// remaining demand curve
     demand: DI,
     /// remaining supply curve
@@ -55,12 +54,10 @@ pub struct CurveDeltaIterator<'a, DC: CurveType, SC: CurveType, DI, SI> {
     remaining_demand: Option<Window<DC::WindowKind>>,
     /// peek of the supply curve
     remaining_supply: VecDeque<Window<SC::WindowKind>>,
-    /// lifetime
-    lifetime: PhantomData<&'a ()>,
 }
 
-impl<'a, DC: CurveType, SC: CurveType, DI: Clone, SI: Clone> Clone
-    for CurveDeltaIterator<'a, DC, SC, DI, SI>
+impl<DC: CurveType, SC: CurveType, DI: Clone, SI: Clone> Clone
+    for CurveDeltaIterator<DC, SC, DI, SI>
 {
     fn clone(&self) -> Self {
         CurveDeltaIterator {
@@ -68,18 +65,12 @@ impl<'a, DC: CurveType, SC: CurveType, DI: Clone, SI: Clone> Clone
             supply: self.supply.clone(),
             remaining_demand: self.remaining_demand.clone(),
             remaining_supply: self.remaining_supply.clone(),
-            lifetime: PhantomData,
         }
     }
 }
 
-impl<
-        'a,
-        DC: CurveType + 'a,
-        SC: CurveType + 'a,
-        DI: CurveIterator<'a, DC>,
-        SI: CurveIterator<'a, SC>,
-    > CurveDeltaIterator<'a, DC, SC, DI, SI>
+impl<DC: CurveType, SC: CurveType, DI: CurveIterator<DC>, SI: CurveIterator<SC>>
+    CurveDeltaIterator<DC, SC, DI, SI>
 {
     /// Create a new Iterator for computing the delta between the supply and demand curve
     pub fn new(supply: SI, demand: DI) -> Self {
@@ -88,14 +79,13 @@ impl<
             supply,
             remaining_demand: None,
             remaining_supply: VecDeque::default(),
-            lifetime: PhantomData,
         }
     }
 
     /// Turn the `CurveDeltaIterator` into a `CurveIterator` that returns only the Overlap Windows
-    pub fn overlap<C: CurveType<WindowKind = Overlap<SC::WindowKind, DC::WindowKind>> + 'a>(
+    pub fn overlap<C: CurveType<WindowKind = Overlap<SC::WindowKind, DC::WindowKind>>>(
         self,
-    ) -> impl CurveIterator<'a, C> + Clone
+    ) -> impl CurveIterator<C> + Clone
     where
         Self: Clone,
     {
@@ -110,9 +100,9 @@ impl<
     }
 
     /// Turn the `CurveDeltaIterator` into a `CurveIterator` that returns only the Remaining Supply Windows
-    pub fn remaining_supply<C>(self) -> impl CurveIterator<'a, C> + Clone
+    pub fn remaining_supply<C>(self) -> impl CurveIterator<C> + Clone
     where
-        C: CurveType<WindowKind = SC::WindowKind> + 'a,
+        C: CurveType<WindowKind = SC::WindowKind>,
         Self: Clone,
     {
         let inner = self.filter_map(Delta::remaining_supply);
@@ -127,7 +117,7 @@ impl<
     }
 }
 
-impl<'a, DC, SC, DI, SI> FusedIterator for CurveDeltaIterator<'a, DC, SC, DI, SI>
+impl<'a, DC, SC, DI, SI> FusedIterator for CurveDeltaIterator<DC, SC, DI, SI>
 where
     Self: Iterator,
     DI: FusedIterator,
@@ -137,12 +127,12 @@ where
 {
 }
 
-impl<'a, DC, SC, DI, SI> Iterator for CurveDeltaIterator<'a, DC, SC, DI, SI>
+impl<'a, DC, SC, DI, SI> Iterator for CurveDeltaIterator<DC, SC, DI, SI>
 where
     DC: CurveType,
     SC: CurveType,
-    DI: CurveIterator<'a, DC>,
-    SI: CurveIterator<'a, SC>,
+    DI: CurveIterator<DC>,
+    SI: CurveIterator<SC>,
 {
     type Item = Delta<SC::WindowKind, DC::WindowKind>;
 

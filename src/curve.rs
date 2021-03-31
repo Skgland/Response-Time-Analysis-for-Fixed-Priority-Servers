@@ -53,7 +53,7 @@ pub struct CurveDeltaResult<
     pub remaining_demand: Curve<Q>,
 }
 
-impl<DC: CurveType, SC: CurveType, DI, SI> CurveDeltaIterator<'_, DC, SC, DI, SI> {
+impl<DC: CurveType, SC: CurveType, DI, SI> CurveDeltaIterator<DC, SC, DI, SI> {
     /// collect the complete `CurveDeltaIterator`
     ///
     /// # Warning
@@ -287,11 +287,7 @@ impl<T: CurveType> Curve<T> {
 pub trait AggregateExt: Iterator + Sized {
     /// aggregate all iterator elements
     /// acts similar to [`std::iter::Iterator::sum`]
-    fn aggregate<'a, A: Aggregate<'a, Self::Item> + 'a>(self) -> A
-    where
-        Self: 'a,
-        Self::Item: 'a,
-    {
+    fn aggregate<A: Aggregate<Self::Item>>(self) -> A {
         A::aggregate(self)
     }
 }
@@ -299,14 +295,10 @@ pub trait AggregateExt: Iterator + Sized {
 impl<I: Iterator> AggregateExt for I {}
 
 /// Trait used by the `AggregateExt` Extension trait
-pub trait Aggregate<'a, A = Self>
-where
-    A: 'a,
-{
+pub trait Aggregate<A = Self> {
     /// aggregate all elements of `iter` into a new Self
     /// pendant to [`std::iter::Sum`]
     fn aggregate<I>(iter: I) -> Self
     where
-        I: Iterator<Item = A>,
-        I::Item: 'a;
+        I: Iterator<Item = A>;
 }

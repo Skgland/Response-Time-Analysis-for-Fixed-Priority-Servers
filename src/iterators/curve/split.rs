@@ -22,7 +22,7 @@ pub struct CurveSplitIterator<W, C, CI> {
     curve_type: PhantomData<C>,
 }
 
-impl<'a, C: CurveType, CI: CurveIterator<'a, C>> CurveSplitIterator<C::WindowKind, C, CI> {
+impl<'a, C: CurveType, CI: CurveIterator<C>> CurveSplitIterator<C::WindowKind, C, CI> {
     /// Split the `CurveIterator` at every interval
     pub fn new(iter: CI, interval: TimeUnit) -> Self {
         CurveSplitIterator {
@@ -44,7 +44,7 @@ where
 impl<'a, C, CI> Iterator for CurveSplitIterator<C::WindowKind, C, CI>
 where
     C: CurveType,
-    CI: CurveIterator<'a, C>,
+    CI: CurveIterator<C>,
 {
     type Item = (usize, Curve<C>);
 

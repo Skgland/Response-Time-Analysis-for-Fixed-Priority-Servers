@@ -27,19 +27,17 @@ mod split;
 
 /// Trait to construct a value of a type from a `CurveIterator`
 /// Mirroring [`std::iter::FromIterator`]
-pub trait FromCurveIterator<'a, C: CurveType> {
+pub trait FromCurveIterator<C: CurveType> {
     /// Construct a value from iter
     fn from_curve_iter<CI: IntoIterator>(iter: CI) -> Self
     where
-        CI::IntoIter: CurveIterator<'a, C>;
+        CI::IntoIter: CurveIterator<C>;
 }
 
-impl<'a, IC: CurveType, C: CurveType<WindowKind = IC::WindowKind>> FromCurveIterator<'a, IC>
-    for Curve<C>
-{
+impl<IC: CurveType, C: CurveType<WindowKind = IC::WindowKind>> FromCurveIterator<IC> for Curve<C> {
     fn from_curve_iter<CI: IntoIterator>(iter: CI) -> Self
     where
-        CI::IntoIter: CurveIterator<'a, IC>,
+        CI::IntoIter: CurveIterator<IC>,
     {
         let windows = iter.into_iter().collect();
         unsafe {
@@ -51,14 +49,14 @@ impl<'a, IC: CurveType, C: CurveType<WindowKind = IC::WindowKind>> FromCurveIter
 }
 
 /// Extension trait mirroring [`std::iter::Iterator::collect`]
-pub trait CollectCurveExt<'a, C: CurveType>: CurveIterator<'a, C> + Sized {
+pub trait CollectCurveExt<C: CurveType>: CurveIterator<C> + Sized {
     /// collect the iterator
-    fn collect_curve<R: FromCurveIterator<'a, C>>(self) -> R {
+    fn collect_curve<R: FromCurveIterator<C>>(self) -> R {
         R::from_curve_iter(self)
     }
 }
 
-impl<'a, C: CurveType, CI: CurveIterator<'a, C>> CollectCurveExt<'a, C> for CI {}
+impl<'a, C: CurveType, CI: CurveIterator<C>> CollectCurveExt<C> for CI {}
 
 /// `CurveIterator` for iterating a [`Curve`]
 #[derive(Debug)]
@@ -86,7 +84,7 @@ impl<C: CurveType> IntoIterator for Curve<C> {
     }
 }
 
-impl<'a, C: CurveType + 'a> CurveIterator<'a, C> for CurveIter<C> {}
+impl<'a, C: CurveType> CurveIterator<C> for CurveIter<C> {}
 
 impl<C: CurveType> FusedIterator for CurveIter<C> {}
 
@@ -116,11 +114,11 @@ impl<I> IterCurveWrapper<I> {
     }
 }
 
-impl<'a, C, I> CurveIterator<'a, C> for IterCurveWrapper<I>
+impl<C, I> CurveIterator<C> for IterCurveWrapper<I>
 where
     Self: Debug,
-    C: CurveType + 'a,
-    I: Iterator<Item = Window<C::WindowKind>> + 'a,
+    C: CurveType,
+    I: Iterator<Item = Window<C::WindowKind>>,
 {
 }
 

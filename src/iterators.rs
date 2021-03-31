@@ -14,22 +14,22 @@ pub mod task;
 
 /// Extension trait for reclassifying a `CurveIterator`
 /// to any compatible `CurveType`
-pub trait ReclassifyExt<'a, C>: CurveIterator<'a, C>
+pub trait ReclassifyExt<C>: CurveIterator<C>
 where
     C: CurveType,
 {
     /// reclassify a `CurveIterator`
-    fn reclassify(self) -> ReclassifyIterator<'a, Self, C>
+    fn reclassify(self) -> ReclassifyIterator<Self, C>
     where
         Self: Sized;
 }
 
-impl<'a, C, T> ReclassifyExt<'a, C> for T
+impl<C, T> ReclassifyExt<C> for T
 where
-    T: CurveIterator<'a, C>,
+    T: CurveIterator<C>,
     C: CurveType,
 {
-    fn reclassify(self) -> ReclassifyIterator<'a, Self, C> {
+    fn reclassify(self) -> ReclassifyIterator<Self, C> {
         ReclassifyIterator {
             iter: self,
             phantom: PhantomData,
@@ -39,14 +39,14 @@ where
 
 /// `CurveIterator` wrapper to change the Curve type to any compatibly `CurveType`
 #[derive(Debug)]
-pub struct ReclassifyIterator<'a, I, C> {
+pub struct ReclassifyIterator<I, C> {
     /// the wrapped CurveIterator
     iter: I,
     /// The original lifetime and `CurveType`
-    phantom: PhantomData<(&'a (), C)>,
+    phantom: PhantomData<C>,
 }
 
-impl<'a, I: Clone, C> Clone for ReclassifyIterator<'a, I, C> {
+impl<'a, I: Clone, C> Clone for ReclassifyIterator<I, C> {
     fn clone(&self) -> Self {
         ReclassifyIterator {
             iter: self.iter.clone(),
@@ -55,17 +55,17 @@ impl<'a, I: Clone, C> Clone for ReclassifyIterator<'a, I, C> {
     }
 }
 
-impl<'a, I, O, C> CurveIterator<'a, O> for ReclassifyIterator<'a, I, C>
+impl<'a, I, O, C> CurveIterator<O> for ReclassifyIterator<I, C>
 where
-    I: CurveIterator<'a, C> + 'a,
+    I: CurveIterator<C> + 'a,
     O: CurveType + 'a,
     C: CurveType<WindowKind = O::WindowKind> + 'a,
 {
 }
 
-impl<'a, I, C> FusedIterator for ReclassifyIterator<'a, I, C> where I: FusedIterator {}
+impl<I, C> FusedIterator for ReclassifyIterator<I, C> where I: FusedIterator {}
 
-impl<'a, I, C> Iterator for ReclassifyIterator<'a, I, C>
+impl<I, C> Iterator for ReclassifyIterator<I, C>
 where
     I: Iterator,
 {
@@ -77,20 +77,20 @@ where
 }
 
 /// A trait to allow the Cloning of Boxed dyn `CurveIterator`s
-pub trait DynBoxCurveClone<'a, C: CurveType>: CurveIterator<'a, C> {
-    fn box_clone(&self) -> Box<dyn CurveIterator<'a, C>>;
+pub trait DynBoxCurveClone<'a, C: CurveType>: CurveIterator<C> {
+    fn box_clone(&self) -> Box<dyn CurveIterator<C> + 'a>;
 }
 
-impl<'a, C: CurveType, T: CurveIterator<'a, C>> DynBoxCurveClone<'a, C> for T
+impl<'a, C: CurveType, T: CurveIterator<C>> DynBoxCurveClone<'a, C> for T
 where
-    T: Clone,
+    T: Clone + 'a,
 {
-    fn box_clone(&self) -> Box<dyn CurveIterator<'a, C>> {
+    fn box_clone(&self) -> Box<dyn CurveIterator<C> + 'a> {
         Box::new(self.clone())
     }
 }
 
-impl<'a, C: CurveType + 'a> Clone for Box<dyn CurveIterator<'a, C>> {
+impl<'a, C: CurveType + 'a> Clone for Box<dyn CurveIterator<C> + 'a> {
     fn clone(&self) -> Self {
         self.box_clone()
     }
@@ -103,22 +103,19 @@ impl<'a, C: CurveType + 'a> Clone for Box<dyn CurveIterator<'a, C>> {
 ///
 /// Or in other words all finite prefixes of the Iterator are a valid Curves
 ///
-pub trait CurveIterator<'a, C: CurveType>:
-    Iterator<Item = Window<C::WindowKind>> + Debug + 'a
-{
-}
+pub trait CurveIterator<C: CurveType>: Iterator<Item = Window<C::WindowKind>> + Debug {}
 
-impl<'a, C> CurveIterator<'a, C> for Empty<Window<C::WindowKind>> where C: CurveType + 'a {}
+impl<C> CurveIterator<C> for Empty<Window<C::WindowKind>> where C: CurveType {}
 
-impl<'a, C> CurveIterator<'a, C> for Box<dyn CurveIterator<'a, C>> where C: CurveType + 'a {}
+impl<'a, C> CurveIterator<C> for Box<dyn CurveIterator<C> + 'a> where C: CurveType {}
 
-impl<'a, C: CurveType, CI> CurveIterator<'a, C> for Fuse<CI> where CI: CurveIterator<'a, C> {}
+impl<'a, C: CurveType, CI> CurveIterator<C> for Fuse<CI> where CI: CurveIterator<C> {}
 
-impl<'a, C, P, I> CurveIterator<'a, C> for TakeWhile<I, P>
+impl<C, P, I> CurveIterator<C> for TakeWhile<I, P>
 where
     C: CurveType,
-    P: for<'r> FnMut(&'r I::Item) -> bool + 'a,
-    I: CurveIterator<'a, C>,
+    P: for<'r> FnMut(&'r I::Item) -> bool,
+    I: CurveIterator<C>,
 {
 }
 
@@ -163,12 +160,12 @@ impl<I, W, C> JoinAdjacentIterator<I, W, C> {
     }
 }
 
-impl<'a, W, C, I> CurveIterator<'a, C> for JoinAdjacentIterator<I, W, C>
+impl<W, C, I> CurveIterator<C> for JoinAdjacentIterator<I, W, C>
 where
     Self: Debug,
-    W: WindowType + 'a,
-    I: Iterator<Item = Window<W>> + 'a,
-    C: CurveType<WindowKind = W> + 'a,
+    W: WindowType,
+    I: Iterator<Item = Window<W>>,
+    C: CurveType<WindowKind = W>,
 {
 }
 

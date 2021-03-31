@@ -39,12 +39,8 @@ impl<C: CurveType<WindowKind = Demand>, I1: Clone, I2: Clone> Clone
     }
 }
 
-impl<
-        'a,
-        C: CurveType<WindowKind = Demand> + 'a,
-        I1: CurveIterator<'a, C>,
-        I2: CurveIterator<'a, C>,
-    > AggregatedDemandIterator<C, I1, I2>
+impl<C: CurveType<WindowKind = Demand>, I1: CurveIterator<C>, I2: CurveIterator<C>>
+    AggregatedDemandIterator<C, I1, I2>
 {
     /// Create aggregated `CurveIterator` for two `CurveIterator`s
     #[must_use]
@@ -59,19 +55,19 @@ impl<
     }
 }
 
-impl<'a, C, I1, I2> CurveIterator<'a, C> for AggregatedDemandIterator<C, I1, I2>
+impl<C, I1, I2> CurveIterator<C> for AggregatedDemandIterator<C, I1, I2>
 where
-    C: CurveType<WindowKind = Demand> + 'a,
-    I1: CurveIterator<'a, C>,
-    I2: CurveIterator<'a, C>,
+    C: CurveType<WindowKind = Demand>,
+    I1: CurveIterator<C>,
+    I2: CurveIterator<C>,
 {
 }
 
 impl<'a, C, I1, I2> Iterator for AggregatedDemandIterator<C, I1, I2>
 where
     C: CurveType<WindowKind = Demand>,
-    I1: CurveIterator<'a, C>,
-    I2: CurveIterator<'a, C>,
+    I1: CurveIterator<C>,
+    I2: CurveIterator<C>,
 {
     type Item = Window<C::WindowKind>;
 
@@ -152,16 +148,13 @@ where
 
 /// Type alias to make it easier to refer to the Self type of the below
 /// impl of Aggregate
-pub type RecursiveAggregatedDemandIterator<'a, C> = AggregatedDemandIterator<
-    C,
-    Box<dyn CurveIterator<'a, C> + 'a>,
-    Box<dyn CurveIterator<'a, C> + 'a>,
->;
+pub type RecursiveAggregatedDemandIterator<'a, C> =
+    AggregatedDemandIterator<C, Box<dyn CurveIterator<C> + 'a>, Box<dyn CurveIterator<C> + 'a>>;
 
-impl<'a, C, CI> Aggregate<'a, CI> for RecursiveAggregatedDemandIterator<'a, C>
+impl<'a, C, CI> Aggregate<CI> for RecursiveAggregatedDemandIterator<'a, C>
 where
     C: CurveType<WindowKind = Demand> + 'a,
-    CI: CurveIterator<'a, C> + 'a,
+    CI: CurveIterator<C> + 'a,
 {
     fn aggregate<I>(iter: I) -> Self
     where
