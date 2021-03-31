@@ -157,6 +157,8 @@ impl Task {
 
     /// Calculate the WCRT for the task with priority `task_index` for the Server with priority `server_index`
     ///
+    /// See definition 15. of the paper for reference
+    ///
     /// # Panics
     /// When sanity checks fail
     #[must_use]
