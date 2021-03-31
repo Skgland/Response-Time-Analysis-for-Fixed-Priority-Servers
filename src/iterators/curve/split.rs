@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use crate::curve::curve_types::CurveType;
 use crate::curve::Curve;
 use crate::iterators::CurveIterator;
-use crate::time::TimeUnit;
+use crate::time::{TimeUnit, UnitNumber};
 use crate::window::Window;
 use std::iter::FusedIterator;
 
@@ -50,7 +50,7 @@ where
     C: CurveType,
     CI: CurveIterator<C::WindowKind>,
 {
-    type Item = (usize, Curve<C>);
+    type Item = (UnitNumber, Curve<C>);
 
     fn next(&mut self) -> Option<Self::Item> {
         let first = self.tail.take().or_else(|| self.iter.next());

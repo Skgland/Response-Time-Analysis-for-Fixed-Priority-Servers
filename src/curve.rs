@@ -11,7 +11,7 @@ use crate::iterators::curve::{CurveDeltaIterator, CurveSplitIterator, Delta};
 use crate::server::{Server, ServerKind};
 
 use crate::iterators::CurveIterator;
-use crate::time::TimeUnit;
+use crate::time::{TimeUnit, UnitNumber};
 use crate::window::{Demand, Overlap, Window};
 
 pub mod curve_types;
@@ -184,7 +184,7 @@ impl<T: CurveType<WindowKind = Demand>> Curve<T> {
     ///
     /// The implementation here deviates from the paper by returning an exclusive index while the paper uses an inclusive index
     #[must_use]
-    pub fn partition(&self, group_index: usize, server: &Server) -> PartitionResult {
+    pub fn partition(&self, group_index: UnitNumber, server: &Server) -> PartitionResult {
         match server.server_type {
             ServerKind::Deferrable => {
                 // Algorithm 2.
@@ -300,7 +300,7 @@ pub struct PartitionResult {
 impl<T: CurveType> Curve<T> {
     /// Split the curve on every interval boundary as defined in Definition 8. of the paper
     #[must_use]
-    pub fn split(self, interval: TimeUnit) -> HashMap<usize, Self> {
+    pub fn split(self, interval: TimeUnit) -> HashMap<UnitNumber, Self> {
         CurveSplitIterator::new(self.into_iter(), interval).collect()
     }
 }

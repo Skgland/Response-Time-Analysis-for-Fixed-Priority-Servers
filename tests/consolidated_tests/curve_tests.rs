@@ -92,7 +92,7 @@ fn split_curves() {
 
     let t_s = TimeUnit::from(10);
 
-    let expected: HashMap<usize, _> = vec![
+    let expected: HashMap<_, _> = vec![
         (0, unsafe {
             Curve::from_windows_unchecked(vec![
                 Window::new(2, 4),

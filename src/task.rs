@@ -7,7 +7,7 @@ use crate::iterators::curve::{AggregatedDemandIterator, CurveDeltaIterator};
 use crate::iterators::task::TaskDemandIterator;
 use crate::iterators::CurveIterator;
 use crate::system::System;
-use crate::time::TimeUnit;
+use crate::time::{TimeUnit, UnitNumber};
 use crate::window::{Demand, Window};
 
 /// Marker Type for Curves representing a Tasks Demand
@@ -247,7 +247,7 @@ impl Task {
     ///
     /// Note: The paper uses 1-index for jobs while this uses 0-index
     #[must_use]
-    pub fn job_arrival(&self, job_index: usize) -> TimeUnit {
+    pub fn job_arrival(&self, job_index: UnitNumber) -> TimeUnit {
         self.offset + job_index * self.interval
     }
 }

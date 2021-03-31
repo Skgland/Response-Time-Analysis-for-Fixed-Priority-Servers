@@ -5,6 +5,7 @@ use crate::curve::AggregateExt;
 use crate::iterators::curve::RecursiveAggregatedDemandIterator;
 use crate::iterators::CurveIterator;
 use crate::task::{HigherPriorityTaskDemand, Task, TaskDemand};
+use crate::time::UnitNumber;
 use crate::window::{Demand, Window};
 
 /// `CurveIterator` for a Tasks Demand
@@ -13,7 +14,7 @@ pub struct TaskDemandIterator<'a> {
     /// the Task this Iterator generates demand for
     task: &'a Task,
     /// The next Job index for which to generate Demand
-    next_job: usize,
+    next_job: UnitNumber,
 }
 
 impl<'a> TaskDemandIterator<'a> {
@@ -34,7 +35,7 @@ impl Iterator for TaskDemandIterator<'_> {
     type Item = Window<<TaskDemand as CurveType>::WindowKind>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.next_job == usize::MAX {
+        if self.next_job == UnitNumber::MAX {
             // prevent overflow of self.next_job
             eprintln!("Task reached overflow! {:?}", self.task);
             None

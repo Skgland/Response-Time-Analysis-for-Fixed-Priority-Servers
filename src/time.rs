@@ -8,7 +8,7 @@ mod util {
     //! Utility Module for the time module
 
     /// Calculate the least common multiple
-    pub(crate) const fn lcm(a: super::InternalTime, b: super::InternalTime) -> super::InternalTime {
+    pub(crate) const fn lcm(a: super::UnitNumber, b: super::UnitNumber) -> super::UnitNumber {
         if a == b {
             a
         } else {
@@ -17,7 +17,7 @@ mod util {
     }
 
     /// Calculate the greatest common divisor
-    const fn gcd(mut a: super::InternalTime, mut b: super::InternalTime) -> super::InternalTime {
+    const fn gcd(mut a: super::UnitNumber, mut b: super::UnitNumber) -> super::UnitNumber {
         while a != b {
             if a > b {
                 a -= b
@@ -29,12 +29,12 @@ mod util {
     }
 }
 
-/// The Type that `TimeUnit` is represented by internally
-type InternalTime = usize;
+/// The type that represents a unit-less unsigned number
+pub type UnitNumber = usize;
 
 /// The Type representing some Units of Time
 #[derive(Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash)]
-pub struct TimeUnit(InternalTime);
+pub struct TimeUnit(UnitNumber);
 
 impl Debug for TimeUnit {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -62,21 +62,21 @@ impl TimeUnit {
     }
 }
 
-impl From<InternalTime> for TimeUnit {
-    fn from(time: InternalTime) -> Self {
+impl From<UnitNumber> for TimeUnit {
+    fn from(time: UnitNumber) -> Self {
         TimeUnit(time)
     }
 }
 
 impl Div for TimeUnit {
-    type Output = usize;
+    type Output = UnitNumber;
 
     fn div(self, rhs: Self) -> Self::Output {
         self.0 / rhs.0
     }
 }
 
-impl Mul<TimeUnit> for usize {
+impl Mul<TimeUnit> for UnitNumber {
     type Output = TimeUnit;
 
     fn mul(self, rhs: TimeUnit) -> Self::Output {
@@ -84,10 +84,10 @@ impl Mul<TimeUnit> for usize {
     }
 }
 
-impl Mul<usize> for TimeUnit {
+impl Mul<UnitNumber> for TimeUnit {
     type Output = TimeUnit;
 
-    fn mul(self, rhs: usize) -> Self::Output {
+    fn mul(self, rhs: UnitNumber) -> Self::Output {
         TimeUnit(self.0 * rhs)
     }
 }

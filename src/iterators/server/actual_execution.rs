@@ -8,7 +8,7 @@ use crate::iterators::{CurveIterator, JoinAdjacentIterator};
 use crate::server::{
     ActualServerExecution, AvailableServerExecution, ConstrainedServerDemand, Server,
 };
-use crate::time::TimeUnit;
+use crate::time::{TimeUnit, UnitNumber};
 use crate::window::{Demand, Window};
 
 /// `CurveIterator` for `ActualServerExecution`
@@ -113,7 +113,7 @@ type FlattenedSplitAvailableSupply<AC> = FlatMap<
         AC,
     >,
     Curve<AvailableServerExecution>,
-    fn((usize, Curve<AvailableServerExecution>)) -> Curve<AvailableServerExecution>,
+    fn((UnitNumber, Curve<AvailableServerExecution>)) -> Curve<AvailableServerExecution>,
 >;
 
 /// `CurveIterator` for calculating the actual execution of a Server
@@ -129,7 +129,7 @@ pub struct InternalActualExecutionIterator<'a, AC, CDC> {
     /// the peek of the remaining available execution that is not yet consumed
     execution_peek: VecDeque<Window<<AvailableServerExecution as CurveType>::WindowKind>>,
     /// the group spend_budget is referring to
-    current_group: usize,
+    current_group: UnitNumber,
     /// the spend budget of the current group
     // remembering one group is enough as we go through them in order
     spend_budget: TimeUnit,

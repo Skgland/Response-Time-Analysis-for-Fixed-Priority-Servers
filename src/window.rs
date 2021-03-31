@@ -5,7 +5,7 @@ use std::marker::PhantomData;
 
 use crate::curve::curve_types::UnspecifiedCurve;
 use crate::curve::Curve;
-use crate::time::TimeUnit;
+use crate::time::{TimeUnit, UnitNumber};
 use crate::window::window_types::WindowType;
 
 pub mod window_types {
@@ -145,7 +145,7 @@ impl<T: WindowType> Window<T> {
     ///
     /// See Section 6.2 §3
     #[must_use]
-    pub fn budget_group(&self, interval: TimeUnit) -> usize {
+    pub fn budget_group(&self, interval: TimeUnit) -> UnitNumber {
         self.start / interval
     }
 

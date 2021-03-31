@@ -6,7 +6,7 @@ use crate::curve::{Curve, PartitionResult};
 use crate::iterators::curve::{AggregatedDemandIterator, CurveSplitIterator};
 use crate::iterators::{CurveIterator, JoinAdjacentIterator};
 use crate::server::{AggregatedServerDemand, ConstrainedServerDemand, Server};
-use crate::time::TimeUnit;
+use crate::time::{TimeUnit, UnitNumber};
 use crate::window::{Demand, Window};
 
 /// `CurveIterator` for `ConstrainedServerDemand`
@@ -85,7 +85,7 @@ pub struct InternalConstrainedServerDemandIterator<'a, I> {
         I,
     >,
     /// The next group
-    group_peek: Option<(usize, Curve<AggregatedServerDemand>)>,
+    group_peek: Option<(UnitNumber, Curve<AggregatedServerDemand>)>,
     /// The spill from the previous group
     spill: Option<Window<<AggregatedServerDemand as CurveType>::WindowKind>>,
     /// Remaining windows till we need to process the next group
