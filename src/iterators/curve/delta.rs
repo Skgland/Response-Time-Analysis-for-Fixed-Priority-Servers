@@ -6,6 +6,7 @@ use crate::window::{Overlap, Window, WindowDeltaResult};
 use std::collections::VecDeque;
 use std::fmt::Debug;
 
+use std::iter::FusedIterator;
 use std::marker::PhantomData;
 
 /// Item type of the `CurveDeltaIterator`
@@ -124,6 +125,16 @@ impl<
             IterCurveWrapper::new(inner)
         }
     }
+}
+
+impl<'a, DC, SC, DI, SI> FusedIterator for CurveDeltaIterator<'a, DC, SC, DI, SI>
+where
+    Self: Iterator,
+    DI: FusedIterator,
+    SI: FusedIterator,
+    DC: CurveType,
+    SC: CurveType,
+{
 }
 
 impl<'a, DC, SC, DI, SI> Iterator for CurveDeltaIterator<'a, DC, SC, DI, SI>

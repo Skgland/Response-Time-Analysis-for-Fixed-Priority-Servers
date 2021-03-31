@@ -20,7 +20,6 @@ use crate::curve::Curve;
 use crate::iterators::CurveIterator;
 use crate::window::Window;
 use std::fmt::Debug;
-use std::marker::PhantomData;
 
 mod aggregate;
 mod delta;
@@ -99,51 +98,35 @@ impl<C: CurveType> Iterator for CurveIter<C> {
 
 impl<C: CurveType> FusedIterator for CurveIter<C> {}
 
-#[derive(Debug)]
-struct IterCurveWrapper<'a, C, I> {
+/// Wrapper for wrapping an Iterator into a `CurveIterator`
+#[derive(Debug, Clone)]
+struct IterCurveWrapper<I> {
+    /// the wrapped iterator
     iter: I,
-    phantom: PhantomData<(&'a (), C)>,
 }
 
-impl<'a, C, I: Clone> Clone for IterCurveWrapper<'a, C, I> {
-    fn clone(&self) -> Self {
-        IterCurveWrapper {
-            iter: self.iter.clone(),
-            phantom: PhantomData,
-        }
-    }
-}
-
-impl<'a, C, I> IterCurveWrapper<'a, C, I> {
+impl<I> IterCurveWrapper<I> {
     /// Wrap an Iterator into a `CurveIterator`
     ///
     /// # Safety
     /// The invariants of a `CurveIterator` need to be upheld
     ///
     pub const unsafe fn new(iter: I) -> Self {
-        IterCurveWrapper {
-            iter,
-            phantom: PhantomData,
-        }
+        IterCurveWrapper { iter }
     }
 }
 
-impl<'a, C, I> CurveIterator<'a, C> for IterCurveWrapper<'a, C, I>
+impl<'a, C, I> CurveIterator<'a, C> for IterCurveWrapper<I>
 where
     Self: Debug,
     C: CurveType + 'a,
-    I: Iterator<Item = Window<C::WindowKind>> + 'a,
+    I: Iterator<Item = Window<C::WindowKind>> + FusedIterator + 'a,
 {
 }
 
-impl<'a, C: CurveType, I: Iterator<Item = Window<C::WindowKind>>> FusedIterator
-    for IterCurveWrapper<'a, C, I>
-{
-}
+impl<'a, I: FusedIterator> FusedIterator for IterCurveWrapper<I> {}
 
-impl<'a, C: CurveType, I: Iterator<Item = Window<C::WindowKind>>> Iterator
-    for IterCurveWrapper<'a, C, I>
-{
+impl<'a, I: Iterator> Iterator for IterCurveWrapper<I> {
     type Item = I::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
