@@ -12,6 +12,7 @@ use crate::server::{Server, ServerKind};
 
 use crate::iterators::CurveIterator;
 use crate::time::{TimeUnit, UnitNumber};
+use crate::window::window_types::WindowType;
 use crate::window::{Demand, Overlap, Window};
 
 pub mod curve_types;
@@ -54,18 +55,22 @@ pub struct CurveDeltaResult<
     pub remaining_demand: Curve<Q>,
 }
 
-impl<DC: CurveType, SC: CurveType, DI, SI> CurveDeltaIterator<DC, SC, DI, SI> {
+impl<DW: WindowType, SW: WindowType, DI, SI> CurveDeltaIterator<DW, SW, DI, SI>
+where
+    DI: CurveIterator<DW>,
+    SI: CurveIterator<SW>,
+{
     /// collect the complete `CurveDeltaIterator`
     ///
     /// # Warning
     ///
     /// Won't terminate if `CurveDelaIterator` is infinite as it will try to consume the complete iterator
     ///
-    pub fn collect<R: CurveType<WindowKind = Overlap<SC::WindowKind, DC::WindowKind>>>(
+    pub fn collect<R: CurveType<WindowKind = Overlap<SW, DW>>>(
         self,
-    ) -> CurveDeltaResult<SC, DC, R>
+    ) -> CurveDeltaResult<SI::CurveKind, DI::CurveKind, R>
     where
-        Self: Iterator<Item = Delta<SC::WindowKind, DC::WindowKind>>,
+        Self: Iterator<Item = Delta<SW, DW>>,
     {
         let mut result = CurveDeltaResult {
             remaining_supply: Curve::empty(),

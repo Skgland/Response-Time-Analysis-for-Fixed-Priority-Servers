@@ -109,6 +109,41 @@ where
     }
 }
 
+#[derive(Debug)]
+struct EmptyCurveIterator<C> {
+    curve_type: PhantomData<C>,
+}
+
+impl<C> EmptyCurveIterator<C> {
+    pub fn new() -> Self {
+        EmptyCurveIterator {
+            curve_type: PhantomData,
+        }
+    }
+}
+
+impl<C> Clone for EmptyCurveIterator<C> {
+    fn clone(&self) -> Self {
+        EmptyCurveIterator {
+            curve_type: PhantomData,
+        }
+    }
+}
+
+impl<C: CurveType> CurveIterator<C::WindowKind> for EmptyCurveIterator<C> {
+    type CurveKind = C;
+}
+
+impl<C> FusedIterator for EmptyCurveIterator<C> where Self: Iterator {}
+
+impl<C: CurveType> Iterator for EmptyCurveIterator<C> {
+    type Item = Window<C::WindowKind>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        None
+    }
+}
+
 /// Trait representing an Iterator that has the guarantees of a curve:
 /// 1. Windows ordered by start
 /// 2. Windows non-overlapping

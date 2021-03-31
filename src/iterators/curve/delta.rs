@@ -6,6 +6,7 @@ use crate::window::{Overlap, Window, WindowDeltaResult};
 use std::collections::VecDeque;
 use std::fmt::Debug;
 
+use crate::window::window_types::WindowType;
 use std::iter::FusedIterator;
 
 /// Item type of the `CurveDeltaIterator`
@@ -45,20 +46,18 @@ impl<S, D> Delta<S, D> {
 /// Returns interleaved with no fixed pattern the remaining supply, remaining demand and the overlap
 ///
 #[derive(Debug)]
-pub struct CurveDeltaIterator<DC: CurveType, SC: CurveType, DI, SI> {
+pub struct CurveDeltaIterator<DW, SW, DI, SI> {
     /// remaining demand curve
     demand: DI,
     /// remaining supply curve
     supply: SI,
     /// peek of the demand curve
-    remaining_demand: Option<Window<DC::WindowKind>>,
+    remaining_demand: Option<Window<DW>>,
     /// peek of the supply curve
-    remaining_supply: VecDeque<Window<SC::WindowKind>>,
+    remaining_supply: VecDeque<Window<SW>>,
 }
 
-impl<DC: CurveType, SC: CurveType, DI: Clone, SI: Clone> Clone
-    for CurveDeltaIterator<DC, SC, DI, SI>
-{
+impl<DW, SW, DI: Clone, SI: Clone> Clone for CurveDeltaIterator<DW, SW, DI, SI> {
     fn clone(&self) -> Self {
         CurveDeltaIterator {
             demand: self.demand.clone(),
@@ -69,12 +68,8 @@ impl<DC: CurveType, SC: CurveType, DI: Clone, SI: Clone> Clone
     }
 }
 
-impl<
-        DC: CurveType,
-        SC: CurveType,
-        DI: CurveIterator<DC::WindowKind, CurveKind = DC>,
-        SI: CurveIterator<SC::WindowKind, CurveKind = SC>,
-    > CurveDeltaIterator<DC, SC, DI, SI>
+impl<DW: WindowType, SW: WindowType, DI: CurveIterator<DW>, SI: CurveIterator<SW>>
+    CurveDeltaIterator<DW, SW, DI, SI>
 {
     /// Create a new Iterator for computing the delta between the supply and demand curve
     pub fn new(supply: SI, demand: DI) -> Self {
@@ -87,7 +82,7 @@ impl<
     }
 
     /// Turn the `CurveDeltaIterator` into a `CurveIterator` that returns only the Overlap Windows
-    pub fn overlap<C: CurveType<WindowKind = Overlap<SC::WindowKind, DC::WindowKind>>>(
+    pub fn overlap<C: CurveType<WindowKind = Overlap<SW, DW>>>(
         self,
     ) -> impl CurveIterator<C::WindowKind, CurveKind = C> + Clone
     where
@@ -104,7 +99,7 @@ impl<
     }
 
     /// Turn the `CurveDeltaIterator` into a `CurveIterator` that returns only the Remaining Supply Windows
-    pub fn remaining_supply(self) -> impl CurveIterator<SC::WindowKind, CurveKind = SC> + Clone
+    pub fn remaining_supply(self) -> impl CurveIterator<SW, CurveKind = SI::CurveKind> + Clone
     where
         Self: Clone,
     {
@@ -125,19 +120,17 @@ where
     Self: Iterator,
     DI: FusedIterator,
     SI: FusedIterator,
-    DC: CurveType,
-    SC: CurveType,
 {
 }
 
-impl<DC, SC, DI, SI> Iterator for CurveDeltaIterator<DC, SC, DI, SI>
+impl<DW, SW, DI, SI> Iterator for CurveDeltaIterator<DW, SW, DI, SI>
 where
-    DC: CurveType,
-    SC: CurveType,
-    DI: CurveIterator<DC::WindowKind, CurveKind = DC>,
-    SI: CurveIterator<SC::WindowKind, CurveKind = SC>,
+    DW: WindowType,
+    SW: WindowType,
+    DI: CurveIterator<DW>,
+    SI: CurveIterator<SW>,
 {
-    type Item = Delta<SC::WindowKind, DC::WindowKind>;
+    type Item = Delta<SW, DW>;
 
     fn next(&mut self) -> Option<Self::Item> {
         #![allow(clippy::option_if_let_else)] // false positive, both branches move a value

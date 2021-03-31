@@ -1,8 +1,8 @@
-use std::iter::{Empty, Fuse, FusedIterator};
+use std::iter::{Fuse, FusedIterator};
 
 use crate::curve::curve_types::CurveType;
 use crate::curve::Aggregate;
-use crate::iterators::{CurveIterator, FusedCurveIterator};
+use crate::iterators::{CurveIterator, EmptyCurveIterator, FusedCurveIterator};
 use crate::window::{Demand, Window};
 
 /// Iterator for Aggregating two Curve Iterators
@@ -162,8 +162,8 @@ where
     {
         iter.fold(
             AggregatedDemandIterator::new(
-                Box::new(Empty::default().reclassify().fuse()),
-                Box::new(Empty::default().reclassify().fuse()),
+                Box::new(EmptyCurveIterator::new()),
+                Box::new(EmptyCurveIterator::new()),
             ),
             |acc, window| AggregatedDemandIterator::new(Box::new(acc), Box::new(window.fuse())),
         )
