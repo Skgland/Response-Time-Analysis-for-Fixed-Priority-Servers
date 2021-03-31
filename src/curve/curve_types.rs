@@ -41,7 +41,7 @@ impl CurveType for AvailableServerExecution {
 }
 
 impl CurveType for ActualServerExecution {
-    type WindowKind = Overlap<Overlap<Supply, Demand>, Demand>;
+    type WindowKind = Overlap<<AvailableServerExecution as CurveType>::WindowKind, Demand>;
 }
 
 impl CurveType for TaskDemand {
