@@ -232,7 +232,7 @@ impl<T: CurveType<WindowKind = Demand>> Curve<T> {
     }
 }
 
-/// Return Type for [`Curve::delta`](Curve::delta)
+/// Return Type for [`CurveDeltaIterator::collect_delta`]
 #[derive(Debug, PartialEq)]
 pub struct CurveDeltaResult<
     P: CurveType,
@@ -258,7 +258,7 @@ where
     ///
     /// Won't terminate if `CurveDelaIterator` is infinite as it will try to consume the complete iterator
     ///
-    pub fn collect<R: CurveType<WindowKind = Overlap<SW, DW>>>(
+    pub fn collect_delta<R: CurveType<WindowKind = Overlap<SW, DW>>>(
         self,
     ) -> CurveDeltaResult<SI::CurveKind, DI::CurveKind, R>
     where

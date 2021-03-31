@@ -38,6 +38,9 @@ impl<S, D, SI, DI> Delta<S, D, SI, DI> {
     }
 }
 
+/// Iterator Adapter for filtering a `CurveDeltaIterator` into only the remaining supply
+///
+/// See [`CurveDeltaIterator::remaining_supply`]
 #[derive(Debug)]
 pub struct RemainingSupplyIterator<S, D, SI, DI> {
     delta: Option<CurveDeltaIterator<D, S, DI, SI>>,

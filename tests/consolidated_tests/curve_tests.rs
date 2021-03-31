@@ -69,7 +69,7 @@ fn delta_curves() {
         ])
     };
 
-    let result = CurveDeltaIterator::new(c_p.into_iter(), c_q.into_iter()).collect();
+    let result = CurveDeltaIterator::new(c_p.into_iter(), c_q.into_iter()).collect_delta();
     assert_eq!(result.remaining_supply, expected_remaining_supply);
     assert_eq!(result.overlap, expected_overlap);
     assert!(
