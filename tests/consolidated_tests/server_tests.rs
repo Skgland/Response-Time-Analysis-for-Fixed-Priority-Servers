@@ -31,5 +31,5 @@ fn deferrable_server() {
         ])
     };
 
-    assert!(expected_result.eq_curve_iterator(result));
+    crate::util::assert_curve_eq(&expected_result, result);
 }

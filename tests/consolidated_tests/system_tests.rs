@@ -34,7 +34,7 @@ fn unconstrained_curve() {
         ])
     };
 
-    assert!(expected_aggregated_result.eq_curve_iterator(aggregated_result));
+    crate::util::assert_curve_eq(&expected_aggregated_result, aggregated_result);
 
     let unconstrained_result = system.unconstrained_server_execution_curve_iter(1, up_to);
 
@@ -103,10 +103,7 @@ fn executive_curve() {
         ])
     };
 
-    assert!(
-        expected_uc_execution.eq_curve_iterator(uc_execution_result),
-        "Unconstrained Execution Supply Curve"
-    );
+    crate::util::assert_curve_eq(&expected_uc_execution, uc_execution_result);
 
     // Constrained demand curve
 
@@ -120,10 +117,7 @@ fn executive_curve() {
         ])
     };
 
-    assert!(
-        expected_demand.eq_curve_iterator(demand_result),
-        "Constrained demand Curve"
-    );
+    crate::util::assert_curve_eq(&expected_demand, demand_result);
 
     let c_execution_result = system.actual_execution_curve_iter(1, up_to);
 
@@ -135,10 +129,7 @@ fn executive_curve() {
         ])
     };
 
-    assert!(
-        expected_c_execution.eq_curve_iterator(c_execution_result),
-        "Constrained Execution Curve"
-    );
+    crate::util::assert_curve_eq(&expected_c_execution, c_execution_result);
 }
 
 #[test]
@@ -177,7 +168,7 @@ fn response_time() {
         ])
     };
 
-    assert!(expected.eq_curve_iterator(c_s2));
+    crate::util::assert_curve_eq(&expected, c_s2);
 
     let t2_demand = Task::demand_curve_iter(
         &servers[server_index].as_tasks()[task_index],
@@ -193,7 +184,7 @@ fn response_time() {
         ])
     };
 
-    assert!(expected.eq_curve_iterator(t2_demand));
+    crate::util::assert_curve_eq(&expected, t2_demand);
 
     let t2_available =
         Task::actual_execution_curve_iter(&system, server_index, task_index, TimeUnit::from(16));
@@ -207,7 +198,7 @@ fn response_time() {
         ])
     };
 
-    assert!(expected.eq_curve_iterator(t2_available));
+    crate::util::assert_curve_eq(&expected, t2_available);
 
     let swh = system.system_wide_hyper_periode(server_index);
 
@@ -246,14 +237,14 @@ fn comparison() {
     let expected_t2_d =
         unsafe { Curve::from_windows_unchecked(vec![Window::new(0, 3), Window::new(10, 13)]) };
 
-    assert!(expected_t2_d.eq_curve_iterator(t2_d));
+    crate::util::assert_curve_eq(&expected_t2_d, t2_d);
 
     let t3_d = servers[1].as_tasks()[1].demand_curve_iter(up_to);
 
     let expected_t3_d =
         unsafe { Curve::from_windows_unchecked(vec![Window::new(0, 1), Window::new(10, 11)]) };
 
-    assert!(expected_t3_d.eq_curve_iterator(t3_d));
+    crate::util::assert_curve_eq(&expected_t3_d, t3_d);
 
     let s2_aggregated_demand = servers[1].aggregated_demand_curve_iter(up_to);
     let s2_constrained_demand = servers[1].constraint_demand_curve_iter(up_to);
@@ -261,10 +252,9 @@ fn comparison() {
     let expected_s2_demand =
         unsafe { Curve::from_windows_unchecked(vec![Window::new(0, 4), Window::new(10, 14)]) };
 
-    assert!(expected_s2_demand.eq_curve_iterator(s2_aggregated_demand));
-    assert!(expected_s2_demand
-        .reclassify()
-        .eq_curve_iterator(s2_constrained_demand));
+    crate::util::assert_curve_eq(&expected_s2_demand, s2_aggregated_demand);
+
+    crate::util::assert_curve_eq(&expected_s2_demand.reclassify(), s2_constrained_demand);
 
     let s2_unconstrained_execution = system.unconstrained_server_execution_curve_iter(1, up_to);
 
@@ -278,19 +268,16 @@ fn comparison() {
     let expected_s2_unconstrained_execution =
         unsafe { Curve::from_windows_unchecked(vec![Window::new(4, 10), Window::new(14, 20)]) };
 
-    if !expected_s2_unconstrained_execution.eq_curve_iterator(s2_unconstrained_execution.clone()) {
-        panic!(
-            "Expected: {:?} \n Got: {:?}",
-            expected_s2_unconstrained_execution,
-            s2_unconstrained_execution.collect_curve::<Curve<_>>()
-        )
-    }
+    crate::util::assert_curve_eq(
+        &expected_s2_unconstrained_execution,
+        s2_unconstrained_execution,
+    );
 
     let s2_constrained_execution = system.actual_execution_curve_iter(1, up_to);
     let expected_s2_constrained_execution =
         unsafe { Curve::from_windows_unchecked(vec![Window::new(4, 8), Window::new(14, 18)]) };
 
-    assert!(expected_s2_constrained_execution.eq_curve_iterator(s2_constrained_execution));
+    crate::util::assert_curve_eq(&expected_s2_constrained_execution, s2_constrained_execution);
 
     let t2_execution = Task::actual_execution_curve_iter(&system, 1, 0, up_to).collect_curve();
 

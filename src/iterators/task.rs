@@ -4,7 +4,7 @@ use crate::curve::curve_types::CurveType;
 use crate::iterators::CurveIterator;
 use crate::task::curve_types::TaskDemand;
 use crate::task::Task;
-use crate::time::UnitNumber;
+use crate::time::{TimeUnit, UnitNumber};
 use crate::window::{Demand, Window};
 
 /// `CurveIterator` for a Tasks Demand
@@ -34,17 +34,14 @@ impl Iterator for TaskDemandIterator<'_> {
     type Item = Window<<TaskDemand as CurveType>::WindowKind>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.next_job == UnitNumber::MAX {
-            // prevent overflow of self.next_job
-            eprintln!("Task reached overflow! {:?}", self.task);
-            None
-        } else {
-            // TODO this will overflow before self.next_job
-            // unless interval is 1 and offset 0
-            let start = self.task.offset + self.next_job * self.task.interval;
-            let end = start + self.task.demand;
-            self.next_job += 1;
-            Some(Window::new(start, end))
-        }
+        // using checked arithmetic to stop on overflow
+        let start = self
+            .task
+            .offset
+            .as_unit()
+            .checked_add(self.next_job.checked_mul(self.task.interval.as_unit())?)?;
+        let end = UnitNumber::checked_add(start, self.task.demand.as_unit())?;
+        self.next_job = self.next_job.checked_add(1)?;
+        Some(Window::new(TimeUnit::from(start), TimeUnit::from(end)))
     }
 }

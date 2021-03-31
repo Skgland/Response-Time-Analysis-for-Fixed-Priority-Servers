@@ -142,7 +142,7 @@ where
                             .as_ref()
                             .map_or(group_index, |spill| spill.start / self.server.interval)) =>
                 {
-                    // Handle only next_group or spill into next_group
+                    // Handle next_group and potentially some spill into next_group
                     let curve = if let Some(spill) = spill {
                         AggregatedDemandIterator::new(
                             next_group.into_iter(),

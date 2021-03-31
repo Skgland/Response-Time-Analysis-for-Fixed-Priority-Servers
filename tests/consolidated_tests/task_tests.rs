@@ -26,7 +26,7 @@ fn demand_curve() {
         ])
     };
 
-    assert!(expected_c_2.eq_curve_iterator(c_2));
+    crate::util::assert_curve_eq(&expected_c_2, c_2);
 
     let c_3 = t_3.demand_curve_iter(up_to);
 
@@ -38,7 +38,7 @@ fn demand_curve() {
         ])
     };
 
-    assert!(expected_c_3.eq_curve_iterator(c_3));
+    crate::util::assert_curve_eq(&expected_c_3, c_3);
 }
 
 #[test]

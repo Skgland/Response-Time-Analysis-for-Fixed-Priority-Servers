@@ -28,7 +28,7 @@ fn aggregate_curves() {
 
     let result = AggregatedDemandIterator::new(c1.into_iter(), c2.into_iter());
 
-    assert!(c3.eq_curve_iterator(result));
+    crate::util::assert_curve_eq(&c3, result);
 }
 
 #[test]

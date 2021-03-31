@@ -60,6 +60,10 @@ impl TimeUnit {
     pub const fn lcm(self, other: Self) -> Self {
         TimeUnit(util::lcm(self.0, other.0))
     }
+
+    pub const fn as_unit(&self) -> UnitNumber {
+        self.0
+    }
 }
 
 impl From<UnitNumber> for TimeUnit {
