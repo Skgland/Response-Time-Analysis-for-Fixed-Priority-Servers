@@ -15,8 +15,8 @@ use crate::window::{Demand, Window};
 ///
 /// Calculate the Constrained Execution Curve using Algorithm 4. from the paper
 ///
-/// For the server with priority `server_index` calculate th actual execution
-/// given the unconstrained execution and the constrained demand
+/// For a server and its unconstrained execution curve as well as its constrained demand calculate th actual execution
+///
 #[derive(Debug, Clone)]
 pub struct ActualServerExecutionIterator<'a, AC, DC> {
     /// internal Iterator
@@ -29,14 +29,11 @@ pub struct ActualServerExecutionIterator<'a, AC, DC> {
 
 impl<'a, AC, DC> ActualServerExecutionIterator<'a, AC, DC> {
     /// Create a new `ActualExecutionIterator`
-    /// for the server with priority `server_index`
-    /// its `available_execution` and its `constrained_demand`
-    pub fn new(
-        servers: &'a [Server],
-        server_index: usize,
-        available_execution: AC,
-        constrained_demand: DC,
-    ) -> Self
+    /// for the server and its `available_execution` as well as its `constrained_demand`
+    ///
+    /// Takes a reference to a Server, the Servers constrained execution curve and the Servers constrained demand curve
+    ///
+    pub fn new(server: &'a Server, available_execution: AC, constrained_demand: DC) -> Self
     where
         AC: CurveIterator<
             <UnconstrainedServerExecution as CurveType>::WindowKind,
@@ -47,12 +44,8 @@ impl<'a, AC, DC> ActualServerExecutionIterator<'a, AC, DC> {
             CurveKind = ConstrainedServerDemand,
         >,
     {
-        let inner = InternalActualExecutionIterator::new(
-            servers,
-            server_index,
-            available_execution,
-            constrained_demand,
-        );
+        let inner =
+            InternalActualExecutionIterator::new(server, available_execution, constrained_demand);
         let outer = unsafe {
             // Safety:
             // `InternalActualExecutionIterator` guarantees that the windows are in order and
@@ -151,21 +144,15 @@ impl<'a, AC: Clone, CDC: Clone> Clone for InternalActualExecutionIterator<'a, AC
 
 impl<'a, AC, CDC> InternalActualExecutionIterator<'a, AC, CDC> {
     /// Create a new `ActualExecutionIterator`
+    /// Takes a reference to a Server, the Servers constrained execution curve and the Servers constrained demand curve
     #[must_use]
-    pub fn new(
-        servers: &'a [Server],
-        server_index: usize,
-        available_execution: AC,
-        constrained_demand: CDC,
-    ) -> Self
+    pub fn new(server: &'a Server, available_execution: AC, constrained_demand: CDC) -> Self
     where
         AC: CurveIterator<
             <UnconstrainedServerExecution as CurveType>::WindowKind,
             CurveKind = UnconstrainedServerExecution,
         >,
     {
-        let server = &servers[server_index];
-
         // Algorithm 4. (1)
         let split_execution = CurveSplitIterator::new(available_execution, server.interval)
             .flat_map((|(_, curve)| curve) as fn(_) -> _);

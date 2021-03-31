@@ -141,8 +141,7 @@ impl<'a> System<'a> {
         let constrained_demand = self.servers[server_index].constraint_demand_curve_iter(up_to);
 
         ActualServerExecutionIterator::new(
-            self.servers,
-            server_index,
+            &self.servers[server_index],
             unconstrained_execution,
             constrained_demand,
         )
