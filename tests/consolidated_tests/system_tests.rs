@@ -4,7 +4,7 @@ use rta_for_fps::server::{
     ActualServerExecution, AvailableServerExecution, HigherPriorityServerDemand, Server, ServerKind,
 };
 use rta_for_fps::system::System;
-use rta_for_fps::task::{Task, TaskDemand};
+use rta_for_fps::task::{ActualTaskExecution, Task, TaskDemand};
 use rta_for_fps::time::TimeUnit;
 use rta_for_fps::window::Window;
 
@@ -198,8 +198,9 @@ fn response_time() {
 
     assert_eq!(t2_demand, expected);
 
-    let t2_available =
-        Task::actual_execution_curve(&system, server_index, task_index, TimeUnit::from(16));
+    let t2_available: Curve<ActualTaskExecution> =
+        Task::actual_execution_curve_iter(&system, server_index, task_index, TimeUnit::from(16))
+            .collect_curve();
 
     let expected = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -295,7 +296,7 @@ fn comparison() {
 
     assert_eq!(s2_constrained_execution, expected_s2_constrained_execution);
 
-    let t2_execution = Task::actual_execution_curve(&system, 1, 0, up_to);
+    let t2_execution = Task::actual_execution_curve_iter(&system, 1, 0, up_to).collect_curve();
 
     let expected_t2_execution =
         unsafe { Curve::from_windows_unchecked(vec![Window::new(4, 7), Window::new(14, 17)]) };

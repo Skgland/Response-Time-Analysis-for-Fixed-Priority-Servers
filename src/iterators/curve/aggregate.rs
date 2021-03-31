@@ -63,7 +63,7 @@ where
 {
 }
 
-impl<'a, C, I1, I2> Iterator for AggregatedDemandIterator<C, I1, I2>
+impl<C, I1, I2> Iterator for AggregatedDemandIterator<C, I1, I2>
 where
     C: CurveType<WindowKind = Demand>,
     I1: CurveIterator<C>,
@@ -137,7 +137,7 @@ where
     }
 }
 
-impl<'a, C, I1, I2> FusedIterator for AggregatedDemandIterator<C, I1, I2>
+impl<C, I1, I2> FusedIterator for AggregatedDemandIterator<C, I1, I2>
 where
     Self: Iterator,
     C: CurveType<WindowKind = Demand>,
@@ -159,7 +159,6 @@ where
     fn aggregate<I>(iter: I) -> Self
     where
         I: Iterator<Item = CI>,
-        I::Item: 'a,
     {
         iter.fold(
             AggregatedDemandIterator::new(Box::new(Empty::default()), Box::new(Empty::default())),

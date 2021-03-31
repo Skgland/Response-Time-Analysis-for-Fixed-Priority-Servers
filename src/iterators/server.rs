@@ -105,8 +105,8 @@ impl<'a, I: CurveIterator<AggregatedServerDemand>> InternalConstrainedServerDema
     }
 }
 
-impl<'a, I: CurveIterator<AggregatedServerDemand>> FusedIterator
-    for InternalConstrainedServerDemandIterator<'a, I>
+impl<I: CurveIterator<AggregatedServerDemand>> FusedIterator
+    for InternalConstrainedServerDemandIterator<'_, I>
 where
     CurveSplitIterator<
         <AggregatedServerDemand as CurveType>::WindowKind,
@@ -116,7 +116,7 @@ where
 {
 }
 
-impl<'a, I> Iterator for InternalConstrainedServerDemandIterator<'a, I>
+impl<I> Iterator for InternalConstrainedServerDemandIterator<'_, I>
 where
     I: CurveIterator<AggregatedServerDemand>,
 {
@@ -257,15 +257,14 @@ impl<'a, AC, DC> ActualExecutionIterator<'a, AC, DC> {
     }
 }
 
-impl<'a, AC: 'a, DC: 'a> CurveIterator<ActualServerExecution>
-    for ActualExecutionIterator<'a, AC, DC>
+impl<AC, DC> CurveIterator<ActualServerExecution> for ActualExecutionIterator<'_, AC, DC>
 where
     AC: CurveIterator<AvailableServerExecution>,
     DC: CurveIterator<ConstrainedServerDemand>,
 {
 }
 
-impl<'a, AC, DC> FusedIterator for ActualExecutionIterator<'a, AC, DC>
+impl<AC, DC> FusedIterator for ActualExecutionIterator<'_, AC, DC>
 where
     Self: Iterator,
     AC: FusedIterator,
@@ -273,7 +272,7 @@ where
 {
 }
 
-impl<'a, AC, DC> Iterator for ActualExecutionIterator<'a, AC, DC>
+impl<AC, DC> Iterator for ActualExecutionIterator<'_, AC, DC>
 where
     AC: CurveIterator<AvailableServerExecution>,
     DC: CurveIterator<ConstrainedServerDemand>,
@@ -287,7 +286,7 @@ where
 
 /// type alias for the type used in `InternalActualExecutionIterator`
 /// for easier naming
-type FlattenedSplitAvailableSupply<'a, AC> = FlatMap<
+type FlattenedSplitAvailableSupply<AC> = FlatMap<
     CurveSplitIterator<
         <AvailableServerExecution as CurveType>::WindowKind,
         AvailableServerExecution,
@@ -306,7 +305,7 @@ pub struct InternalActualExecutionIterator<'a, AC, CDC> {
     /// the server for which to calculate the actual execution
     server: &'a Server,
     /// the remaining available execution
-    available_execution: FlattenedSplitAvailableSupply<'a, AC>,
+    available_execution: FlattenedSplitAvailableSupply<AC>,
     /// the peek of the remaining available execution that is not yet consumed
     execution_peek: VecDeque<Window<<AvailableServerExecution as CurveType>::WindowKind>>,
     /// the group spend_budget is referring to
@@ -364,15 +363,15 @@ impl<'a, AC, CDC> InternalActualExecutionIterator<'a, AC, CDC> {
     }
 }
 
-impl<'a, AC, CDC> FusedIterator for InternalActualExecutionIterator<'a, AC, CDC>
+impl<AC, CDC> FusedIterator for InternalActualExecutionIterator<'_, AC, CDC>
 where
     Self: Iterator,
-    FlattenedSplitAvailableSupply<'a, AC>: FusedIterator,
+    FlattenedSplitAvailableSupply<AC>: FusedIterator,
     CDC: FusedIterator,
 {
 }
 
-impl<'a, AC, CDC> Iterator for InternalActualExecutionIterator<'a, AC, CDC>
+impl<AC, CDC> Iterator for InternalActualExecutionIterator<'_, AC, CDC>
 where
     AC: CurveIterator<AvailableServerExecution>,
     CDC: CurveIterator<ConstrainedServerDemand>,

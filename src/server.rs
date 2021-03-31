@@ -78,10 +78,10 @@ impl Server {
 
     /// `CurveIterator` version of [`Self::aggregated_demand_curve`]
     #[must_use]
-    pub fn aggregated_demand_curve_iter<'a>(
-        &'a self,
+    pub fn aggregated_demand_curve_iter(
+        &self,
         up_to: TimeUnit,
-    ) -> impl CurveIterator<AggregatedServerDemand> + Clone + 'a {
+    ) -> impl CurveIterator<AggregatedServerDemand> + Clone + '_ {
         self.tasks
             .iter()
             .map(move |task| task.into_iter().take_while(Window::limit(up_to)))
@@ -98,10 +98,10 @@ impl Server {
 
     /// `CurveIterator` version of [`Self::constraint_demand_curve`]
     #[must_use]
-    pub fn constraint_demand_curve_iter<'a>(
-        &'a self,
+    pub fn constraint_demand_curve_iter(
+        &self,
         up_to: TimeUnit,
-    ) -> impl CurveIterator<ConstrainedServerDemand> + Clone + 'a {
+    ) -> impl CurveIterator<ConstrainedServerDemand> + Clone + '_ {
         ConstrainedServerDemandIterator::new(self, self.aggregated_demand_curve_iter(up_to))
     }
 }

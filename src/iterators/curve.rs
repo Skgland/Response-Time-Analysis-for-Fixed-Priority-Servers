@@ -56,7 +56,7 @@ pub trait CollectCurveExt<C: CurveType>: CurveIterator<C> + Sized {
     }
 }
 
-impl<'a, C: CurveType, CI: CurveIterator<C>> CollectCurveExt<C> for CI {}
+impl<C: CurveType, CI: CurveIterator<C>> CollectCurveExt<C> for CI {}
 
 /// `CurveIterator` for iterating a [`Curve`]
 #[derive(Debug)]
@@ -84,7 +84,7 @@ impl<C: CurveType> IntoIterator for Curve<C> {
     }
 }
 
-impl<'a, C: CurveType> CurveIterator<C> for CurveIter<C> {}
+impl<C: CurveType> CurveIterator<C> for CurveIter<C> {}
 
 impl<C: CurveType> FusedIterator for CurveIter<C> {}
 
@@ -122,9 +122,9 @@ where
 {
 }
 
-impl<'a, I> FusedIterator for IterCurveWrapper<I> where I: FusedIterator {}
+impl<I> FusedIterator for IterCurveWrapper<I> where I: FusedIterator {}
 
-impl<'a, I: Iterator> Iterator for IterCurveWrapper<I> {
+impl<I: Iterator> Iterator for IterCurveWrapper<I> {
     type Item = I::Item;
 
     fn next(&mut self) -> Option<Self::Item> {

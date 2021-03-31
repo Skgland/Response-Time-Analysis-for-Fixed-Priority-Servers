@@ -117,7 +117,7 @@ impl<DC: CurveType, SC: CurveType, DI: CurveIterator<DC>, SI: CurveIterator<SC>>
     }
 }
 
-impl<'a, DC, SC, DI, SI> FusedIterator for CurveDeltaIterator<DC, SC, DI, SI>
+impl<DC, SC, DI, SI> FusedIterator for CurveDeltaIterator<DC, SC, DI, SI>
 where
     Self: Iterator,
     DI: FusedIterator,
@@ -127,7 +127,7 @@ where
 {
 }
 
-impl<'a, DC, SC, DI, SI> Iterator for CurveDeltaIterator<DC, SC, DI, SI>
+impl<DC, SC, DI, SI> Iterator for CurveDeltaIterator<DC, SC, DI, SI>
 where
     DC: CurveType,
     SC: CurveType,

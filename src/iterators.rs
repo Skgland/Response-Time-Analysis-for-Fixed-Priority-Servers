@@ -46,7 +46,7 @@ pub struct ReclassifyIterator<I, C> {
     phantom: PhantomData<C>,
 }
 
-impl<'a, I: Clone, C> Clone for ReclassifyIterator<I, C> {
+impl<I: Clone, C> Clone for ReclassifyIterator<I, C> {
     fn clone(&self) -> Self {
         ReclassifyIterator {
             iter: self.iter.clone(),
@@ -55,11 +55,11 @@ impl<'a, I: Clone, C> Clone for ReclassifyIterator<I, C> {
     }
 }
 
-impl<'a, I, O, C> CurveIterator<O> for ReclassifyIterator<I, C>
+impl<I, O, C> CurveIterator<O> for ReclassifyIterator<I, C>
 where
-    I: CurveIterator<C> + 'a,
-    O: CurveType + 'a,
-    C: CurveType<WindowKind = O::WindowKind> + 'a,
+    I: CurveIterator<C>,
+    O: CurveType,
+    C: CurveType<WindowKind = O::WindowKind>,
 {
 }
 
@@ -78,6 +78,7 @@ where
 
 /// A trait to allow the Cloning of Boxed dyn `CurveIterator`s
 pub trait DynBoxCurveClone<'a, C: CurveType>: CurveIterator<C> {
+    /// get a clone inside a box
     fn box_clone(&self) -> Box<dyn CurveIterator<C> + 'a>;
 }
 
@@ -109,7 +110,7 @@ impl<C> CurveIterator<C> for Empty<Window<C::WindowKind>> where C: CurveType {}
 
 impl<'a, C> CurveIterator<C> for Box<dyn CurveIterator<C> + 'a> where C: CurveType {}
 
-impl<'a, C: CurveType, CI> CurveIterator<C> for Fuse<CI> where CI: CurveIterator<C> {}
+impl<C: CurveType, CI> CurveIterator<C> for Fuse<CI> where CI: CurveIterator<C> {}
 
 impl<C, P, I> CurveIterator<C> for TakeWhile<I, P>
 where
@@ -169,9 +170,9 @@ where
 {
 }
 
-impl<'a, W, C, I> FusedIterator for JoinAdjacentIterator<I, W, C> where Self: Iterator {}
+impl<W, C, I> FusedIterator for JoinAdjacentIterator<I, W, C> where Self: Iterator {}
 
-impl<'a, W, C, I> Iterator for JoinAdjacentIterator<I, W, C>
+impl<W, C, I> Iterator for JoinAdjacentIterator<I, W, C>
 where
     W: WindowType,
     I: Iterator<Item = Window<W>>,

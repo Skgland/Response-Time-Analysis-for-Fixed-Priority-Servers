@@ -40,7 +40,8 @@ fn remarks() {
     let task = &servers[server_index].as_tasks()[task_index];
     let j = 24;
     let arrival = task.job_arrival(j - 1);
-    let execution = Task::actual_execution_curve(&system, server_index, task_index, swh);
+    let execution =
+        Task::actual_execution_curve_iter(&system, server_index, task_index, swh).collect_curve();
 
     assert_eq!(arrival, TimeUnit::from(4600 * 2));
 

@@ -66,21 +66,21 @@ impl Task {
     ///
     /// Based on Definition 10. of the paper
     #[must_use]
-    pub fn demand_curve_iter<'a>(
-        &'a self,
+    pub fn demand_curve_iter(
+        &self,
         up_to: TimeUnit,
-    ) -> impl CurveIterator<TaskDemand> + Clone + 'a {
+    ) -> impl CurveIterator<TaskDemand> + Clone + '_ {
         self.into_iter().take_while(Window::limit(up_to))
     }
 
     /// calculate the Higher Priority task Demand for the task with priority `index` as defined in Definition 14. (1) in the paper,
     /// for a set of tasks indexed by their priority (lower index <=> higher priority) and up to the specified limit
     #[must_use]
-    pub fn higher_priority_task_demand_iter<'a>(
-        tasks: &'a [Self],
+    pub fn higher_priority_task_demand_iter(
+        tasks: &[Self],
         index: usize,
         up_to: TimeUnit,
-    ) -> impl CurveIterator<HigherPriorityTaskDemand> + Clone + 'a {
+    ) -> impl CurveIterator<HigherPriorityTaskDemand> + Clone + '_ {
         tasks[..index]
             .iter()
             .map(move |task| task.demand_curve_iter(up_to))
@@ -114,25 +114,6 @@ impl Task {
         );
 
         delta.remaining_supply::<UnspecifiedCurve<_>>().reclassify()
-    }
-
-    #[must_use]
-    pub fn actual_execution_curve(
-        system: &System,
-        server_index: usize,
-        task_index: usize,
-        up_to: TimeUnit,
-    ) -> Curve<ActualTaskExecution> {
-        let available_execution_curve =
-            Task::available_execution_curve_impl(system, server_index, task_index, up_to);
-        let task_demand_curve =
-            system.as_servers()[server_index].as_tasks()[task_index].demand_curve_iter(up_to);
-        let overlap: Curve<_> =
-            CurveDeltaIterator::new(available_execution_curve, task_demand_curve)
-                .overlap::<ActualTaskExecution>()
-                .collect_curve();
-
-        overlap
     }
 
     /// Calculate the actual execution Curve for the Task with priority `task_index` of the Server with priority `server_index`
