@@ -17,21 +17,21 @@ use crate::window::Window;
 #[derive(Debug)]
 pub struct System<'a> {
     /// The Servers of the System
-    servers: &'a [Server],
+    servers: &'a [Server<'a>],
 }
 
-impl System<'_> {
+impl<'a> System<'a> {
     /// Create a new System from a slice of Servers,
     /// indexed by their priority,
     /// lowest index being the highest priority
     #[must_use]
-    pub const fn new(servers: &[Server]) -> System {
+    pub const fn new(servers: &'a [Server<'a>]) -> System<'a> {
         System { servers }
     }
 
     /// Get a slice reference to the systems servers
     #[must_use]
-    pub const fn as_servers(&self) -> &[Server] {
+    pub const fn as_servers(&self) -> &'a [Server<'a>] {
         self.servers
     }
 

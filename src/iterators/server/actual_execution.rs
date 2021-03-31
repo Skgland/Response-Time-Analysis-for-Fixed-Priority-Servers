@@ -119,7 +119,7 @@ type FlattenedSplitAvailableSupply<AC> = FlatMap<
 #[derive(Debug)]
 pub struct InternalActualExecutionIterator<'a, AC, CDC> {
     /// the server for which to calculate the actual execution
-    server: &'a Server,
+    server: &'a Server<'a>,
     /// the remaining available execution
     available_execution: FlattenedSplitAvailableSupply<AC>,
     /// the peek of the remaining available execution that is not yet consumed

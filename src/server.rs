@@ -39,10 +39,10 @@ pub struct ActualServerExecution;
 /// capacity is available only at the beginning of the interval
 /// or until it is used up
 #[derive(Debug)]
-pub struct Server {
+pub struct Server<'a> {
     /// The Tasks that produce Demand for this Server
     /// Sorted by priority with lower index equalling higher priority
-    pub tasks: Vec<Task>,
+    pub tasks: &'a [Task],
     /// The capacity for fulfilling Demand
     pub capacity: TimeUnit,
     /// How often the capacity is available
@@ -62,11 +62,11 @@ pub enum ServerKind {
     Periodic,
 }
 
-impl Server {
+impl<'a> Server<'a> {
     /// Get a a reference to a slice of the Servers contained Tasks
     #[must_use]
-    pub fn as_tasks(&self) -> &[Task] {
-        self.tasks.as_slice()
+    pub fn as_tasks(&self) -> &'a [Task] {
+        self.tasks
     }
 
     /// Calculate the aggregated demand Curve of a given Server up to a specified limit

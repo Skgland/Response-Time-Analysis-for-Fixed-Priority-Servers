@@ -77,7 +77,7 @@ where
 #[derive(Debug, Clone)]
 pub struct InternalConstrainedServerDemandIterator<'a, I> {
     /// The Server for which to calculate the constrained demand
-    server: &'a Server,
+    server: &'a Server<'a>,
     /// The remaining aggregated Demand of the Server
     groups: CurveSplitIterator<<AggregatedServerDemand as CurveType>::WindowKind, I>,
     /// The next group

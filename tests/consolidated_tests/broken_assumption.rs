@@ -18,13 +18,13 @@ fn remarks() {
 
     let servers = &[
         Server {
-            tasks: vec![Task::new(6, 22, 0)],
+            tasks: &[Task::new(6, 22, 0)],
             capacity: TimeUnit::from(3),
             interval: TimeUnit::from(10),
             server_type: ServerKind::Deferrable,
         },
         Server {
-            tasks: vec![Task::new(100, 400, 0)],
+            tasks: &[Task::new(100, 400, 0)],
             capacity: TimeUnit::from(2),
             interval: TimeUnit::from(6),
             server_type: ServerKind::Deferrable,
@@ -67,19 +67,19 @@ fn remarks() {
 fn example_too_high() {
     let servers = &[
         Server {
-            tasks: vec![Task::new(16, 48, 0)],
+            tasks: &[Task::new(16, 48, 0)],
             capacity: 12.into(),
             interval: 24.into(),
             server_type: ServerKind::Deferrable,
         },
         Server {
-            tasks: vec![Task::new(4, 12, 0)],
+            tasks: &[Task::new(4, 12, 0)],
             capacity: 6.into(),
             interval: 12.into(),
             server_type: ServerKind::Deferrable,
         },
         Server {
-            tasks: vec![Task::new(1, 24, 0)],
+            tasks: &[Task::new(1, 24, 0)],
             capacity: 1.into(),
             interval: 24.into(),
             server_type: ServerKind::Deferrable,
@@ -98,25 +98,25 @@ fn example_too_high() {
 fn example_too_low() {
     let servers = &[
         Server {
-            tasks: vec![Task::new(16, 48, 0)],
+            tasks: &[Task::new(16, 48, 0)],
             capacity: 12.into(),
             interval: 24.into(),
             server_type: ServerKind::Deferrable,
         },
         Server {
-            tasks: vec![Task::new(4, 12, 0)],
+            tasks: &[Task::new(4, 12, 0)],
             capacity: 6.into(),
             interval: 12.into(),
             server_type: ServerKind::Deferrable,
         },
         Server {
-            tasks: vec![Task::new(10, 48, 33)],
+            tasks: &[Task::new(10, 48, 33)],
             capacity: 10.into(),
             interval: 48.into(),
             server_type: ServerKind::Deferrable,
         },
         Server {
-            tasks: vec![Task::new(1, 24, 0)],
+            tasks: &[Task::new(1, 24, 0)],
             capacity: 1.into(),
             interval: 24.into(),
             server_type: ServerKind::Deferrable,
@@ -135,19 +135,19 @@ fn example_too_low() {
 fn execution_overlap_too_high() {
     let servers = &[
         Server {
-            tasks: vec![Task::new(16, 48, 0)],
+            tasks: &[Task::new(16, 48, 0)],
             capacity: 12.into(),
             interval: 24.into(),
             server_type: ServerKind::Deferrable,
         },
         Server {
-            tasks: vec![Task::new(4, 12, 0)],
+            tasks: &[Task::new(4, 12, 0)],
             capacity: 6.into(),
             interval: 12.into(),
             server_type: ServerKind::Deferrable,
         },
         Server {
-            tasks: vec![Task::new(1, 24, 0)],
+            tasks: &[Task::new(1, 24, 0)],
             capacity: 1.into(),
             interval: 24.into(),
             server_type: ServerKind::Deferrable,
@@ -192,25 +192,25 @@ fn execution_overlap_too_high() {
 fn execution_overlap_too_low() {
     let servers = &[
         Server {
-            tasks: vec![Task::new(16, 48, 0)],
+            tasks: &[Task::new(16, 48, 0)],
             capacity: 12.into(),
             interval: 24.into(),
             server_type: ServerKind::Deferrable,
         },
         Server {
-            tasks: vec![Task::new(4, 12, 0)],
+            tasks: &[Task::new(4, 12, 0)],
             capacity: 6.into(),
             interval: 12.into(),
             server_type: ServerKind::Deferrable,
         },
         Server {
-            tasks: vec![Task::new(10, 48, 33)],
+            tasks: &[Task::new(10, 48, 33)],
             capacity: 10.into(),
             interval: 48.into(),
             server_type: ServerKind::Deferrable,
         },
         Server {
-            tasks: vec![Task::new(1, 24, 0)],
+            tasks: &[Task::new(1, 24, 0)],
             capacity: 1.into(),
             interval: 24.into(),
             server_type: ServerKind::Deferrable,
