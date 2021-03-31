@@ -112,6 +112,7 @@ pub trait CurveIterator<W>
 where
     Self: Iterator<Item = Window<W>> + Debug,
 {
+    /// The type of the curve being iterated
     type CurveKind: CurveType<WindowKind = W>;
 }
 
