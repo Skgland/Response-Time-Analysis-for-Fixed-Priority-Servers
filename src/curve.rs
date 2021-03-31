@@ -58,7 +58,7 @@ impl<DC: CurveType, SC: CurveType, DI, SI> CurveDeltaIterator<DC, SC, DI, SI> {
     ///
     /// # Warning
     ///
-    /// Won't terminate of `CurveDelaIterator` if infinite as it will try to consume the complete iterator
+    /// Won't terminate if `CurveDelaIterator` is infinite as it will try to consume the complete iterator
     ///
     pub fn collect<R: CurveType<WindowKind = Overlap<SC::WindowKind, DC::WindowKind>>>(
         self,
