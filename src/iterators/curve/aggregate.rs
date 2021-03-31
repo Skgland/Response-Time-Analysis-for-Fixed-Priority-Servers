@@ -2,7 +2,7 @@ use std::iter::{Empty, Fuse, FusedIterator};
 
 use crate::curve::curve_types::CurveType;
 use crate::curve::Aggregate;
-use crate::iterators::CurveIterator;
+use crate::iterators::{CurveIterator, ReclassifyExt};
 use crate::window::{Demand, Window};
 
 /// Iterator for Aggregating two Curve Iterators
@@ -39,12 +39,14 @@ impl<C: CurveType<WindowKind = Demand>, I1: Clone, I2: Clone> Clone
     }
 }
 
-impl<C: CurveType<WindowKind = Demand>, I1: CurveIterator<C>, I2: CurveIterator<C>>
-    AggregatedDemandIterator<C, I1, I2>
+impl<I1, I2> AggregatedDemandIterator<I1::CurveKind, I1, I2>
+where
+    I1: CurveIterator<Demand>,
+    I2: CurveIterator<Demand, CurveKind = I1::CurveKind>,
 {
     /// Create aggregated `CurveIterator` for two `CurveIterator`s
     #[must_use]
-    pub fn new(curve1: I1, curve2: I2) -> AggregatedDemandIterator<C, I1, I2> {
+    pub fn new(curve1: I1, curve2: I2) -> AggregatedDemandIterator<I1::CurveKind, I1, I2> {
         AggregatedDemandIterator {
             curve1: curve1.fuse(),
             curve2: curve2.fuse(),
@@ -55,21 +57,20 @@ impl<C: CurveType<WindowKind = Demand>, I1: CurveIterator<C>, I2: CurveIterator<
     }
 }
 
-impl<C, I1, I2> CurveIterator<C> for AggregatedDemandIterator<C, I1, I2>
+impl<I1, I2> CurveIterator<Demand> for AggregatedDemandIterator<I1::CurveKind, I1, I2>
 where
-    C: CurveType<WindowKind = Demand>,
-    I1: CurveIterator<C>,
-    I2: CurveIterator<C>,
+    I1: CurveIterator<Demand>,
+    I2: CurveIterator<Demand, CurveKind = I1::CurveKind>,
 {
+    type CurveKind = I1::CurveKind;
 }
 
-impl<C, I1, I2> Iterator for AggregatedDemandIterator<C, I1, I2>
+impl<I1, I2> Iterator for AggregatedDemandIterator<I1::CurveKind, I1, I2>
 where
-    C: CurveType<WindowKind = Demand>,
-    I1: CurveIterator<C>,
-    I2: CurveIterator<C>,
+    I1: CurveIterator<Demand>,
+    I2: CurveIterator<Demand, CurveKind = I1::CurveKind>,
 {
-    type Item = Window<C::WindowKind>;
+    type Item = Window<<I1::CurveKind as CurveType>::WindowKind>;
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
@@ -148,20 +149,26 @@ where
 
 /// Type alias to make it easier to refer to the Self type of the below
 /// impl of Aggregate
-pub type RecursiveAggregatedDemandIterator<'a, C> =
-    AggregatedDemandIterator<C, Box<dyn CurveIterator<C> + 'a>, Box<dyn CurveIterator<C> + 'a>>;
+pub type RecursiveAggregatedDemandIterator<'a, C> = AggregatedDemandIterator<
+    C,
+    Box<dyn CurveIterator<Demand, CurveKind = C> + 'a>,
+    Box<dyn CurveIterator<Demand, CurveKind = C> + 'a>,
+>;
 
 impl<'a, C, CI> Aggregate<CI> for RecursiveAggregatedDemandIterator<'a, C>
 where
     C: CurveType<WindowKind = Demand> + 'a,
-    CI: CurveIterator<C> + 'a,
+    CI: CurveIterator<Demand, CurveKind = C> + 'a,
 {
     fn aggregate<I>(iter: I) -> Self
     where
         I: Iterator<Item = CI>,
     {
         iter.fold(
-            AggregatedDemandIterator::new(Box::new(Empty::default()), Box::new(Empty::default())),
+            AggregatedDemandIterator::new(
+                Box::new(Empty::default().reclassify()),
+                Box::new(Empty::default().reclassify()),
+            ),
             |acc, window| AggregatedDemandIterator::new(Box::new(acc), Box::new(window)),
         )
     }

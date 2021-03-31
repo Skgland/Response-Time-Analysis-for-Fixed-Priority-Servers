@@ -69,8 +69,12 @@ impl<DC: CurveType, SC: CurveType, DI: Clone, SI: Clone> Clone
     }
 }
 
-impl<DC: CurveType, SC: CurveType, DI: CurveIterator<DC>, SI: CurveIterator<SC>>
-    CurveDeltaIterator<DC, SC, DI, SI>
+impl<
+        DC: CurveType,
+        SC: CurveType,
+        DI: CurveIterator<DC::WindowKind, CurveKind = DC>,
+        SI: CurveIterator<SC::WindowKind, CurveKind = SC>,
+    > CurveDeltaIterator<DC, SC, DI, SI>
 {
     /// Create a new Iterator for computing the delta between the supply and demand curve
     pub fn new(supply: SI, demand: DI) -> Self {
@@ -85,7 +89,7 @@ impl<DC: CurveType, SC: CurveType, DI: CurveIterator<DC>, SI: CurveIterator<SC>>
     /// Turn the `CurveDeltaIterator` into a `CurveIterator` that returns only the Overlap Windows
     pub fn overlap<C: CurveType<WindowKind = Overlap<SC::WindowKind, DC::WindowKind>>>(
         self,
-    ) -> impl CurveIterator<C> + Clone
+    ) -> impl CurveIterator<C::WindowKind, CurveKind = C> + Clone
     where
         Self: Clone,
     {
@@ -100,9 +104,8 @@ impl<DC: CurveType, SC: CurveType, DI: CurveIterator<DC>, SI: CurveIterator<SC>>
     }
 
     /// Turn the `CurveDeltaIterator` into a `CurveIterator` that returns only the Remaining Supply Windows
-    pub fn remaining_supply<C>(self) -> impl CurveIterator<C> + Clone
+    pub fn remaining_supply(self) -> impl CurveIterator<SC::WindowKind, CurveKind = SC> + Clone
     where
-        C: CurveType<WindowKind = SC::WindowKind>,
         Self: Clone,
     {
         let inner = self.filter_map(Delta::remaining_supply);
@@ -131,8 +134,8 @@ impl<DC, SC, DI, SI> Iterator for CurveDeltaIterator<DC, SC, DI, SI>
 where
     DC: CurveType,
     SC: CurveType,
-    DI: CurveIterator<DC>,
-    SI: CurveIterator<SC>,
+    DI: CurveIterator<DC::WindowKind, CurveKind = DC>,
+    SI: CurveIterator<SC::WindowKind, CurveKind = SC>,
 {
     type Item = Delta<SC::WindowKind, DC::WindowKind>;
 

@@ -5,7 +5,7 @@ use crate::curve::AggregateExt;
 use crate::iterators::curve::RecursiveAggregatedDemandIterator;
 use crate::iterators::CurveIterator;
 use crate::task::{HigherPriorityTaskDemand, Task, TaskDemand};
-use crate::window::Window;
+use crate::window::{Demand, Window};
 
 /// `CurveIterator` for a Tasks Demand
 #[derive(Debug, Clone)]
@@ -24,7 +24,9 @@ impl<'a> TaskDemandIterator<'a> {
     }
 }
 
-impl<'a> CurveIterator<TaskDemand> for TaskDemandIterator<'a> {}
+impl<'a> CurveIterator<Demand> for TaskDemandIterator<'a> {
+    type CurveKind = TaskDemand;
+}
 
 impl FusedIterator for TaskDemandIterator<'_> {}
 
@@ -77,7 +79,11 @@ impl<'a> HigherPriorityTaskDemandIterator<'a> {
     }
 }
 
-impl<'a> CurveIterator<HigherPriorityTaskDemand> for HigherPriorityTaskDemandIterator<'a> {}
+impl<'a> CurveIterator<<HigherPriorityTaskDemand as CurveType>::WindowKind>
+    for HigherPriorityTaskDemandIterator<'a>
+{
+    type CurveKind = HigherPriorityTaskDemand;
+}
 
 impl<'a> FusedIterator for HigherPriorityTaskDemandIterator<'a>
 where

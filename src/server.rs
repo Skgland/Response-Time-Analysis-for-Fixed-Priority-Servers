@@ -8,7 +8,7 @@ use crate::iterators::server::ConstrainedServerDemandIterator;
 use crate::iterators::{CurveIterator, ReclassifyExt};
 use crate::task::Task;
 use crate::time::TimeUnit;
-use crate::window::Window;
+use crate::window::{Demand, Window};
 
 /// Marker Type for aggregated server demand curve
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
@@ -81,7 +81,7 @@ impl Server {
     pub fn aggregated_demand_curve_iter(
         &self,
         up_to: TimeUnit,
-    ) -> impl CurveIterator<AggregatedServerDemand> + Clone + '_ {
+    ) -> impl CurveIterator<Demand, CurveKind = AggregatedServerDemand> + Clone + '_ {
         self.tasks
             .iter()
             .map(move |task| task.into_iter().take_while(Window::limit(up_to)))
@@ -101,7 +101,7 @@ impl Server {
     pub fn constraint_demand_curve_iter(
         &self,
         up_to: TimeUnit,
-    ) -> impl CurveIterator<ConstrainedServerDemand> + Clone + '_ {
+    ) -> impl CurveIterator<Demand, CurveKind = ConstrainedServerDemand> + Clone + '_ {
         ConstrainedServerDemandIterator::new(self, self.aggregated_demand_curve_iter(up_to))
     }
 }

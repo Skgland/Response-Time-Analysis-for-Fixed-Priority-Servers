@@ -1,6 +1,6 @@
 //! Module for the Task definition
 
-use crate::curve::curve_types::UnspecifiedCurve;
+use crate::curve::curve_types::CurveType;
 use crate::curve::{AggregateExt, Curve};
 use crate::iterators::curve::{AggregatedDemandIterator, CollectCurveExt, CurveDeltaIterator};
 
@@ -69,7 +69,7 @@ impl Task {
     pub fn demand_curve_iter(
         &self,
         up_to: TimeUnit,
-    ) -> impl CurveIterator<TaskDemand> + Clone + '_ {
+    ) -> impl CurveIterator<Demand, CurveKind = TaskDemand> + Clone + '_ {
         self.into_iter().take_while(Window::limit(up_to))
     }
 
@@ -80,7 +80,11 @@ impl Task {
         tasks: &[Self],
         index: usize,
         up_to: TimeUnit,
-    ) -> impl CurveIterator<HigherPriorityTaskDemand> + Clone + '_ {
+    ) -> impl CurveIterator<
+        <HigherPriorityTaskDemand as CurveType>::WindowKind,
+        CurveKind = HigherPriorityTaskDemand,
+    > + Clone
+           + '_ {
         tasks[..index]
             .iter()
             .map(move |task| task.demand_curve_iter(up_to))
@@ -98,7 +102,11 @@ impl Task {
         server_index: usize,
         task_index: usize,
         up_to: TimeUnit,
-    ) -> impl CurveIterator<AvailableTaskExecution> + Clone + 'a {
+    ) -> impl CurveIterator<
+        <AvailableTaskExecution as CurveType>::WindowKind,
+        CurveKind = AvailableTaskExecution,
+    > + Clone
+           + 'a {
         let constrained_server_execution_curve =
             system.actual_execution_curve_iter(server_index, up_to);
 
@@ -113,7 +121,9 @@ impl Task {
             higher_priority_task_demand,
         );
 
-        delta.remaining_supply::<UnspecifiedCurve<_>>().reclassify()
+        delta
+            .remaining_supply()
+            .reclassify::<AvailableTaskExecution>()
     }
 
     /// Calculate the actual execution Curve for the Task with priority `task_index` of the Server with priority `server_index`
@@ -126,7 +136,11 @@ impl Task {
         server_index: usize,
         task_index: usize,
         up_to: TimeUnit,
-    ) -> impl CurveIterator<ActualTaskExecution> + Clone + 'a {
+    ) -> impl CurveIterator<
+        <ActualTaskExecution as CurveType>::WindowKind,
+        CurveKind = ActualTaskExecution,
+    > + Clone
+           + 'a {
         let available_execution_curve =
             Task::available_execution_curve_impl(system, server_index, task_index, up_to);
         let task_demand_curve =

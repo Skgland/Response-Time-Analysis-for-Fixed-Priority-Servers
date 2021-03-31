@@ -6,6 +6,7 @@ use crate::server::{
     ActualServerExecution, AggregatedServerDemand, AvailableServerExecution,
     ConstrainedServerDemand, Server,
 };
+
 use crate::time::TimeUnit;
 use crate::window::{Demand, Window};
 use std::collections::VecDeque;
@@ -23,7 +24,10 @@ pub struct ConstrainedServerDemandIterator<'a, I> {
     >,
 }
 
-impl<'a, I: CurveIterator<AggregatedServerDemand>> ConstrainedServerDemandIterator<'a, I> {
+impl<'a, I> ConstrainedServerDemandIterator<'a, I>
+where
+    I: CurveIterator<Demand, CurveKind = AggregatedServerDemand>,
+{
     /// Create a new `ConstrainedServerDemandIterator`
     pub fn new(server: &'a Server, aggregated_demand: I) -> Self {
         let internal = InternalConstrainedServerDemandIterator::new(server, aggregated_demand);
@@ -37,9 +41,12 @@ impl<'a, I: CurveIterator<AggregatedServerDemand>> ConstrainedServerDemandIterat
     }
 }
 
-impl<'a, I> CurveIterator<ConstrainedServerDemand> for ConstrainedServerDemandIterator<'a, I> where
-    I: CurveIterator<AggregatedServerDemand>
+impl<'a, I> CurveIterator<<ConstrainedServerDemand as CurveType>::WindowKind>
+    for ConstrainedServerDemandIterator<'a, I>
+where
+    I: CurveIterator<Demand, CurveKind = AggregatedServerDemand>,
 {
+    type CurveKind = ConstrainedServerDemand;
 }
 
 impl<'a, I> FusedIterator for ConstrainedServerDemandIterator<'a, I>
@@ -55,7 +62,7 @@ where
 
 impl<'a, I> Iterator for ConstrainedServerDemandIterator<'a, I>
 where
-    I: CurveIterator<AggregatedServerDemand>,
+    I: CurveIterator<Demand, CurveKind = AggregatedServerDemand>,
 {
     type Item = I::Item;
 
@@ -89,7 +96,13 @@ pub struct InternalConstrainedServerDemandIterator<'a, I> {
     remainder: VecDeque<Window<<ConstrainedServerDemand as CurveType>::WindowKind>>,
 }
 
-impl<'a, I: CurveIterator<AggregatedServerDemand>> InternalConstrainedServerDemandIterator<'a, I> {
+impl<'a, I> InternalConstrainedServerDemandIterator<'a, I>
+where
+    I: CurveIterator<
+        <AggregatedServerDemand as CurveType>::WindowKind,
+        CurveKind = AggregatedServerDemand,
+    >,
+{
     /// Create a new `InternalConstrainedServerDemandIterator`
     /// the main part for calculating the Constraint Server Demand Curve
     pub fn new(server: &'a Server, aggregated_demand: I) -> Self {
@@ -108,6 +121,7 @@ impl<'a, I: CurveIterator<AggregatedServerDemand>> InternalConstrainedServerDema
 impl<I: CurveIterator<AggregatedServerDemand>> FusedIterator
     for InternalConstrainedServerDemandIterator<'_, I>
 where
+    Self: Iterator,
     CurveSplitIterator<
         <AggregatedServerDemand as CurveType>::WindowKind,
         AggregatedServerDemand,
@@ -118,7 +132,7 @@ where
 
 impl<I> Iterator for InternalConstrainedServerDemandIterator<'_, I>
 where
-    I: CurveIterator<AggregatedServerDemand>,
+    I: CurveIterator<Demand, CurveKind = AggregatedServerDemand>,
 {
     type Item = Window<<ConstrainedServerDemand as CurveType>::WindowKind>;
 
@@ -218,7 +232,7 @@ where
 /// For the server with priority `server_index` calculate th actual execution
 /// given the unconstrained execution and the constrained demand
 #[derive(Debug, Clone)]
-pub struct ActualExecutionIterator<'a, AC, DC> {
+pub struct ActualServerExecutionIterator<'a, AC, DC> {
     /// internal Iterator
     iter: JoinAdjacentIterator<
         InternalActualExecutionIterator<'a, AC, DC>,
@@ -227,7 +241,7 @@ pub struct ActualExecutionIterator<'a, AC, DC> {
     >,
 }
 
-impl<'a, AC, DC> ActualExecutionIterator<'a, AC, DC> {
+impl<'a, AC, DC> ActualServerExecutionIterator<'a, AC, DC> {
     /// Create a new `ActualExecutionIterator`
     /// for the server with priority `server_index`
     /// its `available_execution` and its `constrained_demand`
@@ -238,8 +252,14 @@ impl<'a, AC, DC> ActualExecutionIterator<'a, AC, DC> {
         constrained_demand: DC,
     ) -> Self
     where
-        AC: CurveIterator<AvailableServerExecution>,
-        DC: CurveIterator<ConstrainedServerDemand>,
+        AC: CurveIterator<
+            <AvailableServerExecution as CurveType>::WindowKind,
+            CurveKind = AvailableServerExecution,
+        >,
+        DC: CurveIterator<
+            <ConstrainedServerDemand as CurveType>::WindowKind,
+            CurveKind = ConstrainedServerDemand,
+        >,
     {
         let inner = InternalActualExecutionIterator::new(
             servers,
@@ -253,18 +273,26 @@ impl<'a, AC, DC> ActualExecutionIterator<'a, AC, DC> {
             // either non-overlapping or adjacent
             JoinAdjacentIterator::new(inner)
         };
-        ActualExecutionIterator { iter: outer }
+        ActualServerExecutionIterator { iter: outer }
     }
 }
 
-impl<AC, DC> CurveIterator<ActualServerExecution> for ActualExecutionIterator<'_, AC, DC>
+impl<AC, DC> CurveIterator<<ActualServerExecution as CurveType>::WindowKind>
+    for ActualServerExecutionIterator<'_, AC, DC>
 where
-    AC: CurveIterator<AvailableServerExecution>,
-    DC: CurveIterator<ConstrainedServerDemand>,
+    AC: CurveIterator<
+        <AvailableServerExecution as CurveType>::WindowKind,
+        CurveKind = AvailableServerExecution,
+    >,
+    DC: CurveIterator<
+        <ConstrainedServerDemand as CurveType>::WindowKind,
+        CurveKind = ConstrainedServerDemand,
+    >,
 {
+    type CurveKind = ActualServerExecution;
 }
 
-impl<AC, DC> FusedIterator for ActualExecutionIterator<'_, AC, DC>
+impl<AC, DC> FusedIterator for ActualServerExecutionIterator<'_, AC, DC>
 where
     Self: Iterator,
     AC: FusedIterator,
@@ -272,10 +300,16 @@ where
 {
 }
 
-impl<AC, DC> Iterator for ActualExecutionIterator<'_, AC, DC>
+impl<AC, DC> Iterator for ActualServerExecutionIterator<'_, AC, DC>
 where
-    AC: CurveIterator<AvailableServerExecution>,
-    DC: CurveIterator<ConstrainedServerDemand>,
+    AC: CurveIterator<
+        <AvailableServerExecution as CurveType>::WindowKind,
+        CurveKind = AvailableServerExecution,
+    >,
+    DC: CurveIterator<
+        <ConstrainedServerDemand as CurveType>::WindowKind,
+        CurveKind = ConstrainedServerDemand,
+    >,
 {
     type Item = Window<<ActualServerExecution as CurveType>::WindowKind>;
 
@@ -343,7 +377,10 @@ impl<'a, AC, CDC> InternalActualExecutionIterator<'a, AC, CDC> {
         constrained_demand: CDC,
     ) -> Self
     where
-        AC: CurveIterator<AvailableServerExecution>,
+        AC: CurveIterator<
+            <AvailableServerExecution as CurveType>::WindowKind,
+            CurveKind = AvailableServerExecution,
+        >,
     {
         let server = &servers[server_index];
 
@@ -373,8 +410,14 @@ where
 
 impl<AC, CDC> Iterator for InternalActualExecutionIterator<'_, AC, CDC>
 where
-    AC: CurveIterator<AvailableServerExecution>,
-    CDC: CurveIterator<ConstrainedServerDemand>,
+    AC: CurveIterator<
+        <AvailableServerExecution as CurveType>::WindowKind,
+        CurveKind = AvailableServerExecution,
+    >,
+    CDC: CurveIterator<
+        <ConstrainedServerDemand as CurveType>::WindowKind,
+        CurveKind = ConstrainedServerDemand,
+    >,
 {
     type Item = Window<<ActualServerExecution as CurveType>::WindowKind>;
 

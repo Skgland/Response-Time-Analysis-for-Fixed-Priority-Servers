@@ -7,7 +7,8 @@ use crate::server::{
     ActualServerExecution, AvailableServerExecution, HigherPriorityServerDemand, Server,
 };
 
-use crate::iterators::server::ActualExecutionIterator;
+use crate::curve::curve_types::CurveType;
+use crate::iterators::server::ActualServerExecutionIterator;
 use crate::iterators::{CurveIterator, ReclassifyExt};
 use crate::time::TimeUnit;
 use crate::window::Window;
@@ -44,7 +45,11 @@ impl System<'_> {
         &self,
         server_index: usize,
         up_to: TimeUnit,
-    ) -> impl CurveIterator<HigherPriorityServerDemand> + Clone + '_ {
+    ) -> impl CurveIterator<
+        <HigherPriorityServerDemand as CurveType>::WindowKind,
+        CurveKind = HigherPriorityServerDemand,
+    > + Clone
+           + '_ {
         self.servers[..server_index]
             .iter()
             .map(move |server| server.constraint_demand_curve_iter(up_to))
@@ -80,14 +85,18 @@ impl System<'_> {
         &self,
         server_index: usize,
         up_to: TimeUnit,
-    ) -> impl CurveIterator<AvailableServerExecution> + Clone + '_ {
+    ) -> impl CurveIterator<
+        <AvailableServerExecution as CurveType>::WindowKind,
+        CurveKind = AvailableServerExecution,
+    > + Clone
+           + '_ {
         let total: Curve<AvailableServerExecution> = Curve::new(Window::new(TimeUnit::ZERO, up_to));
 
         CurveDeltaIterator::new(
             total.into_iter(),
             self.aggregated_higher_priority_demand_curve_iter(server_index, up_to),
         )
-        .remaining_supply::<AvailableServerExecution>()
+        .remaining_supply()
     }
 
     /// Calculate the Constrained Execution Curve using Algorithm 4. from the paper
@@ -98,7 +107,11 @@ impl System<'_> {
         &self,
         server_index: usize,
         up_to: TimeUnit,
-    ) -> impl CurveIterator<ActualServerExecution> + Clone + '_ {
+    ) -> impl CurveIterator<
+        <ActualServerExecution as CurveType>::WindowKind,
+        CurveKind = ActualServerExecution,
+    > + Clone
+           + '_ {
         let unconstrained_execution =
             self.available_server_execution_curve_iter(server_index, up_to);
 
@@ -126,7 +139,7 @@ impl System<'_> {
 
         let constrained_demand = self.servers[server_index].constraint_demand_curve_iter(up_to);
 
-        ActualExecutionIterator::new(
+        ActualServerExecutionIterator::new(
             self.servers,
             server_index,
             unconstrained_execution,
