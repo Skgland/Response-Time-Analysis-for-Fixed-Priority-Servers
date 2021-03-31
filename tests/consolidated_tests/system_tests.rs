@@ -104,7 +104,9 @@ fn executive_curve() {
 
     // Constrained demand curve
 
-    let demand_result = system.as_servers()[1].constraint_demand_curve(up_to);
+    let demand_result: Curve<_> = system.as_servers()[1]
+        .constraint_demand_curve_iter(up_to)
+        .collect_curve();
 
     let expected_demand = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -246,8 +248,12 @@ fn comparison() {
 
     assert!(expected_t3_d.eq_curve_iterator(t3_d));
 
-    let s2_aggregated_demand = servers[1].aggregated_demand_curve(up_to);
-    let s2_constrained_demand = servers[1].constraint_demand_curve(up_to);
+    let s2_aggregated_demand: Curve<_> = servers[1]
+        .aggregated_demand_curve_iter(up_to)
+        .collect_curve();
+    let s2_constrained_demand: Curve<_> = servers[1]
+        .constraint_demand_curve_iter(up_to)
+        .collect_curve();
     let expected_s2_demand =
         unsafe { Curve::from_windows_unchecked(vec![Window::new(0, 4), Window::new(10, 14)]) };
 

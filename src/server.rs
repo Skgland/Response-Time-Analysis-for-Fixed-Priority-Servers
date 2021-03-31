@@ -2,7 +2,7 @@
 //!
 //! and functions to be used with one or multiple Servers
 
-use crate::curve::{AggregateExt, Curve};
+use crate::curve::AggregateExt;
 use crate::iterators::curve::AggregatedDemandIterator;
 use crate::iterators::server::constrained_demand::ConstrainedServerDemandIterator;
 use crate::iterators::CurveIterator;
@@ -72,12 +72,6 @@ impl Server {
     /// Calculate the aggregated demand Curve of a given Server up to a specified limit
     /// As defined in Definition 11. in the paper
     #[must_use]
-    pub fn aggregated_demand_curve(&self, up_to: TimeUnit) -> Curve<AggregatedServerDemand> {
-        self.aggregated_demand_curve_iter(up_to).collect_curve()
-    }
-
-    /// `CurveIterator` version of [`Self::aggregated_demand_curve`]
-    #[must_use]
     pub fn aggregated_demand_curve_iter(
         &self,
         up_to: TimeUnit,
@@ -90,13 +84,6 @@ impl Server {
     }
 
     /// Calculate the constrained demand curve
-    #[must_use]
-    pub fn constraint_demand_curve(&self, up_to: TimeUnit) -> Curve<ConstrainedServerDemand> {
-        let aggregated_curve = self.aggregated_demand_curve_iter(up_to);
-        ConstrainedServerDemandIterator::new(self, aggregated_curve).collect_curve()
-    }
-
-    /// `CurveIterator` version of [`Self::constraint_demand_curve`]
     #[must_use]
     pub fn constraint_demand_curve_iter(
         &self,
