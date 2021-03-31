@@ -2,12 +2,11 @@
 //!
 //! and all associated functions
 
-use std::collections::HashMap;
 use std::fmt::Debug;
 
 use curve_types::CurveType;
 
-use crate::iterators::curve::{CurveDeltaIterator, CurveSplitIterator, Delta};
+use crate::iterators::curve::{CurveDeltaIterator, Delta};
 use crate::server::{Server, ServerKind};
 
 use crate::iterators::CurveIterator;
@@ -37,62 +36,6 @@ impl<C: CurveType> Clone for Curve<C> {
         Curve {
             windows: self.windows.clone(),
         }
-    }
-}
-
-/// Return Type for [`Curve::delta`](Curve::delta)
-#[derive(Debug, PartialEq)]
-pub struct CurveDeltaResult<
-    P: CurveType,
-    Q: CurveType,
-    R: CurveType<WindowKind = Overlap<P::WindowKind, Q::WindowKind>>,
-> {
-    /// The remaining supply, can be 0-2 Windows
-    pub remaining_supply: Curve<P>,
-    /// The (used) Overlap between Supply and Demand
-    pub overlap: Curve<R>,
-    /// The remaining Demand that could not be fulfilled by the Supply
-    pub remaining_demand: Curve<Q>,
-}
-
-impl<DW: WindowType, SW: WindowType, DI, SI> CurveDeltaIterator<DW, SW, DI, SI>
-where
-    DI: CurveIterator<DW>,
-    SI: CurveIterator<SW>,
-{
-    /// collect the complete `CurveDeltaIterator`
-    ///
-    /// # Warning
-    ///
-    /// Won't terminate if `CurveDelaIterator` is infinite as it will try to consume the complete iterator
-    ///
-    pub fn collect<R: CurveType<WindowKind = Overlap<SW, DW>>>(
-        self,
-    ) -> CurveDeltaResult<SI::CurveKind, DI::CurveKind, R>
-    where
-        Self: Iterator<Item = Delta<SW, DW, SI, DI>>,
-    {
-        let mut result = CurveDeltaResult {
-            remaining_supply: Curve::empty(),
-            overlap: Curve::empty(),
-            remaining_demand: Curve::empty(),
-        };
-
-        for delta in self {
-            match delta {
-                Delta::RemainingSupply(supply) => result.remaining_supply.windows.push(supply),
-                Delta::Overlap(overlap) => result.overlap.windows.push(overlap),
-                Delta::RemainingDemand(demand) => result.remaining_demand.windows.push(demand),
-                Delta::EndSupply(supply) => {
-                    supply.for_each(|window| result.remaining_supply.windows.push(window))
-                }
-                Delta::EndDemand(demand) => {
-                    demand.for_each(|window| result.remaining_demand.windows.push(window))
-                }
-            }
-        }
-
-        result
     }
 }
 
@@ -289,6 +232,62 @@ impl<T: CurveType<WindowKind = Demand>> Curve<T> {
     }
 }
 
+/// Return Type for [`Curve::delta`](Curve::delta)
+#[derive(Debug, PartialEq)]
+pub struct CurveDeltaResult<
+    P: CurveType,
+    Q: CurveType,
+    R: CurveType<WindowKind = Overlap<P::WindowKind, Q::WindowKind>>,
+> {
+    /// The remaining supply, can be 0-2 Windows
+    pub remaining_supply: Curve<P>,
+    /// The (used) Overlap between Supply and Demand
+    pub overlap: Curve<R>,
+    /// The remaining Demand that could not be fulfilled by the Supply
+    pub remaining_demand: Curve<Q>,
+}
+
+impl<DW: WindowType, SW: WindowType, DI, SI> CurveDeltaIterator<DW, SW, DI, SI>
+where
+    DI: CurveIterator<DW>,
+    SI: CurveIterator<SW>,
+{
+    /// collect the complete `CurveDeltaIterator`
+    ///
+    /// # Warning
+    ///
+    /// Won't terminate if `CurveDelaIterator` is infinite as it will try to consume the complete iterator
+    ///
+    pub fn collect<R: CurveType<WindowKind = Overlap<SW, DW>>>(
+        self,
+    ) -> CurveDeltaResult<SI::CurveKind, DI::CurveKind, R>
+    where
+        Self: Iterator<Item = Delta<SW, DW, SI, DI>>,
+    {
+        let mut result = CurveDeltaResult {
+            remaining_supply: Curve::empty(),
+            overlap: Curve::empty(),
+            remaining_demand: Curve::empty(),
+        };
+
+        for delta in self {
+            match delta {
+                Delta::RemainingSupply(supply) => result.remaining_supply.windows.push(supply),
+                Delta::Overlap(overlap) => result.overlap.windows.push(overlap),
+                Delta::RemainingDemand(demand) => result.remaining_demand.windows.push(demand),
+                Delta::EndSupply(supply) => {
+                    supply.for_each(|window| result.remaining_supply.windows.push(window))
+                }
+                Delta::EndDemand(demand) => {
+                    demand.for_each(|window| result.remaining_demand.windows.push(window))
+                }
+            }
+        }
+
+        result
+    }
+}
+
 /// Return Type for [`Curve::partition`](Curve::partition)
 #[derive(Debug)]
 pub struct PartitionResult {
@@ -306,14 +305,6 @@ pub struct PartitionResult {
     /// otherwise if there is no window on the boundary this contains the first window
     /// after the boundary or an empty window if there is no window after the boundary
     pub tail: Window<Demand>,
-}
-
-impl<T: CurveType> Curve<T> {
-    /// Split the curve on every interval boundary as defined in Definition 8. of the paper
-    #[must_use]
-    pub fn split(self, interval: TimeUnit) -> HashMap<UnitNumber, Self> {
-        CurveSplitIterator::new(self.into_iter(), interval).collect()
-    }
 }
 
 /// Extension trait to allow calling aggregate on an iterator

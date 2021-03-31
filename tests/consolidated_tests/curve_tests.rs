@@ -1,6 +1,8 @@
 use rta_for_fps::curve::curve_types::UnspecifiedCurve;
 use rta_for_fps::curve::Curve;
-use rta_for_fps::iterators::curve::{AggregatedDemandIterator, CurveDeltaIterator};
+use rta_for_fps::iterators::curve::{
+    AggregatedDemandIterator, CurveDeltaIterator, CurveSplitIterator,
+};
 use rta_for_fps::time::TimeUnit;
 use rta_for_fps::window::{Demand, Overlap, Supply, Window};
 
@@ -110,7 +112,7 @@ fn split_curves() {
     .into_iter()
     .collect();
 
-    let result = c_p.split(t_s);
+    let result: HashMap<_, _> = CurveSplitIterator::new(c_p.into_iter(), t_s).collect();
 
     assert_eq!(result, expected);
 }

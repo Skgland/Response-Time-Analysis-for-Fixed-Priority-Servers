@@ -7,6 +7,8 @@ use std::iter::FusedIterator;
 
 /// Curve Iterator for splitting a Curve in fixed Intervalls
 ///
+/// Split the curve on every interval boundary as defined in Definition 8. of the paper
+///
 /// Will yield the Groups in order
 #[derive(Debug, Clone)]
 pub struct CurveSplitIterator<W, CI> {
