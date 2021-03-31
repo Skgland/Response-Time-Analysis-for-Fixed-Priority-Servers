@@ -24,7 +24,7 @@ pub struct HigherPriorityServerDemand;
 
 /// Marker Type for unconstrained server demand curve
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
-pub struct AvailableServerExecution;
+pub struct UnconstrainedServerExecution;
 
 /// Marker Type for constrained server execution curve
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]

@@ -2,8 +2,8 @@
 
 use crate::curve::curve_types::UnspecifiedCurve;
 use crate::server::{
-    ActualServerExecution, AggregatedServerDemand, AvailableServerExecution,
-    ConstrainedServerDemand, HigherPriorityServerDemand,
+    ActualServerExecution, AggregatedServerDemand, ConstrainedServerDemand,
+    HigherPriorityServerDemand, UnconstrainedServerExecution,
 };
 use crate::task::curve_types::{
     ActualTaskExecution, AvailableTaskExecution, HigherPriorityTaskDemand, TaskDemand,
@@ -11,7 +11,7 @@ use crate::task::curve_types::{
 use crate::window::window_types::WindowType;
 use crate::window::{Demand, Overlap, Supply};
 
-/// Trait used as Sub-Trait for Sealing Traits
+/// Trait used as Sub-Trait for Sealing other Traits
 pub trait Seal {}
 
 // WindowKind
@@ -27,7 +27,7 @@ impl<W: WindowType> Seal for UnspecifiedCurve<W> {}
 impl Seal for AggregatedServerDemand {}
 impl Seal for ConstrainedServerDemand {}
 impl Seal for HigherPriorityServerDemand {}
-impl Seal for AvailableServerExecution {}
+impl Seal for UnconstrainedServerExecution {}
 impl Seal for ActualServerExecution {}
 
 // Task Curves

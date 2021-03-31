@@ -4,7 +4,7 @@ use crate::curve::{AggregateExt, Curve};
 use crate::iterators::curve::{CurveDeltaIterator, RecursiveAggregatedDemandIterator};
 
 use crate::server::{
-    ActualServerExecution, AvailableServerExecution, HigherPriorityServerDemand, Server,
+    ActualServerExecution, HigherPriorityServerDemand, Server, UnconstrainedServerExecution,
 };
 
 use crate::curve::curve_types::CurveType;
@@ -79,18 +79,19 @@ impl<'a> System<'a> {
     /// Calculate the unconstrained execution curve
     /// for the server with priority `index`.
     ///
-    /// See Definition 14. (2) of the paper for reference
+    /// See Definition 13. of the paper for reference
     #[must_use]
-    pub fn available_server_execution_curve_iter(
+    pub fn unconstrained_server_execution_curve_iter(
         &self,
         server_index: usize,
         up_to: TimeUnit,
     ) -> impl CurveIterator<
-        <AvailableServerExecution as CurveType>::WindowKind,
-        CurveKind = AvailableServerExecution,
+        <UnconstrainedServerExecution as CurveType>::WindowKind,
+        CurveKind = UnconstrainedServerExecution,
     > + Clone
            + '_ {
-        let total: Curve<AvailableServerExecution> = Curve::new(Window::new(TimeUnit::ZERO, up_to));
+        let total: Curve<UnconstrainedServerExecution> =
+            Curve::new(Window::new(TimeUnit::ZERO, up_to));
 
         CurveDeltaIterator::new(
             total.into_iter(),
@@ -113,7 +114,7 @@ impl<'a> System<'a> {
     > + Clone
            + '_ {
         let unconstrained_execution =
-            self.available_server_execution_curve_iter(server_index, up_to);
+            self.unconstrained_server_execution_curve_iter(server_index, up_to);
 
         // TODO re-introduce check regarding guaranteed capacity each interval
         /*

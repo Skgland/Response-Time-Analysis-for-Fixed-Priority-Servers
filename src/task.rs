@@ -69,7 +69,7 @@ impl Task {
     ///
     /// Only complete Cycles will be considered
     ///
-    /// Based on Definition 10. of the paper
+    /// Based on Definition 9. and 10. of the paper
     #[must_use]
     pub fn demand_curve_iter(
         &self,

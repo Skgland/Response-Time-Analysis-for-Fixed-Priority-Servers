@@ -36,7 +36,7 @@ fn unconstrained_curve() {
 
     assert!(expected_aggregated_result.eq_curve_iterator(aggregated_result));
 
-    let unconstrained_result = system.available_server_execution_curve_iter(1, up_to);
+    let unconstrained_result = system.unconstrained_server_execution_curve_iter(1, up_to);
 
     let expected_unconstrained_result = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -86,7 +86,7 @@ fn executive_curve() {
 
     // Unconstrained execution supply curve
 
-    let uc_execution_result = system.available_server_execution_curve_iter(1, up_to);
+    let uc_execution_result = system.unconstrained_server_execution_curve_iter(1, up_to);
 
     let expected_uc_execution = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -260,7 +260,7 @@ fn comparison() {
         .reclassify()
         .eq_curve_iterator(s2_constrained_demand));
 
-    let s2_unconstrained_execution = system.available_server_execution_curve_iter(1, up_to);
+    let s2_unconstrained_execution = system.unconstrained_server_execution_curve_iter(1, up_to);
 
     // Note: Paper lists 6,10 and 16,20 as the unconstrained curve
     // but contradicts itself later with actual curve 4,8 and 14,18

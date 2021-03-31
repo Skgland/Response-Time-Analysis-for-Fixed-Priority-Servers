@@ -6,7 +6,7 @@ use crate::curve::Curve;
 use crate::iterators::curve::CurveSplitIterator;
 use crate::iterators::{CurveIterator, JoinAdjacentIterator};
 use crate::server::{
-    ActualServerExecution, AvailableServerExecution, ConstrainedServerDemand, Server,
+    ActualServerExecution, ConstrainedServerDemand, Server, UnconstrainedServerExecution,
 };
 use crate::time::{TimeUnit, UnitNumber};
 use crate::window::{Demand, Window};
@@ -39,8 +39,8 @@ impl<'a, AC, DC> ActualServerExecutionIterator<'a, AC, DC> {
     ) -> Self
     where
         AC: CurveIterator<
-            <AvailableServerExecution as CurveType>::WindowKind,
-            CurveKind = AvailableServerExecution,
+            <UnconstrainedServerExecution as CurveType>::WindowKind,
+            CurveKind = UnconstrainedServerExecution,
         >,
         DC: CurveIterator<
             <ConstrainedServerDemand as CurveType>::WindowKind,
@@ -67,8 +67,8 @@ impl<AC, DC> CurveIterator<<ActualServerExecution as CurveType>::WindowKind>
     for ActualServerExecutionIterator<'_, AC, DC>
 where
     AC: CurveIterator<
-        <AvailableServerExecution as CurveType>::WindowKind,
-        CurveKind = AvailableServerExecution,
+        <UnconstrainedServerExecution as CurveType>::WindowKind,
+        CurveKind = UnconstrainedServerExecution,
     >,
     DC: CurveIterator<
         <ConstrainedServerDemand as CurveType>::WindowKind,
@@ -89,8 +89,8 @@ where
 impl<AC, DC> Iterator for ActualServerExecutionIterator<'_, AC, DC>
 where
     AC: CurveIterator<
-        <AvailableServerExecution as CurveType>::WindowKind,
-        CurveKind = AvailableServerExecution,
+        <UnconstrainedServerExecution as CurveType>::WindowKind,
+        CurveKind = UnconstrainedServerExecution,
     >,
     DC: CurveIterator<
         <ConstrainedServerDemand as CurveType>::WindowKind,
@@ -107,9 +107,9 @@ where
 /// type alias for the type used in `InternalActualExecutionIterator`
 /// for easier naming
 type FlattenedSplitAvailableSupply<AC> = FlatMap<
-    CurveSplitIterator<<AvailableServerExecution as CurveType>::WindowKind, AC>,
-    Curve<AvailableServerExecution>,
-    fn((UnitNumber, Curve<AvailableServerExecution>)) -> Curve<AvailableServerExecution>,
+    CurveSplitIterator<<UnconstrainedServerExecution as CurveType>::WindowKind, AC>,
+    Curve<UnconstrainedServerExecution>,
+    fn((UnitNumber, Curve<UnconstrainedServerExecution>)) -> Curve<UnconstrainedServerExecution>,
 >;
 
 /// `CurveIterator` for calculating the actual execution of a Server
@@ -123,7 +123,7 @@ pub struct InternalActualExecutionIterator<'a, AC, CDC> {
     /// the remaining available execution
     available_execution: FlattenedSplitAvailableSupply<AC>,
     /// the peek of the remaining available execution that is not yet consumed
-    execution_peek: VecDeque<Window<<AvailableServerExecution as CurveType>::WindowKind>>,
+    execution_peek: VecDeque<Window<<UnconstrainedServerExecution as CurveType>::WindowKind>>,
     /// the group spend_budget is referring to
     current_group: UnitNumber,
     /// the spend budget of the current group
@@ -160,8 +160,8 @@ impl<'a, AC, CDC> InternalActualExecutionIterator<'a, AC, CDC> {
     ) -> Self
     where
         AC: CurveIterator<
-            <AvailableServerExecution as CurveType>::WindowKind,
-            CurveKind = AvailableServerExecution,
+            <UnconstrainedServerExecution as CurveType>::WindowKind,
+            CurveKind = UnconstrainedServerExecution,
         >,
     {
         let server = &servers[server_index];
@@ -193,8 +193,8 @@ where
 impl<AC, CDC> Iterator for InternalActualExecutionIterator<'_, AC, CDC>
 where
     AC: CurveIterator<
-        <AvailableServerExecution as CurveType>::WindowKind,
-        CurveKind = AvailableServerExecution,
+        <UnconstrainedServerExecution as CurveType>::WindowKind,
+        CurveKind = UnconstrainedServerExecution,
     >,
     CDC: CurveIterator<
         <ConstrainedServerDemand as CurveType>::WindowKind,

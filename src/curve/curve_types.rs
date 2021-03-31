@@ -4,8 +4,8 @@ use std::fmt::Debug;
 
 use crate::seal::Seal;
 use crate::server::{
-    ActualServerExecution, AggregatedServerDemand, AvailableServerExecution,
-    ConstrainedServerDemand, HigherPriorityServerDemand,
+    ActualServerExecution, AggregatedServerDemand, ConstrainedServerDemand,
+    HigherPriorityServerDemand, UnconstrainedServerExecution,
 };
 use crate::task::curve_types::{
     ActualTaskExecution, AvailableTaskExecution, HigherPriorityTaskDemand, TaskDemand,
@@ -36,12 +36,12 @@ impl CurveType for HigherPriorityServerDemand {
     type WindowKind = <ConstrainedServerDemand as CurveType>::WindowKind;
 }
 
-impl CurveType for AvailableServerExecution {
+impl CurveType for UnconstrainedServerExecution {
     type WindowKind = Overlap<Supply, Demand>;
 }
 
 impl CurveType for ActualServerExecution {
-    type WindowKind = Overlap<<AvailableServerExecution as CurveType>::WindowKind, Demand>;
+    type WindowKind = Overlap<<UnconstrainedServerExecution as CurveType>::WindowKind, Demand>;
 }
 
 impl CurveType for TaskDemand {
