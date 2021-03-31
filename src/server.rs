@@ -4,7 +4,7 @@
 
 use crate::curve::{AggregateExt, Curve};
 use crate::iterators::curve::AggregatedDemandIterator;
-use crate::iterators::server::ConstrainedServerDemandIterator;
+use crate::iterators::server::constrained_demand::ConstrainedServerDemandIterator;
 use crate::iterators::CurveIterator;
 use crate::task::Task;
 use crate::time::TimeUnit;
