@@ -152,14 +152,15 @@ where
             if let Some(supply_window) = supply {
                 if demand_window.start < supply_window.end {
                     let WindowDeltaResult {
-                        remaining_supply,
+                        remaining_supply_head,
+                        remaining_supply_tail,
                         overlap,
                         remaining_demand,
                     } = Window::delta(&supply_window, &demand_window);
 
-                    remaining_supply
-                        .into_windows()
+                    vec![remaining_supply_head, remaining_supply_tail]
                         .into_iter()
+                        .filter(|window| !window.is_empty())
                         .rev()
                         .for_each(|window| self.remaining_supply.push_front(window));
 

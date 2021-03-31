@@ -264,10 +264,9 @@ where
                     // (e)
                     self.spend_budget += result.overlap.length();
 
-                    result
-                        .remaining_supply
-                        .into_windows()
+                    vec![result.remaining_supply_head, result.remaining_supply_tail]
                         .into_iter()
+                        .filter(|window| !window.is_empty())
                         .rev()
                         .for_each(|window| self.execution_peek.push_front(window));
 

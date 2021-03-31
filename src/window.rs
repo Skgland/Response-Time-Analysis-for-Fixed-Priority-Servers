@@ -3,8 +3,6 @@
 use std::fmt::Debug;
 use std::marker::PhantomData;
 
-use crate::curve::curve_types::UnspecifiedCurve;
-use crate::curve::Curve;
 use crate::time::{TimeUnit, UnitNumber};
 use crate::window::window_types::WindowType;
 
@@ -97,7 +95,8 @@ impl<T: WindowType> Window<T> {
     pub fn delta<Q: WindowType>(supply: &Self, demand: &Window<Q>) -> WindowDeltaResult<T, Q> {
         if supply.end < demand.start {
             WindowDeltaResult {
-                remaining_supply: Curve::new(supply.clone()),
+                remaining_supply_head: supply.clone(),
+                remaining_supply_tail: Window::empty(),
                 overlap: Window::empty(),
                 remaining_demand: demand.clone(),
             }
@@ -109,26 +108,13 @@ impl<T: WindowType> Window<T> {
 
             let remaining_demand = Window::new(demand.start + overlap.length(), demand.end);
 
-            let remaining_head_demand = Window::new(supply.start, overlap.start);
-            let remaining_tail_demand = Window::new(overlap.end, supply.end);
+            let remaining_supply_head = Window::new(supply.start, overlap.start);
+            let remaining_supply_tail = Window::new(overlap.end, supply.end);
 
             WindowDeltaResult {
                 remaining_demand,
-                remaining_supply: {
-                    {
-                        let mut windows = vec![remaining_head_demand, remaining_tail_demand];
-
-                        windows.retain(|window| !window.is_empty());
-                        unsafe {
-                            // Safety: Invariants fulfilled by construction,
-                            // 1. Order: head always before tail
-                            // 2. Non-Overlapping, as supply and demand overlap
-                            //    and the remaining supply is split into head which is before the overlap
-                            //    and tail which is after the overlap
-                            Curve::from_windows_unchecked(windows)
-                        }
-                    }
-                },
+                remaining_supply_head,
+                remaining_supply_tail,
                 overlap,
             }
         }
@@ -171,12 +157,13 @@ impl Window<Demand> {
 
 /// The Return Type for the [`Window::delta`] calculation
 #[derive(Debug, Eq, PartialEq)] // Eq for tests
-pub struct WindowDeltaResult<T: WindowType, Q: WindowType> {
-    /// The unused "supply"
-    /// TODO spilt into two windows remaining_head_supply and remaining_tail_supply
-    pub remaining_supply: Curve<UnspecifiedCurve<T>>,
+pub struct WindowDeltaResult<P: WindowType, Q: WindowType> {
+    /// The unused supply at the start of the original supply window
+    pub remaining_supply_head: Window<P>,
+    /// The unused supply at the end of the original supply window
+    pub remaining_supply_tail: Window<P>,
     /// The Windows Overlap
-    pub overlap: Window<Overlap<T, Q>>,
+    pub overlap: Window<Overlap<P, Q>>,
     /// The unfulfilled "demand"
     pub remaining_demand: Window<Q>,
 }

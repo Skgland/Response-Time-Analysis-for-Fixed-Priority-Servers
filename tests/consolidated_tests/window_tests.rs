@@ -1,5 +1,4 @@
-use rta_for_fps::curve::Curve;
-use rta_for_fps::window::{Demand, Supply, Window, WindowDeltaResult};
+use rta_for_fps::window::{Demand, Supply, Window};
 
 #[test]
 fn aggregate_windows() {
@@ -21,13 +20,16 @@ fn window_delta_a() {
 
     let result = Window::delta(&w_p, &w_q);
 
-    let expected = WindowDeltaResult {
-        remaining_supply: Curve::new(Window::new(0, 3)),
-        overlap: Window::new(3, 5),
-        remaining_demand: Window::new(5, 7),
-    };
+    let mut result_supply = vec![result.remaining_supply_head, result.remaining_supply_tail];
 
-    assert_eq!(result, expected);
+    result_supply.retain(|window| !window.is_empty());
+
+    let expected_remaining_supply = vec![Window::new(0, 3)];
+
+    assert_eq!(result.overlap, Window::new(3, 5));
+    assert_eq!(result.remaining_demand, Window::new(5, 7));
+
+    assert_eq!(result_supply, expected_remaining_supply);
 }
 
 #[test]
@@ -40,10 +42,14 @@ fn window_delta_b() {
 
     let result = Window::delta(&w_p, &w_q);
 
-    let expected_remaining_supply = Curve::new(Window::new(6, 8));
+    let expected_remaining_supply = vec![Window::new(6, 8)];
     let expected_overlap = Window::new(2, 6);
 
-    assert_eq!(result.remaining_supply, expected_remaining_supply);
+    let mut result_supply = vec![result.remaining_supply_head, result.remaining_supply_tail];
+
+    result_supply.retain(|window| !window.is_empty());
+
+    assert_eq!(result_supply, expected_remaining_supply);
     assert_eq!(result.overlap, expected_overlap);
     assert!(
         result.remaining_demand.is_empty(),
@@ -62,12 +68,15 @@ fn window_delta_c() {
 
     let result = Window::delta(&w_p, &w_q);
 
-    let expected_remaining_supply =
-        unsafe { Curve::from_windows_unchecked(vec![Window::new(0, 2), Window::new(6, 8)]) };
+    let expected_remaining_supply = vec![Window::new(0, 2), Window::new(6, 8)];
 
     let expected_overlap = Window::new(2, 6);
 
-    assert_eq!(result.remaining_supply, expected_remaining_supply);
+    let mut remaining_supply = vec![result.remaining_supply_head, result.remaining_supply_tail];
+
+    remaining_supply.retain(|window| !window.is_empty());
+
+    assert_eq!(remaining_supply, expected_remaining_supply);
     assert_eq!(result.overlap, expected_overlap);
     assert!(
         result.remaining_demand.is_empty(),
@@ -86,11 +95,14 @@ fn window_delta_d() {
 
     let result = Window::delta(&w_p, &w_q);
 
-    let expected = WindowDeltaResult {
-        remaining_demand: Window::new(4, 8),
-        remaining_supply: Curve::empty(),
-        overlap: Window::new(2, 6),
-    };
+    let mut result_supply = vec![result.remaining_supply_head, result.remaining_supply_tail];
 
-    assert_eq!(result, expected);
+    result_supply.retain(|window| !window.is_empty());
+
+    let expected_remaining_supply = vec![];
+
+    assert_eq!(result.overlap, Window::new(2, 6));
+    assert_eq!(result.remaining_demand, Window::new(4, 8));
+
+    assert_eq!(result_supply, expected_remaining_supply);
 }
