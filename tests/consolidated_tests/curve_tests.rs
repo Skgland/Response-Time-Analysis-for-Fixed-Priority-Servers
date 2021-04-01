@@ -1,8 +1,6 @@
 use rta_for_fps::curve::curve_types::UnspecifiedCurve;
 use rta_for_fps::curve::Curve;
-use rta_for_fps::iterators::curve::{
-    AggregatedDemandIterator, CurveDeltaIterator, CurveSplitIterator,
-};
+use rta_for_fps::iterators::curve::{AggregationIterator, CurveDeltaIterator, CurveSplitIterator};
 use rta_for_fps::time::TimeUnit;
 use rta_for_fps::window::{Demand, Overlap, Supply, Window};
 
@@ -26,7 +24,7 @@ fn aggregate_curves() {
         ])
     };
 
-    let result = AggregatedDemandIterator::new(c1.into_iter(), c2.into_iter());
+    let result = AggregationIterator::new(vec![c1.into_iter(), c2.into_iter()]);
 
     crate::util::assert_curve_eq(&c3, result);
 }

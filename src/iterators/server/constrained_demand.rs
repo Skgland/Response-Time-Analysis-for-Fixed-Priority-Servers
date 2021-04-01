@@ -3,7 +3,7 @@ use std::iter::FusedIterator;
 
 use crate::curve::curve_types::{CurveType, UnspecifiedCurve};
 use crate::curve::{Curve, PartitionResult};
-use crate::iterators::curve::{AggregatedDemandIterator, CurveSplitIterator};
+use crate::iterators::curve::{AggregationIterator, CurveSplitIterator};
 use crate::iterators::{CurveIterator, JoinAdjacentIterator};
 use crate::server::{AggregatedServerDemand, ConstrainedServerDemand, Server};
 use crate::time::{TimeUnit, UnitNumber};
@@ -144,10 +144,10 @@ where
                 {
                     // Handle next_group and potentially some spill into next_group
                     let curve = if let Some(spill) = spill {
-                        AggregatedDemandIterator::new(
+                        AggregationIterator::new(vec![
                             next_group.into_iter(),
                             Curve::new(spill).into_iter(),
-                        )
+                        ])
                         .collect_curve()
                     } else {
                         next_group

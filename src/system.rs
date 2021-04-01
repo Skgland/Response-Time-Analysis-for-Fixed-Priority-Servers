@@ -1,7 +1,7 @@
 //! Module for the System type
 
 use crate::curve::{AggregateExt, Curve};
-use crate::iterators::curve::{CurveDeltaIterator, RecursiveAggregatedDemandIterator};
+use crate::iterators::curve::{AggregationIterator, CurveDeltaIterator};
 
 use crate::server::{
     ActualServerExecution, HigherPriorityServerDemand, Server, UnconstrainedServerExecution,
@@ -53,7 +53,7 @@ impl<'a> System<'a> {
         self.servers[..server_index]
             .iter()
             .map(move |server| server.constraint_demand_curve_iter(up_to))
-            .aggregate::<RecursiveAggregatedDemandIterator<_>>()
+            .aggregate::<AggregationIterator<_>>()
             .reclassify()
     }
 

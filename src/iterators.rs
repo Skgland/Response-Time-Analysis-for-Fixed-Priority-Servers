@@ -8,7 +8,6 @@ use crate::iterators::curve::FromCurveIterator;
 use crate::window::window_types::WindowType;
 use crate::window::Window;
 use std::marker::PhantomData;
-use std::ops::Deref;
 
 pub mod curve;
 pub mod server;
@@ -54,67 +53,6 @@ where
     }
 }
 
-/// trait used for boxing CurveIterators that are FusedIterators
-pub trait FusedCurveIterator<'a, C: CurveType>:
-    CurveIterator<C::WindowKind, CurveKind = C> + FusedIterator
-{
-    fn fused_boxed_clone(&self) -> Box<dyn FusedCurveIterator<'a, C> + 'a>;
-}
-
-impl<'a, C: CurveType, T: Clone> FusedCurveIterator<'a, C> for T
-where
-    Self: FusedIterator + CurveIterator<C::WindowKind, CurveKind = C> + Clone + 'a,
-{
-    fn fused_boxed_clone(&self) -> Box<dyn FusedCurveIterator<'a, C> + 'a> {
-        Box::new(self.clone())
-    }
-}
-
-impl<'a, C: CurveType> CurveIterator<C::WindowKind> for Box<dyn FusedCurveIterator<'a, C> + 'a> {
-    type CurveKind = C;
-}
-
-impl<'a, C: CurveType + 'a> Clone for Box<dyn FusedCurveIterator<'a, C> + 'a> {
-    fn clone(&self) -> Self {
-        self.deref().fused_boxed_clone()
-    }
-}
-
-#[derive(Debug)]
-struct EmptyCurveIterator<C> {
-    curve_type: PhantomData<C>,
-}
-
-impl<C> EmptyCurveIterator<C> {
-    pub fn new() -> Self {
-        EmptyCurveIterator {
-            curve_type: PhantomData,
-        }
-    }
-}
-
-impl<C> Clone for EmptyCurveIterator<C> {
-    fn clone(&self) -> Self {
-        EmptyCurveIterator {
-            curve_type: PhantomData,
-        }
-    }
-}
-
-impl<C: CurveType> CurveIterator<C::WindowKind> for EmptyCurveIterator<C> {
-    type CurveKind = C;
-}
-
-impl<C> FusedIterator for EmptyCurveIterator<C> where Self: Iterator {}
-
-impl<C: CurveType> Iterator for EmptyCurveIterator<C> {
-    type Item = Window<C::WindowKind>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        None
-    }
-}
-
 /// Trait representing an Iterator that has the guarantees of a curve:
 /// 1. Windows ordered by start
 /// 2. Windows non-overlapping
@@ -154,13 +92,6 @@ where
     W: WindowType,
 {
     type CurveKind = UnspecifiedCurve<W>;
-}
-
-impl<'a, W, C> CurveIterator<W> for Box<dyn CurveIterator<W, CurveKind = C> + 'a>
-where
-    C: CurveType<WindowKind = W>,
-{
-    type CurveKind = C;
 }
 
 impl<W: WindowType, CI> CurveIterator<W> for Fuse<CI>

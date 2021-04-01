@@ -2,7 +2,7 @@
 
 use crate::curve::curve_types::CurveType;
 use crate::curve::{AggregateExt, Curve};
-use crate::iterators::curve::{AggregatedDemandIterator, CurveDeltaIterator};
+use crate::iterators::curve::{AggregationIterator, CurveDeltaIterator};
 
 use crate::iterators::task::TaskDemandIterator;
 use crate::iterators::CurveIterator;
@@ -93,7 +93,7 @@ impl Task {
         tasks[..index]
             .iter()
             .map(move |task| task.demand_curve_iter(up_to))
-            .aggregate::<AggregatedDemandIterator<_, _>>()
+            .aggregate::<AggregationIterator<_>>()
             .reclassify()
     }
 

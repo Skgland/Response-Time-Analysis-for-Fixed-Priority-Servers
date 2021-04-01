@@ -1,171 +1,125 @@
 use std::iter::{Fuse, FusedIterator};
 
-use crate::curve::curve_types::CurveType;
 use crate::curve::Aggregate;
-use crate::iterators::{CurveIterator, EmptyCurveIterator, FusedCurveIterator};
+use crate::iterators::CurveIterator;
 use crate::window::{Demand, Window};
+
+/// Elements for `AggregationIterator`
+#[derive(Debug, Clone)]
+pub struct Element<I> {
+    curve: Fuse<I>,
+    peek: Option<Window<Demand>>,
+}
 
 /// Iterator for Aggregating two Curve Iterators
 ///
-/// Aggregate two (Demand) Curves as defined in Definition 5. of the paper
+/// Aggregate multiple (Demand) Curves as defined in Definition 5. of the paper
 ///
-#[derive(Debug)]
-pub struct AggregatedDemandIterator<I1, I2> {
-    /// The first CurveIterator to aggregate
-    curve1: Fuse<I1>,
-    /// the peek of the first CurveIterator or
-    /// if only one iterator is remaining the peek of the remaining iterator
-    peek1: Option<Window<Demand>>,
-    /// The second CurveIterator to aggregate
-    curve2: Fuse<I2>,
-    /// the peek of the second CurveIterator,
-    /// unless only one iterator is remaining
-    peek2: Option<Window<Demand>>,
-    /// The peek overlap of both iterators
-    overlap: Option<Window<Demand>>,
+#[derive(Debug, Clone)]
+pub struct AggregationIterator<I> {
+    curves: Vec<Element<I>>,
 }
 
-impl<I1: Clone, I2: Clone> Clone for AggregatedDemandIterator<I1, I2> {
-    fn clone(&self) -> Self {
-        AggregatedDemandIterator {
-            curve1: self.curve1.clone(),
-            peek1: self.peek1.clone(),
-            curve2: self.curve2.clone(),
-            peek2: self.peek2.clone(),
-            overlap: self.overlap.clone(),
+impl<I: Iterator> AggregationIterator<I> {
+    pub fn new(curves: Vec<I>) -> Self {
+        AggregationIterator {
+            curves: curves
+                .into_iter()
+                .map(|curve| Element {
+                    curve: curve.fuse(),
+                    peek: None,
+                })
+                .collect(),
         }
     }
 }
 
-impl<I1, I2> AggregatedDemandIterator<I1, I2>
-where
-    I1: CurveIterator<Demand>,
-    I2: CurveIterator<Demand, CurveKind = I1::CurveKind>,
-{
-    /// Create aggregated `CurveIterator` for two `CurveIterator`s
-    #[must_use]
-    pub fn new(curve1: I1, curve2: I2) -> AggregatedDemandIterator<I1, I2> {
-        AggregatedDemandIterator {
-            curve1: curve1.fuse(),
-            curve2: curve2.fuse(),
-            peek1: None,
-            peek2: None,
-            overlap: None,
-        }
-    }
+impl<I: CurveIterator<Demand>> CurveIterator<Demand> for AggregationIterator<I> {
+    type CurveKind = I::CurveKind;
 }
 
-impl<I1, I2> CurveIterator<Demand> for AggregatedDemandIterator<I1, I2>
-where
-    I1: CurveIterator<Demand>,
-    I2: CurveIterator<Demand, CurveKind = I1::CurveKind>,
-{
-    type CurveKind = I1::CurveKind;
-}
+impl<I> FusedIterator for AggregationIterator<I> where Self: Iterator {}
 
-impl<I1, I2> Iterator for AggregatedDemandIterator<I1, I2>
+impl<I> Iterator for AggregationIterator<I>
 where
-    I1: CurveIterator<Demand>,
-    I2: CurveIterator<Demand, CurveKind = I1::CurveKind>,
+    I: CurveIterator<Demand>,
 {
-    type Item = Window<<I1::CurveKind as CurveType>::WindowKind>;
+    type Item = I::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            let peek1 = self.peek1.take().or_else(|| self.curve1.next());
-            let peek2 = self.peek2.take().or_else(|| self.curve2.next());
+        #![allow(clippy::option_if_let_else)] // false positive
 
-            if let Some(overlap_window) = self.overlap.take() {
-                match (peek1, peek2) {
-                    (None, None) => return Some(overlap_window),
-                    (Some(peek1), Some(peek2)) => {
-                        if let Some(overlap) = peek1.aggregate(&overlap_window) {
-                            // aggregate overlap and peek1, remember peek2 and reiterate
-                            self.peek2 = Some(peek2);
-                            self.overlap = Some(overlap);
-                        } else if let Some(overlap) = peek2.aggregate(&overlap_window) {
-                            // aggregate overlap and peek2, remember peek1 and reiterate
-                            self.peek1 = Some(peek1);
-                            self.overlap = Some(overlap);
-                        } else {
-                            // neither peek1 nor peek2 overlaps with window
-                            // remember peek1 and peek2 , return overlap
-                            self.peek1 = Some(peek1);
-                            self.peek2 = Some(peek2);
-                            return Some(overlap_window);
-                        }
-                    }
-                    (Some(peek), None) | (None, Some(peek)) => {
-                        if let Some(overlap) = peek.aggregate(&overlap_window) {
-                            // aggregate peek and overlap then reiterate
-                            self.overlap = Some(overlap);
-                        } else {
-                            // peek and overlap don't overlap, remember peek and return overlap
-                            // as only curve1 or curve2 remains it doesn't matter whether we
-                            // remember peek as peek1 or peek2
-                            self.peek1 = Some(peek);
-                            return Some(overlap_window);
-                        }
-                    }
+        // fill all peek slots
+        for element in &mut self.curves {
+            element.peek = element.peek.take().or_else(|| element.curve.next());
+        }
+
+        // find curve with earliest peek
+        let result = self
+            .curves
+            .iter_mut()
+            .enumerate()
+            .filter_map(|(index, element)| {
+                element.peek = element.peek.take().or_else(|| element.curve.next());
+                if let Some(peek) = element.peek.as_mut() {
+                    Some((index, peek.start, &mut element.peek))
+                } else {
+                    None
                 }
-            } else {
-                match (peek1, peek2) {
-                    (None, None) => return None,
-                    (Some(peek1), Some(peek2)) => {
-                        if let Some(overlap) = peek1.aggregate(&peek2) {
-                            // need to reiterate as more overlap may exist now
-                            self.overlap = Some(overlap)
+            })
+            .min_by_key(|(_, start, _)| *start)
+            .and_then(|(index, _, peek)| peek.take().map(|peek| (index, peek)));
+
+        // take peek
+        if let Some((original_index, first_peek)) = result {
+            let mut overlap = first_peek;
+
+            // the index that was last aggregated into overlap
+            // if we reach it again without aggregating more we are done
+            let mut aggregate_index = original_index;
+
+            loop {
+                let (tail, head) = self.curves.split_at_mut(original_index + 1);
+
+                // start after index and cycle through all elements
+                // until we reach and process an index again without aggregating since our last visit
+                let iter = head
+                    .iter_mut()
+                    .enumerate()
+                    .map(move |(i, element)| (i + original_index + 1, element))
+                    .chain(tail.iter_mut().enumerate());
+
+                for (index, element) in iter {
+                    if let Some(peek) = element.peek.take().or_else(|| element.curve.next()) {
+                        if let Some(overlap_window) = overlap.aggregate(&peek) {
+                            // update last aggregated index
+                            aggregate_index = index;
+                            // replace overlap with new overlap_window
+                            overlap = overlap_window;
+                            continue;
                         } else {
-                            // peek1 and peek2 don't overlap we can return the earlier
-                            // and need to remember the later
-                            if peek1.end < peek2.start {
-                                self.peek2 = Some(peek2);
-                                return Some(peek1);
-                            } else if peek2.end < peek1.start {
-                                self.peek1 = Some(peek1);
-                                return Some(peek2);
-                            } else {
-                                unreachable!("Overlap already handled earlier")
-                            }
+                            // restore peek
+                            element.peek = Some(peek);
                         }
                     }
-                    (Some(peek), None) | (None, Some(peek)) => return Some(peek),
+
+                    if aggregate_index == index {
+                        // reached this again without aggregating
+                        return Some(overlap);
+                    }
                 }
             }
+        } else {
+            None
         }
     }
 }
 
-impl<I1, I2> FusedIterator for AggregatedDemandIterator<I1, I2>
-where
-    Self: Iterator,
-    I1: FusedIterator,
-    I2: FusedIterator,
-{
-}
-
-/// Type alias to make it easier to refer to the Self type of the below
-/// impl of Aggregate
-pub type RecursiveAggregatedDemandIterator<'a, C> = AggregatedDemandIterator<
-    Box<dyn FusedCurveIterator<'a, C> + 'a>,
-    Box<dyn FusedCurveIterator<'a, C> + 'a>,
->;
-
-impl<'a, C, CI> Aggregate<CI> for RecursiveAggregatedDemandIterator<'a, C>
-where
-    C: CurveType<WindowKind = Demand> + 'a,
-    CI: CurveIterator<Demand, CurveKind = C> + Clone + 'a,
-{
+impl<AI: Iterator> Aggregate<AI> for AggregationIterator<AI> {
     fn aggregate<I>(iter: I) -> Self
     where
-        I: Iterator<Item = CI>,
+        I: Iterator<Item = AI>,
     {
-        iter.fold(
-            AggregatedDemandIterator::new(
-                Box::new(EmptyCurveIterator::new()),
-                Box::new(EmptyCurveIterator::new()),
-            ),
-            |acc, window| AggregatedDemandIterator::new(Box::new(acc), Box::new(window.fuse())),
-        )
+        AggregationIterator::new(iter.collect())
     }
 }

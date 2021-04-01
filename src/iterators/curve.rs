@@ -7,11 +7,12 @@
 use std::collections::VecDeque;
 use std::iter::FusedIterator;
 
-pub use aggregate::{AggregatedDemandIterator, RecursiveAggregatedDemandIterator};
 pub use delta::{
     CurveDeltaIterator,
     Delta::{self, *},
 };
+
+pub use aggregate::AggregationIterator;
 
 pub use split::CurveSplitIterator;
 

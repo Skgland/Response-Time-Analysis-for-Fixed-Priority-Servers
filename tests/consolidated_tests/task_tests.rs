@@ -1,5 +1,5 @@
 use rta_for_fps::curve::Curve;
-use rta_for_fps::iterators::curve::AggregatedDemandIterator;
+use rta_for_fps::iterators::curve::AggregationIterator;
 use rta_for_fps::iterators::CurveIterator;
 use rta_for_fps::task::curve_types::TaskDemand;
 use rta_for_fps::task::Task;
@@ -50,9 +50,11 @@ fn aggregated_demand_curve() {
 
     let up_to = TimeUnit::from(18);
 
-    let result: Curve<TaskDemand> =
-        AggregatedDemandIterator::new(t_2.demand_curve_iter(up_to), t_3.demand_curve_iter(up_to))
-            .collect_curve();
+    let result: Curve<TaskDemand> = AggregationIterator::new(vec![
+        t_2.demand_curve_iter(up_to),
+        t_3.demand_curve_iter(up_to),
+    ])
+    .collect_curve();
 
     let expected_result = unsafe {
         Curve::from_windows_unchecked(vec![

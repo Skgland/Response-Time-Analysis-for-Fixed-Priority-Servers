@@ -3,7 +3,7 @@
 //! and functions to be used with one or multiple Servers
 
 use crate::curve::AggregateExt;
-use crate::iterators::curve::AggregatedDemandIterator;
+use crate::iterators::curve::AggregationIterator;
 use crate::iterators::server::constrained_demand::ConstrainedServerDemandIterator;
 use crate::iterators::CurveIterator;
 use crate::task::Task;
@@ -79,7 +79,7 @@ impl<'a> Server<'a> {
         self.tasks
             .iter()
             .map(move |task| task.into_iter().take_while(Window::limit(up_to)))
-            .aggregate::<AggregatedDemandIterator<_, _>>()
+            .aggregate::<AggregationIterator<_>>()
             .reclassify()
     }
 
