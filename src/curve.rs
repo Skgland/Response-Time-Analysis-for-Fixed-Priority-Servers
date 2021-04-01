@@ -45,16 +45,16 @@ impl<T: CurveType> Curve<T> {
     /// May return a Curve with no Windows when the provided Window is empty
     #[must_use]
     pub fn new(window: Window<T::WindowKind>) -> Self {
-        if window.is_empty() {
+        let windows = if window.is_empty() {
             // Empty windows can be ignored
-            Self::empty()
+            vec![]
         } else {
             // A Curve with only a single has
             // the windows always ordered and non-overlapping
-            Self {
-                windows: vec![window],
-            }
-        }
+            vec![window]
+        };
+
+        Self { windows }
     }
 
     /// Returns a slice reference to the contained windows

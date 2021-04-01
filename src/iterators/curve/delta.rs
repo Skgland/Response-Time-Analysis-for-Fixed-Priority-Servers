@@ -3,7 +3,6 @@ use crate::iterators::curve::IterCurveWrapper;
 use crate::iterators::CurveIterator;
 
 use crate::window::{Overlap, Window, WindowDeltaResult};
-use std::collections::VecDeque;
 use std::fmt::Debug;
 
 use crate::window::window_types::WindowType;
@@ -123,7 +122,7 @@ pub struct CurveDeltaIterator<DW, SW, DI, SI> {
     /// peek of the demand curve
     remaining_demand: Option<Window<DW>>,
     /// peek of the supply curve
-    remaining_supply: VecDeque<Window<SW>>,
+    remaining_supply: Vec<Window<SW>>,
 }
 
 impl<DW, SW, DI: Clone, SI: Clone> Clone for CurveDeltaIterator<DW, SW, DI, SI> {
@@ -157,7 +156,7 @@ impl<DW: WindowType, SW: WindowType, DI: CurveIterator<DW>, SI: CurveIterator<SW
             demand: Some(demand),
             supply: Some(supply),
             remaining_demand: None,
-            remaining_supply: VecDeque::default(),
+            remaining_supply: Vec::new(),
         }
     }
 
@@ -204,10 +203,7 @@ where
             let demand = self.remaining_demand.take().or_else(|| demand_iter.next());
 
             if let Some(demand_window) = demand {
-                let supply = self
-                    .remaining_supply
-                    .pop_front()
-                    .or_else(|| supply_iter.next());
+                let supply = self.remaining_supply.pop().or_else(|| supply_iter.next());
 
                 if let Some(supply_window) = supply {
                     if demand_window.start < supply_window.end {
@@ -223,7 +219,7 @@ where
                             .into_iter()
                             .filter(|window| !window.is_empty())
                             .rev()
-                            .for_each(|window| self.remaining_supply.push_front(window));
+                            .for_each(|window| self.remaining_supply.push(window));
 
                         // remember remaining demand
                         self.remaining_demand =
@@ -250,10 +246,7 @@ where
                 self.demand = None;
 
                 // finish up supply
-                let remaining_supply = self
-                    .remaining_supply
-                    .pop_front()
-                    .map(Delta::RemainingSupply);
+                let remaining_supply = self.remaining_supply.pop().map(Delta::RemainingSupply);
                 let lazy_supply_iter = || self.supply.take().map(Delta::EndSupply);
                 remaining_supply.or_else(lazy_supply_iter)
             }
@@ -261,10 +254,7 @@ where
             // demand or supply or both are gone, finish up
             // the corresponding remaining_ should also be empty
 
-            let remaining_supply = self
-                .remaining_supply
-                .pop_front()
-                .map(Delta::RemainingSupply);
+            let remaining_supply = self.remaining_supply.pop().map(Delta::RemainingSupply);
 
             let rd = &mut self.remaining_demand;
             let s = &mut self.supply;

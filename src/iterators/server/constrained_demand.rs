@@ -1,4 +1,3 @@
-use std::collections::VecDeque;
 use std::iter::FusedIterator;
 
 use crate::curve::curve_types::{CurveType, UnspecifiedCurve};
@@ -85,7 +84,7 @@ pub struct InternalConstrainedServerDemandIterator<'a, I> {
     /// The spill from the previous group
     spill: Option<Window<<AggregatedServerDemand as CurveType>::WindowKind>>,
     /// Remaining windows till we need to process the next group
-    remainder: VecDeque<Window<<ConstrainedServerDemand as CurveType>::WindowKind>>,
+    remainder: Vec<Window<<ConstrainedServerDemand as CurveType>::WindowKind>>,
 }
 
 impl<'a, I> InternalConstrainedServerDemandIterator<'a, I>
@@ -105,7 +104,7 @@ where
             groups: split,
             group_peek: None,
             spill: None,
-            remainder: VecDeque::new(),
+            remainder: Vec::new(),
         }
     }
 }
@@ -128,7 +127,7 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         #![allow(clippy::option_if_let_else)] // false positive, can't use map_or as the same value is moved in both branches
 
-        if let Some(window) = self.remainder.pop_front() {
+        if let Some(window) = self.remainder.pop() {
             Some(window)
         } else {
             let next_group = self.group_peek.take().or_else(|| self.groups.next());
@@ -158,10 +157,14 @@ where
 
                     let mut windows = curve.into_windows();
 
-                    let keep = windows
-                        .drain(..index)
-                        .chain(std::iter::once(head).filter(|window| !window.is_empty()))
-                        .collect();
+                    self.remainder.reserve(windows.len().min(index) + 1);
+
+                    self.remainder.extend(
+                        windows
+                            .drain(..index)
+                            .chain(std::iter::once(head).filter(|window| !window.is_empty()))
+                            .rev(),
+                    );
 
                     let delta_k = tail.length()
                         + windows
@@ -175,9 +178,7 @@ where
                         self.spill = Some(Window::new(spill_start, spill_start + delta_k));
                     }
 
-                    self.remainder = keep;
-
-                    let result = self.remainder.pop_front();
+                    let result = self.remainder.pop();
                     assert!(result.is_some());
                     result
                 }
@@ -192,19 +193,23 @@ where
 
                     let PartitionResult { index, head, tail } = curve.partition(k, self.server);
 
-                    let keep = curve
-                        .into_windows()
-                        .drain(..index)
-                        .chain(std::iter::once(head).filter(|window| !window.is_empty()))
-                        .collect();
+                    self.remainder
+                        .reserve(curve.as_windows().len().min(index) + 1);
+
+                    self.remainder.extend(
+                        curve
+                            .into_windows()
+                            .drain(..index)
+                            .chain(std::iter::once(head).filter(|window| !window.is_empty()))
+                            .rev(),
+                    );
 
                     self.spill = (!tail.is_empty()).then(|| {
                         let spill_start = (k + 1) * self.server.interval;
                         Window::new(spill_start, spill_start + tail.length())
                     });
 
-                    self.remainder = keep;
-                    let result = self.remainder.pop_front();
+                    let result = self.remainder.pop();
                     assert!(result.is_some());
                     result
                 }

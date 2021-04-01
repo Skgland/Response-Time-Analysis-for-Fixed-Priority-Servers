@@ -1,4 +1,3 @@
-use std::collections::VecDeque;
 use std::iter::{FlatMap, FusedIterator};
 
 use crate::curve::curve_types::CurveType;
@@ -116,7 +115,7 @@ pub struct InternalActualExecutionIterator<'a, AC, CDC> {
     /// the remaining available execution
     available_execution: FlattenedSplitAvailableSupply<AC>,
     /// the peek of the remaining available execution that is not yet consumed
-    execution_peek: VecDeque<Window<<UnconstrainedServerExecution as CurveType>::WindowKind>>,
+    execution_peek: Vec<Window<<UnconstrainedServerExecution as CurveType>::WindowKind>>,
     /// the group spend_budget is referring to
     current_group: UnitNumber,
     /// the spend budget of the current group
@@ -160,7 +159,7 @@ impl<'a, AC, CDC> InternalActualExecutionIterator<'a, AC, CDC> {
         InternalActualExecutionIterator {
             server,
             available_execution: split_execution,
-            execution_peek: VecDeque::new(),
+            execution_peek: Vec::new(),
             current_group: 0,
             spend_budget: TimeUnit::ZERO,
             constrained_demand,
@@ -203,7 +202,7 @@ where
             loop {
                 let supply = self
                     .execution_peek
-                    .pop_front()
+                    .pop()
                     .or_else(|| self.available_execution.next());
 
                 if let Some(supply_window) = supply {
@@ -251,7 +250,7 @@ where
                         .into_iter()
                         .filter(|window| !window.is_empty())
                         .rev()
-                        .for_each(|window| self.execution_peek.push_front(window));
+                        .for_each(|window| self.execution_peek.push(window));
 
                     break Some(result.overlap);
                 } else {

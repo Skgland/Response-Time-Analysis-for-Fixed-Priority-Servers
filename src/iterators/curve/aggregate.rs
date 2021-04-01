@@ -17,10 +17,13 @@ pub struct Element<I> {
 ///
 #[derive(Debug, Clone)]
 pub struct AggregationIterator<I> {
+    /// The CurveIterators to aggregate
     curves: Vec<Element<I>>,
 }
 
 impl<I: Iterator> AggregationIterator<I> {
+    /// Create a new `AggregationIterator`
+    #[must_use]
     pub fn new(curves: Vec<I>) -> Self {
         AggregationIterator {
             curves: curves

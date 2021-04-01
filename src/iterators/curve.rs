@@ -4,7 +4,7 @@
 //!
 //! also `FromIterator` implementation for `Curve`
 //!
-use std::collections::VecDeque;
+
 use std::iter::FusedIterator;
 
 pub use delta::{
@@ -54,7 +54,7 @@ impl<C: CurveType> FromCurveIterator<C> for Curve<C> {
 #[derive(Debug)]
 pub struct CurveIter<C: CurveType> {
     /// The remaining windows of the Curve
-    curve: VecDeque<Window<C::WindowKind>>,
+    curve: Vec<Window<C::WindowKind>>,
 }
 
 impl<C: CurveType> Clone for CurveIter<C> {
@@ -70,9 +70,9 @@ impl<C: CurveType> IntoIterator for Curve<C> {
     type IntoIter = CurveIter<C>;
 
     fn into_iter(self) -> Self::IntoIter {
-        CurveIter {
-            curve: self.into_windows().into(),
-        }
+        let mut windows = self.into_windows();
+        windows.reverse();
+        CurveIter { curve: windows }
     }
 }
 
@@ -86,7 +86,7 @@ impl<C: CurveType> Iterator for CurveIter<C> {
     type Item = Window<C::WindowKind>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.curve.pop_front()
+        self.curve.pop()
     }
 }
 
