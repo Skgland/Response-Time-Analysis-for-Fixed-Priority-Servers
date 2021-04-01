@@ -10,6 +10,7 @@ use std::iter::FusedIterator;
 pub use delta::{
     CurveDeltaIterator,
     Delta::{self, *},
+    InverseCurveIterator,
 };
 
 pub use aggregate::AggregationIterator;

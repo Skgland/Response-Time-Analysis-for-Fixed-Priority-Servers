@@ -1,7 +1,7 @@
 //! Module for the System type
 
 use crate::curve::{AggregateExt, Curve};
-use crate::iterators::curve::{AggregationIterator, CurveDeltaIterator};
+use crate::iterators::curve::{AggregationIterator, CurveDeltaIterator, InverseCurveIterator};
 
 use crate::server::{
     ActualServerExecution, HigherPriorityServerDemand, Server, UnconstrainedServerExecution,
@@ -90,14 +90,9 @@ impl<'a> System<'a> {
         CurveKind = UnconstrainedServerExecution,
     > + Clone
            + '_ {
-        let total: Curve<UnconstrainedServerExecution> =
-            Curve::new(Window::new(TimeUnit::ZERO, up_to));
+        let ahpc = self.aggregated_higher_priority_demand_curve_iter(server_index, up_to);
 
-        CurveDeltaIterator::new(
-            total.into_iter(),
-            self.aggregated_higher_priority_demand_curve_iter(server_index, up_to),
-        )
-        .remaining_supply()
+        InverseCurveIterator::new(ahpc, up_to)
     }
 
     /// Calculate the Constrained Execution Curve using Algorithm 4. from the paper

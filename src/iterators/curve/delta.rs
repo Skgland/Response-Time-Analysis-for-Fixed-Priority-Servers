@@ -5,8 +5,10 @@ use crate::iterators::CurveIterator;
 use crate::window::{Overlap, Window, WindowDeltaResult};
 use std::fmt::Debug;
 
+use crate::time::TimeUnit;
 use crate::window::window_types::WindowType;
 use std::iter::FusedIterator;
+use std::marker::PhantomData;
 
 /// Item type of the `CurveDeltaIterator`
 #[derive(Debug)]
@@ -104,6 +106,74 @@ where
                 }
             }
             return None;
+        }
+    }
+}
+
+/// Calculate the Inverse of a Curve
+/// directly rather than calculating the delta between total and the curve
+#[derive(Debug)]
+pub struct InverseCurveIterator<I, C, W> {
+    iter: I,
+    /// The point where total would end
+    upper_bound: TimeUnit,
+    /// The end of the last window
+    previous_end: TimeUnit,
+    curve_type: PhantomData<(W, C)>,
+}
+
+impl<I, C, W> InverseCurveIterator<I, C, W> {
+    /// Create a new `InverseCurveIterator`
+    #[must_use]
+    pub const fn new(iter: I, upper_bound: TimeUnit) -> Self {
+        InverseCurveIterator {
+            iter,
+            upper_bound,
+            previous_end: TimeUnit::ZERO,
+            curve_type: PhantomData,
+        }
+    }
+}
+
+impl<I: Clone, C, W> Clone for InverseCurveIterator<I, C, W> {
+    fn clone(&self) -> Self {
+        InverseCurveIterator {
+            iter: self.iter.clone(),
+            upper_bound: self.upper_bound.clone(),
+            previous_end: self.previous_end.clone(),
+            curve_type: PhantomData,
+        }
+    }
+}
+
+impl<I: CurveIterator<W>, W: Debug, C: CurveType> CurveIterator<C::WindowKind>
+    for InverseCurveIterator<I, C, W>
+{
+    type CurveKind = C;
+}
+
+impl<I: FusedIterator, W, C> FusedIterator for InverseCurveIterator<I, W, C> where Self: Iterator {}
+
+impl<W, I: Iterator<Item = Window<W>>, C: CurveType> Iterator for InverseCurveIterator<I, C, W> {
+    type Item = Window<C::WindowKind>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.upper_bound <= self.previous_end {
+            None
+        } else {
+            while let Some(window) = self.iter.next() {
+                if self.previous_end < window.start {
+                    let result = Window::new(self.previous_end, window.start);
+                    self.previous_end = window.end;
+                    return Some(result);
+                } else {
+                    self.previous_end = window.end;
+                }
+            }
+
+            let result = Window::new(self.previous_end, self.upper_bound);
+            self.previous_end = self.upper_bound;
+            Some(result)
         }
     }
 }
