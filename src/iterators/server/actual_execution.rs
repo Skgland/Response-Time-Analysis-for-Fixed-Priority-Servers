@@ -19,10 +19,12 @@ use crate::window::{Demand, Window};
 #[derive(Debug, Clone)]
 pub struct ActualServerExecutionIterator<AC, DC> {
     /// internal Iterator
-    iter: JoinAdjacentIterator<
-        InternalActualExecutionIterator<AC, DC>,
-        <ActualServerExecution as CurveType>::WindowKind,
-        ActualServerExecution,
+    iter: Box<
+        JoinAdjacentIterator<
+            InternalActualExecutionIterator<AC, DC>,
+            <ActualServerExecution as CurveType>::WindowKind,
+            ActualServerExecution,
+        >,
     >,
 }
 
@@ -58,7 +60,9 @@ impl<AC, DC> ActualServerExecutionIterator<AC, DC> {
             // either non-overlapping or adjacent
             JoinAdjacentIterator::new(inner)
         };
-        ActualServerExecutionIterator { iter: outer }
+        ActualServerExecutionIterator {
+            iter: Box::new(outer),
+        }
     }
 }
 
@@ -120,7 +124,7 @@ pub struct InternalActualExecutionIterator<AC, CDC> {
     /// the server for which to calculate the actual execution
     server_properties: ServerProperties,
     /// the remaining available execution
-    available_execution: FlattenedSplitAvailableSupply<AC>,
+    available_execution: Box<FlattenedSplitAvailableSupply<AC>>,
     /// the peek of the remaining available execution that is not yet consumed
     execution_peek: Vec<Window<<UnconstrainedServerExecution as CurveType>::WindowKind>>,
     /// the group spend_budget is referring to
@@ -170,11 +174,11 @@ impl<AC, CDC> InternalActualExecutionIterator<AC, CDC> {
 
         InternalActualExecutionIterator {
             server_properties,
-            available_execution: split_execution,
+            available_execution: Box::new(split_execution),
             execution_peek: Vec::new(),
             current_group: 0,
             spend_budget: TimeUnit::ZERO,
-            constrained_demand,
+            constrained_demand: (constrained_demand),
             demand_peek: None,
         }
     }

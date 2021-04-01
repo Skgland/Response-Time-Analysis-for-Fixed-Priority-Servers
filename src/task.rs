@@ -148,6 +148,7 @@ impl Task {
            + 'a {
         let available_execution_curve =
             Task::available_execution_curve_impl(system, server_index, task_index, up_to);
+
         let task_demand_curve =
             system.as_servers()[server_index].as_tasks()[task_index].demand_curve_iter(up_to);
 
@@ -175,9 +176,10 @@ impl Task {
     ) -> TimeUnit {
         let swh = arrival_before;
 
-        let actual_execution_time: Curve<ActualTaskExecution> =
-            Task::actual_execution_curve_iter(system, server_index, task_index, swh)
-                .collect_curve();
+        let actual_execution_time_iter =
+            Task::actual_execution_curve_iter(system, server_index, task_index, swh);
+
+        let actual_execution_time: Curve<_> = actual_execution_time_iter.collect_curve();
 
         let task = &system.as_servers()[server_index].as_tasks()[task_index];
 

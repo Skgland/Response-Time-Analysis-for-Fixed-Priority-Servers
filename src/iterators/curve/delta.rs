@@ -16,12 +16,12 @@ pub enum Delta<S, D, SI, DI> {
     /// Indicate a Window of remaining supply
     RemainingSupply(Window<S>),
     /// Remaining Supply once Demand ran out
-    EndSupply(SI),
+    EndSupply(Box<SI>),
     /// Indicate a Window of overlapping supply and demand
     Overlap(Window<Overlap<S, D>>),
     /// Indicate a Window of remaining demand
     RemainingDemand(Window<D>),
-    EndDemand(DI),
+    EndDemand(Box<DI>),
 }
 
 impl<S, D, SI, DI> Delta<S, D, SI, DI> {
@@ -44,8 +44,10 @@ impl<S, D, SI, DI> Delta<S, D, SI, DI> {
 /// See [`CurveDeltaIterator::remaining_supply`]
 #[derive(Debug)]
 pub struct RemainingSupplyIterator<S, D, SI, DI> {
+    /// The CurveDeltaIterator from which to collect the supply
     delta: Option<CurveDeltaIterator<D, S, DI, SI>>,
-    end_supply: Option<SI>,
+    /// The remaining end_supply to return
+    end_supply: Option<Box<SI>>,
 }
 
 impl<S, D, SI: Clone, DI: Clone> Clone for RemainingSupplyIterator<S, D, SI, DI> {
@@ -114,11 +116,13 @@ where
 /// directly rather than calculating the delta between total and the curve
 #[derive(Debug)]
 pub struct InverseCurveIterator<I, C, W> {
+    /// The iterator to invert
     iter: I,
     /// The point where total would end
     upper_bound: TimeUnit,
     /// The end of the last window
     previous_end: TimeUnit,
+    /// The type of the Produced Curves and the corresponding window type
     curve_type: PhantomData<(W, C)>,
 }
 
@@ -186,9 +190,9 @@ impl<W, I: Iterator<Item = Window<W>>, C: CurveType> Iterator for InverseCurveIt
 #[derive(Debug)]
 pub struct CurveDeltaIterator<DW, SW, DI, SI> {
     /// remaining demand curve
-    demand: Option<DI>,
+    demand: Option<Box<DI>>,
     /// remaining supply curve
-    supply: Option<SI>,
+    supply: Option<Box<SI>>,
     /// peek of the demand curve
     remaining_demand: Option<Window<DW>>,
     /// peek of the supply curve
@@ -223,8 +227,8 @@ impl<DW: WindowType, SW: WindowType, DI: CurveIterator<DW>, SI: CurveIterator<SW
     /// Create a new Iterator for computing the delta between the supply and demand curve
     pub fn new(supply: SI, demand: DI) -> Self {
         CurveDeltaIterator {
-            demand: Some(demand),
-            supply: Some(supply),
+            demand: Some(Box::new(demand)),
+            supply: Some(Box::new(supply)),
             remaining_demand: None,
             remaining_supply: Vec::new(),
         }

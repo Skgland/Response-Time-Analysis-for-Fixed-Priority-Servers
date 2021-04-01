@@ -13,7 +13,7 @@ use std::iter::FusedIterator;
 #[derive(Debug, Clone)]
 pub struct CurveSplitIterator<W, CI> {
     /// The remaining Curve to be split
-    iter: CI,
+    iter: Box<CI>,
     /// The remaining tail from the head of the last split
     tail: Option<Window<W>>,
     /// The interval at which to perform the splits
@@ -27,7 +27,7 @@ where
     /// Split the `CurveIterator` at every interval
     pub fn new(iter: CI, interval: TimeUnit) -> Self {
         CurveSplitIterator {
-            iter,
+            iter: Box::new(iter),
             tail: None,
             interval,
         }

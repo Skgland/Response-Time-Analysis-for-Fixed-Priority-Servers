@@ -7,7 +7,7 @@ use crate::window::{Demand, Window};
 /// Elements for `AggregationIterator`
 #[derive(Debug, Clone)]
 pub struct Element<I> {
-    curve: Fuse<I>,
+    curve: Box<Fuse<I>>,
     peek: Option<Window<Demand>>,
 }
 
@@ -29,7 +29,7 @@ impl<I: Iterator> AggregationIterator<I> {
             curves: curves
                 .into_iter()
                 .map(|curve| Element {
-                    curve: curve.fuse(),
+                    curve: Box::new(curve.fuse()),
                     peek: None,
                 })
                 .collect(),

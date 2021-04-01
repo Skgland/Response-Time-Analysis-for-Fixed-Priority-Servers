@@ -12,10 +12,12 @@ use crate::window::{Demand, Window};
 #[derive(Debug, Clone)]
 pub struct ConstrainedServerDemandIterator<I> {
     /// internal Iterator
-    iter: JoinAdjacentIterator<
-        InternalConstrainedServerDemandIterator<I>,
-        Demand,
-        ConstrainedServerDemand,
+    iter: Box<
+        JoinAdjacentIterator<
+            InternalConstrainedServerDemandIterator<I>,
+            Demand,
+            ConstrainedServerDemand,
+        >,
     >,
 }
 
@@ -33,7 +35,9 @@ where
             // either non-overlapping or adjacent
             JoinAdjacentIterator::new(internal)
         };
-        ConstrainedServerDemandIterator { iter: outer }
+        ConstrainedServerDemandIterator {
+            iter: Box::new(outer),
+        }
     }
 }
 
@@ -79,7 +83,7 @@ pub struct InternalConstrainedServerDemandIterator<I> {
     /// The Server for which to calculate the constrained demand
     server_properties: ServerProperties,
     /// The remaining aggregated Demand of the Server
-    groups: CurveSplitIterator<<AggregatedServerDemand as CurveType>::WindowKind, I>,
+    groups: Box<CurveSplitIterator<<AggregatedServerDemand as CurveType>::WindowKind, I>>,
     /// The next group
     group_peek: Option<(UnitNumber, Curve<AggregatedServerDemand>)>,
     /// The spill from the previous group
@@ -102,7 +106,7 @@ where
         let split = CurveSplitIterator::new(aggregated_demand, server_properties.interval);
         InternalConstrainedServerDemandIterator {
             server_properties,
-            groups: split,
+            groups: Box::new(split),
             group_peek: None,
             spill: None,
             remainder: Vec::new(),
