@@ -159,6 +159,11 @@ impl Task {
     ///
     /// See definition 15. of the paper for reference
     ///
+    /// Takes the system of servers that the task which worst case execution time shall be calculated is part of
+    /// the priority/index of the server the Task belongs to
+    /// and the tasks priority/index in that server
+    /// as well as the time till which jobs that arrive prior shall be considered for the analysis
+    ///
     /// # Panics
     /// When sanity checks fail
     #[must_use]
@@ -166,8 +171,9 @@ impl Task {
         system: &System,
         server_index: usize,
         task_index: usize,
+        arrival_before: TimeUnit,
     ) -> TimeUnit {
-        let swh = system.system_wide_hyper_periode(server_index);
+        let swh = arrival_before;
 
         let actual_execution_time: Curve<ActualTaskExecution> =
             Task::actual_execution_curve_iter(system, server_index, task_index, swh)

@@ -204,7 +204,7 @@ fn response_time() {
 
     assert_eq!(swh, TimeUnit::from(40));
 
-    let wcrt = Task::worst_case_response_time(&system, server_index, task_index);
+    let wcrt = Task::worst_case_response_time(&system, server_index, task_index, swh);
 
     assert_eq!(wcrt, TimeUnit::from(3));
 }
@@ -298,6 +298,8 @@ fn comparison() {
 
     assert_eq!(r_2_2, expected_response_time);
 
-    let wcrt = Task::worst_case_response_time(&system, 1, 0);
+    let swh = system.system_wide_hyper_periode(1);
+
+    let wcrt = Task::worst_case_response_time(&system, 1, 0, swh);
     assert_eq!(wcrt, expected_response_time);
 }

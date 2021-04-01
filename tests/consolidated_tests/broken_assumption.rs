@@ -49,7 +49,7 @@ fn remarks() {
 
     assert_eq!(completed, TimeUnit::from(4754 * 2));
 
-    let result = Task::worst_case_response_time(&system, 1, 0);
+    let result = Task::worst_case_response_time(&system, 1, 0, swh);
 
     assert_eq!(result, TimeUnit::from(308));
 }
@@ -88,7 +88,9 @@ fn example_too_high() {
 
     let system = System::new(servers);
 
-    let wcrt = rta_for_fps::task::Task::worst_case_response_time(&system, servers.len() - 1, 0);
+    let swh = system.system_wide_hyper_periode(servers.len() - 1);
+    let wcrt =
+        rta_for_fps::task::Task::worst_case_response_time(&system, servers.len() - 1, 0, swh);
 
     assert_eq!(wcrt, 19.into());
 }
@@ -125,7 +127,10 @@ fn example_too_low() {
 
     let system = System::new(servers);
 
-    let wcrt = rta_for_fps::task::Task::worst_case_response_time(&system, servers.len() - 1, 0);
+    let swh = system.system_wide_hyper_periode(servers.len() - 1);
+
+    let wcrt =
+        rta_for_fps::task::Task::worst_case_response_time(&system, servers.len() - 1, 0, swh);
 
     assert_eq!(wcrt, 22.into());
 }
