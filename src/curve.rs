@@ -7,7 +7,7 @@ use std::fmt::Debug;
 use curve_types::CurveType;
 
 use crate::iterators::curve::{CurveDeltaIterator, Delta};
-use crate::server::{Server, ServerKind};
+use crate::server::{ServerKind, ServerProperties};
 
 use crate::iterators::CurveIterator;
 use crate::time::{TimeUnit, UnitNumber};
@@ -138,8 +138,12 @@ impl<T: CurveType<WindowKind = Demand>> Curve<T> {
     ///
     /// The implementation here deviates from the paper by returning an exclusive index while the paper uses an inclusive index
     #[must_use]
-    pub fn partition(&self, group_index: UnitNumber, server: &Server) -> PartitionResult {
-        match server.server_type {
+    pub fn partition(
+        &self,
+        group_index: UnitNumber,
+        server_properties: ServerProperties,
+    ) -> PartitionResult {
+        match server_properties.server_type {
             ServerKind::Deferrable => {
                 // Algorithm 2.
 
@@ -159,13 +163,13 @@ impl<T: CurveType<WindowKind = Demand>> Curve<T> {
                     .enumerate()
                     .scan(TimeUnit::ZERO, |acc, (index, window)| {
                         *acc += window.length();
-                        (*acc <= server.capacity).then(|| index + 1)
+                        (*acc <= server_properties.capacity).then(|| index + 1)
                     })
                     .last()
                     .unwrap_or(0);
 
                 // (2)
-                let remaining_capacity = server.capacity
+                let remaining_capacity = server_properties.capacity
                     - self.windows[..index]
                         .iter()
                         .map(Window::length)
@@ -195,7 +199,7 @@ impl<T: CurveType<WindowKind = Demand>> Curve<T> {
                 // Algorithm 3.
                 // (1)
 
-                let limit = group_index * server.interval + server.capacity;
+                let limit = group_index * server_properties.interval + server_properties.capacity;
 
                 // Note index is i+1 rather than i,
                 // as 0 is used to indicate that the first window is already past the limit

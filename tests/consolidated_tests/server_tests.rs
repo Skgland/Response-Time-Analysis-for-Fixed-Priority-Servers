@@ -8,12 +8,14 @@ use rta_for_fps::window::Window;
 fn deferrable_server() {
     // Example 6. with t = 18
 
-    let server = Server {
-        tasks: &[Task::new(1, 5, 0), Task::new(2, 8, 0)],
-        capacity: TimeUnit::from(2),
-        interval: TimeUnit::from(4),
-        server_type: ServerKind::Deferrable,
-    };
+    let tasks = &[Task::new(1, 5, 0), Task::new(2, 8, 0)];
+
+    let server = Server::new(
+        tasks,
+        TimeUnit::from(2),
+        TimeUnit::from(4),
+        ServerKind::Deferrable,
+    );
 
     let result = server.constraint_demand_curve_iter(TimeUnit::from(18));
 

@@ -9,28 +9,28 @@ use crate::window::{Demand, Window};
 
 /// `CurveIterator` for a Tasks Demand
 #[derive(Debug, Clone)]
-pub struct TaskDemandIterator<'a> {
+pub struct TaskDemandIterator {
     /// the Task this Iterator generates demand for
-    task: &'a Task,
+    task: Task,
     /// The next Job index for which to generate Demand
     next_job: UnitNumber,
 }
 
-impl<'a> TaskDemandIterator<'a> {
+impl<'a> TaskDemandIterator {
     /// Create a `CurveIterator` for a Tasks Demand
     #[must_use]
-    pub const fn new(task: &'a Task) -> Self {
+    pub const fn new(task: Task) -> Self {
         TaskDemandIterator { task, next_job: 0 }
     }
 }
 
-impl<'a> CurveIterator<Demand> for TaskDemandIterator<'a> {
+impl<'a> CurveIterator<Demand> for TaskDemandIterator {
     type CurveKind = TaskDemand;
 }
 
-impl FusedIterator for TaskDemandIterator<'_> {}
+impl FusedIterator for TaskDemandIterator {}
 
-impl Iterator for TaskDemandIterator<'_> {
+impl Iterator for TaskDemandIterator {
     type Item = Window<<TaskDemand as CurveType>::WindowKind>;
 
     fn next(&mut self) -> Option<Self::Item> {

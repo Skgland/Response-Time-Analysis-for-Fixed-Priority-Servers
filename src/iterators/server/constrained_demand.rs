@@ -4,28 +4,29 @@ use crate::curve::curve_types::{CurveType, UnspecifiedCurve};
 use crate::curve::{Curve, PartitionResult};
 use crate::iterators::curve::{AggregationIterator, CurveSplitIterator};
 use crate::iterators::{CurveIterator, JoinAdjacentIterator};
-use crate::server::{AggregatedServerDemand, ConstrainedServerDemand, Server};
+use crate::server::{AggregatedServerDemand, ConstrainedServerDemand, ServerProperties};
 use crate::time::{TimeUnit, UnitNumber};
 use crate::window::{Demand, Window};
 
 /// `CurveIterator` for `ConstrainedServerDemand`
 #[derive(Debug, Clone)]
-pub struct ConstrainedServerDemandIterator<'a, I> {
+pub struct ConstrainedServerDemandIterator<I> {
     /// internal Iterator
     iter: JoinAdjacentIterator<
-        InternalConstrainedServerDemandIterator<'a, I>,
+        InternalConstrainedServerDemandIterator<I>,
         Demand,
         ConstrainedServerDemand,
     >,
 }
 
-impl<'a, I> ConstrainedServerDemandIterator<'a, I>
+impl<I> ConstrainedServerDemandIterator<I>
 where
     I: CurveIterator<Demand, CurveKind = AggregatedServerDemand>,
 {
     /// Create a new `ConstrainedServerDemandIterator`
-    pub fn new(server: &'a Server, aggregated_demand: I) -> Self {
-        let internal = InternalConstrainedServerDemandIterator::new(server, aggregated_demand);
+    pub fn new(server_properties: ServerProperties, aggregated_demand: I) -> Self {
+        let internal =
+            InternalConstrainedServerDemandIterator::new(server_properties, aggregated_demand);
         let outer = unsafe {
             // Safety:
             // `InternalConstrainedServerDemandIterator` guarantees that the windows are in order and
@@ -37,25 +38,25 @@ where
 }
 
 impl<'a, I> CurveIterator<<ConstrainedServerDemand as CurveType>::WindowKind>
-    for ConstrainedServerDemandIterator<'a, I>
+    for ConstrainedServerDemandIterator<I>
 where
     I: CurveIterator<Demand, CurveKind = AggregatedServerDemand>,
 {
     type CurveKind = ConstrainedServerDemand;
 }
 
-impl<'a, I> FusedIterator for ConstrainedServerDemandIterator<'a, I>
+impl<'a, I> FusedIterator for ConstrainedServerDemandIterator<I>
 where
     Self: Iterator,
     JoinAdjacentIterator<
-        InternalConstrainedServerDemandIterator<'a, I>,
+        InternalConstrainedServerDemandIterator<I>,
         Demand,
         ConstrainedServerDemand,
     >: FusedIterator,
 {
 }
 
-impl<'a, I> Iterator for ConstrainedServerDemandIterator<'a, I>
+impl<'a, I> Iterator for ConstrainedServerDemandIterator<I>
 where
     I: CurveIterator<Demand, CurveKind = AggregatedServerDemand>,
 {
@@ -74,9 +75,9 @@ where
 /// using the aggregated server demand curve
 /// based on the Algorithm 1. from the paper and described in Section 5.1 of the paper
 #[derive(Debug, Clone)]
-pub struct InternalConstrainedServerDemandIterator<'a, I> {
+pub struct InternalConstrainedServerDemandIterator<I> {
     /// The Server for which to calculate the constrained demand
-    server: &'a Server<'a>,
+    server_properties: ServerProperties,
     /// The remaining aggregated Demand of the Server
     groups: CurveSplitIterator<<AggregatedServerDemand as CurveType>::WindowKind, I>,
     /// The next group
@@ -87,7 +88,7 @@ pub struct InternalConstrainedServerDemandIterator<'a, I> {
     remainder: Vec<Window<<ConstrainedServerDemand as CurveType>::WindowKind>>,
 }
 
-impl<'a, I> InternalConstrainedServerDemandIterator<'a, I>
+impl<'a, I> InternalConstrainedServerDemandIterator<I>
 where
     I: CurveIterator<
         <AggregatedServerDemand as CurveType>::WindowKind,
@@ -96,11 +97,11 @@ where
 {
     /// Create a new `InternalConstrainedServerDemandIterator`
     /// the main part for calculating the Constraint Server Demand Curve
-    pub fn new(server: &'a Server, aggregated_demand: I) -> Self {
+    pub fn new(server_properties: ServerProperties, aggregated_demand: I) -> Self {
         // Algorithm 1. (1)
-        let split = CurveSplitIterator::new(aggregated_demand, server.interval);
+        let split = CurveSplitIterator::new(aggregated_demand, server_properties.interval);
         InternalConstrainedServerDemandIterator {
-            server,
+            server_properties,
             groups: split,
             group_peek: None,
             spill: None,
@@ -110,14 +111,14 @@ where
 }
 
 impl<I: CurveIterator<AggregatedServerDemand>> FusedIterator
-    for InternalConstrainedServerDemandIterator<'_, I>
+    for InternalConstrainedServerDemandIterator<I>
 where
     Self: Iterator,
     CurveSplitIterator<<AggregatedServerDemand as CurveType>::WindowKind, I>: FusedIterator,
 {
 }
 
-impl<I> Iterator for InternalConstrainedServerDemandIterator<'_, I>
+impl<I> Iterator for InternalConstrainedServerDemandIterator<I>
 where
     I: CurveIterator<Demand, CurveKind = AggregatedServerDemand>,
 {
@@ -137,9 +138,9 @@ where
                 (None, None) => None,
                 (Some((group_index, next_group)), spill)
                     if (group_index
-                        == spill
-                            .as_ref()
-                            .map_or(group_index, |spill| spill.start / self.server.interval)) =>
+                        == spill.as_ref().map_or(group_index, |spill| {
+                            spill.start / self.server_properties.interval
+                        })) =>
                 {
                     // Handle next_group and potentially some spill into next_group
                     let curve = if let Some(spill) = spill {
@@ -153,7 +154,7 @@ where
                     };
 
                     let PartitionResult { index, head, tail } =
-                        curve.partition(group_index, self.server);
+                        curve.partition(group_index, self.server_properties);
 
                     let mut windows = curve.into_windows();
 
@@ -174,7 +175,7 @@ where
                             .sum();
 
                     if delta_k > TimeUnit::ZERO {
-                        let spill_start = (group_index + 1) * self.server.interval;
+                        let spill_start = (group_index + 1) * self.server_properties.interval;
                         self.spill = Some(Window::new(spill_start, spill_start + delta_k));
                     }
 
@@ -187,11 +188,12 @@ where
                     self.group_peek = next_group;
                     // only spill remaining or spill not spilled into next_group
 
-                    let k = spill.start / self.server.interval;
+                    let k = spill.start / self.server_properties.interval;
 
                     let curve = Curve::<UnspecifiedCurve<_>>::new(spill);
 
-                    let PartitionResult { index, head, tail } = curve.partition(k, self.server);
+                    let PartitionResult { index, head, tail } =
+                        curve.partition(k, self.server_properties);
 
                     self.remainder
                         .reserve(curve.as_windows().len().min(index) + 1);
@@ -205,7 +207,7 @@ where
                     );
 
                     self.spill = (!tail.is_empty()).then(|| {
-                        let spill_start = (k + 1) * self.server.interval;
+                        let spill_start = (k + 1) * self.server_properties.interval;
                         Window::new(spill_start, spill_start + tail.length())
                     });
 

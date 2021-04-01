@@ -14,25 +14,14 @@ mod incorrect {
 
     #[test]
     fn incorrect() {
+        let tasks_s1 = &[Task::new(8, 32, 8)];
+        let tasks_s2 = &[Task::new(4, 16, 8)];
+        let tasks_s3 = &[Task::new(2, 16, 0)];
+
         let servers = &[
-            Server {
-                tasks: &[Task::new(8, 32, 8)],
-                capacity: 8.into(),
-                interval: 16.into(),
-                server_type: ServerKind::Deferrable,
-            },
-            Server {
-                tasks: &[Task::new(4, 16, 8)],
-                capacity: 4.into(),
-                interval: 16.into(),
-                server_type: ServerKind::Deferrable,
-            },
-            Server {
-                tasks: &[Task::new(2, 16, 0)],
-                capacity: 2.into(),
-                interval: 16.into(),
-                server_type: ServerKind::Deferrable,
-            },
+            Server::new(tasks_s1, 8.into(), 16.into(), ServerKind::Deferrable),
+            Server::new(tasks_s2, 4.into(), 16.into(), ServerKind::Deferrable),
+            Server::new(tasks_s3, 2.into(), 16.into(), ServerKind::Deferrable),
         ];
 
         let system = System::new(servers);

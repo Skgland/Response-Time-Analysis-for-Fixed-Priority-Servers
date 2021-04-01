@@ -33,7 +33,7 @@ pub mod curve_types {
 
 /// The Task type based on the Modeling described in the second paragraph
 /// of Chapter 3. in the paper
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Task {
     /// The offset of the tasks, O index i in the paper
     pub offset: TimeUnit,
@@ -265,9 +265,9 @@ impl Task {
     }
 }
 
-impl<'a> IntoIterator for &'a Task {
+impl IntoIterator for Task {
     type Item = Window<Demand>;
-    type IntoIter = TaskDemandIterator<'a>;
+    type IntoIter = TaskDemandIterator;
 
     fn into_iter(self) -> Self::IntoIter {
         TaskDemandIterator::new(self)

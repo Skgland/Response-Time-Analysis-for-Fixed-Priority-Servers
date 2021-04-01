@@ -38,11 +38,18 @@ pub struct ActualServerExecution;
 /// ,and a server type determining if the
 /// capacity is available only at the beginning of the interval
 /// or until it is used up
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Server<'a> {
     /// The Tasks that produce Demand for this Server
     /// Sorted by priority with lower index equalling higher priority
     pub tasks: &'a [Task],
+    /// The properties of the Server
+    pub properties: ServerProperties,
+}
+
+/// The Properties of a server
+#[derive(Debug, Clone, Copy)]
+pub struct ServerProperties {
     /// The capacity for fulfilling Demand
     pub capacity: TimeUnit,
     /// How often the capacity is available
@@ -52,7 +59,7 @@ pub struct Server<'a> {
 }
 
 /// The Type of a Server
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum ServerKind {
     /// Indicated that the Server is a Deferrable Server
     /// as described/defined in Section 5.2 Paragraph 2 of the paper
@@ -63,6 +70,24 @@ pub enum ServerKind {
 }
 
 impl<'a> Server<'a> {
+    /// Create a new Server with the given Tasks and properties
+    #[must_use]
+    pub const fn new(
+        tasks: &'a [Task],
+        capacity: TimeUnit,
+        interval: TimeUnit,
+        server_type: ServerKind,
+    ) -> Self {
+        Server {
+            tasks,
+            properties: ServerProperties {
+                capacity,
+                interval,
+                server_type,
+            },
+        }
+    }
+
     /// Get a a reference to a slice of the Servers contained Tasks
     #[must_use]
     pub fn as_tasks(&self) -> &'a [Task] {
@@ -89,6 +114,9 @@ impl<'a> Server<'a> {
         &self,
         up_to: TimeUnit,
     ) -> impl CurveIterator<Demand, CurveKind = ConstrainedServerDemand> + Clone + '_ {
-        ConstrainedServerDemandIterator::new(self, self.aggregated_demand_curve_iter(up_to))
+        ConstrainedServerDemandIterator::new(
+            self.properties,
+            self.aggregated_demand_curve_iter(up_to),
+        )
     }
 }

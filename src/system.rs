@@ -1,7 +1,7 @@
 //! Module for the System type
 
-use crate::curve::{AggregateExt, Curve};
-use crate::iterators::curve::{AggregationIterator, CurveDeltaIterator, InverseCurveIterator};
+use crate::curve::AggregateExt;
+use crate::iterators::curve::{AggregationIterator, InverseCurveIterator};
 
 use crate::server::{
     ActualServerExecution, HigherPriorityServerDemand, Server, UnconstrainedServerExecution,
@@ -11,7 +11,6 @@ use crate::curve::curve_types::CurveType;
 use crate::iterators::server::actual_execution::ActualServerExecutionIterator;
 use crate::iterators::CurveIterator;
 use crate::time::TimeUnit;
-use crate::window::Window;
 
 /// Type representing a System of Servers
 #[derive(Debug)]
@@ -67,7 +66,7 @@ impl<'a> System<'a> {
     pub fn system_wide_hyper_periode(&self, server_index: usize) -> TimeUnit {
         self.servers[..=server_index]
             .iter()
-            .map(|server| server.interval)
+            .map(|server| server.properties.interval)
             .chain(
                 self.servers
                     .iter()
@@ -136,7 +135,7 @@ impl<'a> System<'a> {
         let constrained_demand = self.servers[server_index].constraint_demand_curve_iter(up_to);
 
         ActualServerExecutionIterator::new(
-            &self.servers[server_index],
+            self.servers[server_index].properties,
             unconstrained_execution,
             constrained_demand,
         )

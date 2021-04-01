@@ -16,19 +16,22 @@ fn remarks() {
     // Demand, Intervals ,and Offsets multiplied by 2  to fit in Integers
     // as we can't handle S_1 with capacity 1.5 otherwise
 
+    let tasks_s1 = &[Task::new(6, 22, 0)];
+    let tasks_s2 = &[Task::new(100, 400, 0)];
+
     let servers = &[
-        Server {
-            tasks: &[Task::new(6, 22, 0)],
-            capacity: TimeUnit::from(3),
-            interval: TimeUnit::from(10),
-            server_type: ServerKind::Deferrable,
-        },
-        Server {
-            tasks: &[Task::new(100, 400, 0)],
-            capacity: TimeUnit::from(2),
-            interval: TimeUnit::from(6),
-            server_type: ServerKind::Deferrable,
-        },
+        Server::new(
+            tasks_s1,
+            TimeUnit::from(3),
+            TimeUnit::from(10),
+            ServerKind::Deferrable,
+        ),
+        Server::new(
+            tasks_s2,
+            TimeUnit::from(2),
+            TimeUnit::from(6),
+            ServerKind::Deferrable,
+        ),
     ];
 
     let system = System::new(servers);
@@ -65,25 +68,14 @@ fn remarks() {
 #[test]
 #[should_panic]
 fn example_too_high() {
+    let tasks_s1 = &[Task::new(16, 48, 0)];
+    let tasks_s2 = &[Task::new(4, 12, 0)];
+    let tasks_s3 = &[Task::new(1, 24, 0)];
+
     let servers = &[
-        Server {
-            tasks: &[Task::new(16, 48, 0)],
-            capacity: 12.into(),
-            interval: 24.into(),
-            server_type: ServerKind::Deferrable,
-        },
-        Server {
-            tasks: &[Task::new(4, 12, 0)],
-            capacity: 6.into(),
-            interval: 12.into(),
-            server_type: ServerKind::Deferrable,
-        },
-        Server {
-            tasks: &[Task::new(1, 24, 0)],
-            capacity: 1.into(),
-            interval: 24.into(),
-            server_type: ServerKind::Deferrable,
-        },
+        Server::new(tasks_s1, 12.into(), 24.into(), ServerKind::Deferrable),
+        Server::new(tasks_s2, 6.into(), 12.into(), ServerKind::Deferrable),
+        Server::new(tasks_s3, 1.into(), 24.into(), ServerKind::Deferrable),
     ];
 
     let system = System::new(servers);
@@ -98,31 +90,16 @@ fn example_too_high() {
 #[test]
 #[should_panic]
 fn example_too_low() {
+    let tasks_s1 = &[Task::new(16, 48, 0)];
+    let tasks_s2 = &[Task::new(4, 12, 0)];
+    let tasks_s3 = &[Task::new(10, 48, 33)];
+    let tasks_s4 = &[Task::new(1, 24, 0)];
+
     let servers = &[
-        Server {
-            tasks: &[Task::new(16, 48, 0)],
-            capacity: 12.into(),
-            interval: 24.into(),
-            server_type: ServerKind::Deferrable,
-        },
-        Server {
-            tasks: &[Task::new(4, 12, 0)],
-            capacity: 6.into(),
-            interval: 12.into(),
-            server_type: ServerKind::Deferrable,
-        },
-        Server {
-            tasks: &[Task::new(10, 48, 33)],
-            capacity: 10.into(),
-            interval: 48.into(),
-            server_type: ServerKind::Deferrable,
-        },
-        Server {
-            tasks: &[Task::new(1, 24, 0)],
-            capacity: 1.into(),
-            interval: 24.into(),
-            server_type: ServerKind::Deferrable,
-        },
+        Server::new(tasks_s1, 12.into(), 24.into(), ServerKind::Deferrable),
+        Server::new(tasks_s2, 6.into(), 12.into(), ServerKind::Deferrable),
+        Server::new(tasks_s3, 10.into(), 48.into(), ServerKind::Deferrable),
+        Server::new(tasks_s4, 1.into(), 24.into(), ServerKind::Deferrable),
     ];
 
     let system = System::new(servers);
@@ -138,25 +115,14 @@ fn example_too_low() {
 #[test]
 #[should_panic]
 fn execution_overlap_too_high() {
+    let tasks_s1 = &[Task::new(16, 48, 0)];
+    let tasks_s2 = &[Task::new(4, 12, 0)];
+    let tasks_s3 = &[Task::new(1, 24, 0)];
+
     let servers = &[
-        Server {
-            tasks: &[Task::new(16, 48, 0)],
-            capacity: 12.into(),
-            interval: 24.into(),
-            server_type: ServerKind::Deferrable,
-        },
-        Server {
-            tasks: &[Task::new(4, 12, 0)],
-            capacity: 6.into(),
-            interval: 12.into(),
-            server_type: ServerKind::Deferrable,
-        },
-        Server {
-            tasks: &[Task::new(1, 24, 0)],
-            capacity: 1.into(),
-            interval: 24.into(),
-            server_type: ServerKind::Deferrable,
-        },
+        Server::new(tasks_s1, 12.into(), 24.into(), ServerKind::Deferrable),
+        Server::new(tasks_s2, 6.into(), 12.into(), ServerKind::Deferrable),
+        Server::new(tasks_s3, 1.into(), 24.into(), ServerKind::Deferrable),
     ];
 
     let system = System::new(servers);
@@ -195,31 +161,16 @@ fn execution_overlap_too_high() {
 #[test]
 #[should_panic]
 fn execution_overlap_too_low() {
+    let tasks_s1 = &[Task::new(16, 48, 0)];
+    let tasks_s2 = &[Task::new(4, 12, 0)];
+    let tasks_s3 = &[Task::new(10, 48, 33)];
+    let tasks_s4 = &[Task::new(1, 24, 0)];
+
     let servers = &[
-        Server {
-            tasks: &[Task::new(16, 48, 0)],
-            capacity: 12.into(),
-            interval: 24.into(),
-            server_type: ServerKind::Deferrable,
-        },
-        Server {
-            tasks: &[Task::new(4, 12, 0)],
-            capacity: 6.into(),
-            interval: 12.into(),
-            server_type: ServerKind::Deferrable,
-        },
-        Server {
-            tasks: &[Task::new(10, 48, 33)],
-            capacity: 10.into(),
-            interval: 48.into(),
-            server_type: ServerKind::Deferrable,
-        },
-        Server {
-            tasks: &[Task::new(1, 24, 0)],
-            capacity: 1.into(),
-            interval: 24.into(),
-            server_type: ServerKind::Deferrable,
-        },
+        Server::new(tasks_s1, 12.into(), 24.into(), ServerKind::Deferrable),
+        Server::new(tasks_s2, 6.into(), 12.into(), ServerKind::Deferrable),
+        Server::new(tasks_s3, 10.into(), 48.into(), ServerKind::Deferrable),
+        Server::new(tasks_s4, 1.into(), 24.into(), ServerKind::Deferrable),
     ];
 
     let system = System::new(servers);

@@ -10,12 +10,14 @@ use rta_for_fps::window::Window;
 fn unconstrained_curve() {
     // Example 7.
 
-    let server = Server {
-        tasks: &[Task::new(1, 4, 0)],
-        capacity: TimeUnit::from(3),
-        interval: TimeUnit::from(10),
-        server_type: ServerKind::Deferrable,
-    };
+    let tasks = &[Task::new(1, 4, 0)];
+
+    let server = Server::new(
+        tasks,
+        TimeUnit::from(3),
+        TimeUnit::from(10),
+        ServerKind::Deferrable,
+    );
 
     let servers = &[server];
 
@@ -61,28 +63,34 @@ fn unconstrained_curve() {
 fn executive_curve() {
     // Example 8.
 
-    let server = Server {
-        tasks: &[
-            Task::new(1, 30, 2),
-            Task::new(1, 30, 5),
-            Task::new(2, 30, 10),
-        ],
-        capacity: TimeUnit::from(2),
-        interval: TimeUnit::from(10),
-        server_type: ServerKind::Deferrable,
-    };
+    // Server\s*\{\s*tasks:\s*(.*,)\s*capacity:\s(.*,)\s*interval:\s(.*,)\s*server_type:\s*(.*,)\s*}
 
-    let higher_priority_load = Server {
-        tasks: &[
-            Task::new(3, 30, 0),
-            Task::new(5, 30, 5),
-            Task::new(5, 30, 12),
-            Task::new(3, 30, 18),
-        ],
-        capacity: TimeUnit::from(30),
-        interval: TimeUnit::from(30),
-        server_type: ServerKind::Deferrable,
-    };
+    let tasks = &[
+        Task::new(1, 30, 2),
+        Task::new(1, 30, 5),
+        Task::new(2, 30, 10),
+    ];
+
+    let server = Server::new(
+        tasks,
+        TimeUnit::from(2),
+        TimeUnit::from(10),
+        ServerKind::Deferrable,
+    );
+
+    let hp_tasks = &[
+        Task::new(3, 30, 0),
+        Task::new(5, 30, 5),
+        Task::new(5, 30, 12),
+        Task::new(3, 30, 18),
+    ];
+
+    let higher_priority_load = Server::new(
+        hp_tasks,
+        TimeUnit::from(30),
+        TimeUnit::from(30),
+        ServerKind::Deferrable,
+    );
 
     let up_to = TimeUnit::from(24);
 
@@ -136,19 +144,22 @@ fn executive_curve() {
 fn response_time() {
     // Example 9.
 
+    let tasks_s1 = &[Task::new(1, 4, 0)];
+    let tasks_s2 = &[Task::new(1, 5, 0), Task::new(2, 8, 0)];
+
     let servers = &[
-        Server {
-            tasks: &[Task::new(1, 4, 0)],
-            capacity: TimeUnit::from(3),
-            interval: TimeUnit::from(10),
-            server_type: ServerKind::Deferrable,
-        },
-        Server {
-            tasks: &[Task::new(1, 5, 0), Task::new(2, 8, 0)],
-            capacity: TimeUnit::from(2),
-            interval: TimeUnit::from(4),
-            server_type: ServerKind::Deferrable,
-        },
+        Server::new(
+            tasks_s1,
+            TimeUnit::from(3),
+            TimeUnit::from(10),
+            ServerKind::Deferrable,
+        ),
+        Server::new(
+            tasks_s2,
+            TimeUnit::from(2),
+            TimeUnit::from(4),
+            ServerKind::Deferrable,
+        ),
     ];
 
     let system = System::new(servers);
@@ -213,19 +224,22 @@ fn response_time() {
 fn comparison() {
     // Example 11.
 
+    let tasks_s1 = &[Task::new(4, 10, 0)];
+    let tasks_s2 = &[Task::new(3, 10, 0), Task::new(1, 10, 0)];
+
     let servers = &[
-        Server {
-            tasks: &[Task::new(4, 10, 0)],
-            capacity: TimeUnit::from(5),
-            interval: TimeUnit::from(10),
-            server_type: ServerKind::Deferrable,
-        },
-        Server {
-            tasks: &[Task::new(3, 10, 0), Task::new(1, 10, 0)],
-            capacity: TimeUnit::from(8),
-            interval: TimeUnit::from(20),
-            server_type: ServerKind::Deferrable,
-        },
+        Server::new(
+            tasks_s1,
+            TimeUnit::from(5),
+            TimeUnit::from(10),
+            ServerKind::Deferrable,
+        ),
+        Server::new(
+            tasks_s2,
+            TimeUnit::from(8),
+            TimeUnit::from(20),
+            ServerKind::Deferrable,
+        ),
     ];
 
     let system = System::new(servers);
