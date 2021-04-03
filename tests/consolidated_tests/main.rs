@@ -17,7 +17,12 @@ mod incorrect {
     fn incorrect() {
         let tasks_s1 = &[Task::new(8, 32, 8)];
         let tasks_s2 = &[Task::new(4, 16, 8)];
-        let tasks_s3 = &[Task::new(2, 16, 0)];
+        let tasks_s3 = &[
+            Task::new(2, 64, 0),
+            Task::new(2, 64, 16),
+            Task::new(2, 64, 32),
+            Task::new(1, 64, 48),
+        ];
 
         let servers = &[
             Server::new(tasks_s1, 8.into(), 16.into(), ServerKind::Deferrable),
@@ -38,7 +43,7 @@ mod incorrect {
         eprintln!("{:#?}\n\n{:#?}", aes1c, aes2c);
 
         let result = curve_has_no_non_trivial_overlap(&aes1c, &aes2c);
-        assert!(result);
+        assert!(result, "check for no non-trivial overlaps");
 
         let wcrt1 = Task::worst_case_response_time(&system, 1, 0, swh1);
         assert_eq!(wcrt1, 12.into());
