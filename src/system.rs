@@ -133,11 +133,7 @@ impl<'a> System<'a> {
         .inspect(move |(_, group)| assert!(group.capacity() >= min_capacity))
         .flat_map(|(_, group)| group.into_iter());
 
-        let checked_unconstrained_execution: JoinAdjacentIterator<
-            _,
-            _,
-            UnconstrainedServerExecution,
-        > = unsafe { JoinAdjacentIterator::new(checked) };
+        let checked_unconstrained_execution = unsafe { JoinAdjacentIterator::new(checked) };
 
         let constrained_demand = self.servers[server_index].constraint_demand_curve_iter(up_to);
 
