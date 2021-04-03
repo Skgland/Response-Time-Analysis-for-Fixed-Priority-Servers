@@ -6,6 +6,7 @@ use crate::iterators::curve::{AggregationIterator, CurveDeltaIterator};
 
 use crate::iterators::task::TaskDemandIterator;
 use crate::iterators::CurveIterator;
+use crate::server::ActualServerExecution;
 use crate::system::System;
 use crate::task::curve_types::{
     ActualTaskExecution, AvailableTaskExecution, HigherPriorityTaskDemand, TaskDemand,
@@ -104,25 +105,26 @@ impl Task {
     ///
     /// Based on Definition 14. (2) of the paper
     #[must_use]
-    pub fn available_execution_curve_impl<'a>(
-        system: &'a System,
-        server_index: usize,
-        task_index: usize,
-        up_to: TimeUnit,
+    pub fn available_execution_curve_impl<'a, HPTD, ASEC>(
+        constrained_server_execution_curve: ASEC,
+        higher_priority_task_demand: HPTD,
     ) -> impl CurveIterator<
         <AvailableTaskExecution as CurveType>::WindowKind,
         CurveKind = AvailableTaskExecution,
     > + Clone
-           + 'a {
-        let constrained_server_execution_curve =
-            system.actual_execution_curve_iter(server_index, up_to);
-
-        let higher_priority_task_demand = Task::higher_priority_task_demand_iter(
-            system.as_servers()[server_index].as_tasks(),
-            task_index,
-            up_to,
-        );
-
+           + 'a
+    where
+        HPTD: CurveIterator<
+                <HigherPriorityTaskDemand as CurveType>::WindowKind,
+                CurveKind = HigherPriorityTaskDemand,
+            > + Clone
+            + 'a,
+        ASEC: CurveIterator<
+                <ActualServerExecution as CurveType>::WindowKind,
+                CurveKind = ActualServerExecution,
+            > + Clone
+            + 'a,
+    {
         let delta = CurveDeltaIterator::new(
             constrained_server_execution_curve,
             higher_priority_task_demand,
@@ -148,8 +150,14 @@ impl Task {
         CurveKind = ActualTaskExecution,
     > + Clone
            + 'a {
-        let available_execution_curve =
-            Task::available_execution_curve_impl(system, server_index, task_index, up_to);
+        let asec = system.actual_execution_curve_iter(server_index, up_to);
+        let hptd = Task::higher_priority_task_demand_iter(
+            system.as_servers()[server_index].as_tasks(),
+            task_index,
+            up_to,
+        );
+
+        let available_execution_curve = Task::available_execution_curve_impl(asec, hptd);
 
         let task_demand_curve =
             system.as_servers()[server_index].as_tasks()[task_index].demand_curve_iter(up_to);

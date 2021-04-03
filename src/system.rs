@@ -4,7 +4,8 @@ use crate::curve::AggregateExt;
 use crate::iterators::curve::{AggregationIterator, InverseCurveIterator};
 
 use crate::server::{
-    ActualServerExecution, HigherPriorityServerDemand, Server, UnconstrainedServerExecution,
+    ActualServerExecution, ConstrainedServerDemand, HigherPriorityServerDemand, Server,
+    UnconstrainedServerExecution,
 };
 
 use crate::curve::curve_types::CurveType;
@@ -40,18 +41,24 @@ impl<'a> System<'a> {
     ///
     /// Based on the papers Definition 12.
     #[must_use]
-    pub fn aggregated_higher_priority_demand_curve_iter(
+    pub fn aggregated_higher_priority_demand_curve_iter<CDC, CDCI>(
         &self,
-        server_index: usize,
-        up_to: TimeUnit,
+        constrained_demand_curves: CDCI,
     ) -> impl CurveIterator<
         <HigherPriorityServerDemand as CurveType>::WindowKind,
         CurveKind = HigherPriorityServerDemand,
     > + Clone
-           + '_ {
-        self.servers[..server_index]
-            .iter()
-            .map(move |server| server.constraint_demand_curve_iter(up_to))
+           + '_
+    where
+        CDC: CurveIterator<
+                <ConstrainedServerDemand as CurveType>::WindowKind,
+                CurveKind = ConstrainedServerDemand,
+            > + Clone
+            + 'a,
+        CDCI: IntoIterator<Item = CDC> + Clone + 'a,
+    {
+        constrained_demand_curves
+            .into_iter()
             .aggregate::<AggregationIterator<_>>()
             .reclassify()
     }
@@ -89,7 +96,11 @@ impl<'a> System<'a> {
         CurveKind = UnconstrainedServerExecution,
     > + Clone
            + '_ {
-        let ahpc = self.aggregated_higher_priority_demand_curve_iter(server_index, up_to);
+        let csdi = self.servers[..server_index]
+            .iter()
+            .map(move |server| server.constraint_demand_curve_iter(up_to));
+
+        let ahpc = self.aggregated_higher_priority_demand_curve_iter(csdi);
 
         InverseCurveIterator::new(ahpc, up_to)
     }
