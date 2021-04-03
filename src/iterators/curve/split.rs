@@ -12,6 +12,9 @@ use std::iter::FusedIterator;
 /// Split the curve on every interval boundary as defined in Definition 8. of the paper
 ///
 /// Will yield the Groups in order
+///
+/// Not a `CurveIterator` as it can produce adjacent windows
+///
 #[derive(Debug, Clone)]
 pub struct CurveSplitIterator<W, CI> {
     /// The remaining Curve to be split
@@ -47,9 +50,6 @@ impl<W: WindowType, CI> Iterator for CurveSplitIterator<W, CI>
 where
     CI: CurveIterator<W>,
 {
-    // TODO return (UnitNumber, Window<W>) instead
-    // this will save us the temporary curves
-    // will be annoying on the other end but probably worth it to save the allocation
     type Item = (UnitNumber, Curve<CI::CurveKind>);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -64,13 +64,7 @@ where
                 if k != window.start / self.interval {
                     // complete window does not belong to this group
                     self.tail = Some(window);
-
-                    let curve = unsafe {
-                        // Safety: windows always contains a valid curve
-                        Curve::from_windows_unchecked(windows)
-                    };
-
-                    return Some((k, curve));
+                    break;
                 } else if window.end <= (k + 1) * self.interval {
                     // window belongs completely to the current group
                     windows.push(window);
@@ -85,12 +79,7 @@ where
                     self.tail = Some(tail);
 
                     // group is full return group
-                    let curve = unsafe {
-                        // Safety:
-                        // windows always contains a valid curve
-                        Curve::from_windows_unchecked(windows)
-                    };
-                    return Some((k, curve));
+                    break;
                 }
             }
             let curve = unsafe {
