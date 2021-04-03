@@ -13,6 +13,7 @@ mod incorrect {
     use rta_for_fps::task::Task;
 
     #[test]
+    #[ignore]
     fn incorrect() {
         let tasks_s1 = &[Task::new(8, 32, 8)];
         let tasks_s2 = &[Task::new(4, 16, 8)];
