@@ -1,3 +1,5 @@
+//! Module for the implementation of the Curve split operation using iterators
+
 use crate::curve::Curve;
 use crate::iterators::CurveIterator;
 use crate::time::{TimeUnit, UnitNumber};

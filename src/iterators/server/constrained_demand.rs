@@ -1,3 +1,6 @@
+//! Module for the implementation of the `CurveIterator`s used to calculate
+//! the constrained demand curve of a Server
+
 use std::iter::FusedIterator;
 
 use crate::curve::curve_types::{CurveType, UnspecifiedCurve};

@@ -262,6 +262,7 @@ where
     ///
     /// Won't terminate if `CurveDelaIterator` is infinite as it will try to consume the complete iterator
     ///
+    #[must_use]
     pub fn collect_delta<R: CurveType<WindowKind = Overlap<SW, DW>>>(
         self,
     ) -> CurveDeltaResult<SI::CurveKind, DI::CurveKind, R>

@@ -90,7 +90,7 @@ impl<'a> Server<'a> {
 
     /// Get a a reference to a slice of the Servers contained Tasks
     #[must_use]
-    pub fn as_tasks(&self) -> &'a [Task] {
+    pub const fn as_tasks(&self) -> &'a [Task] {
         self.tasks
     }
 

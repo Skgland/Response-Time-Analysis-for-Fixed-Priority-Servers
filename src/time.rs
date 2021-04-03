@@ -61,7 +61,9 @@ impl TimeUnit {
         TimeUnit(util::lcm(self.0, other.0))
     }
 
-    pub const fn as_unit(&self) -> UnitNumber {
+    /// Get the Numeric Value of the `TimeUnit` as a `UnitNumber`
+    #[must_use]
+    pub const fn as_unit(self) -> UnitNumber {
         self.0
     }
 }

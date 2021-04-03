@@ -1,3 +1,5 @@
+//! Module for the implementation of the Curve delta operation using iterators
+
 use crate::curve::curve_types::CurveType;
 use crate::iterators::curve::IterCurveWrapper;
 use crate::iterators::CurveIterator;
@@ -21,6 +23,7 @@ pub enum Delta<S, D, SI, DI> {
     Overlap(Window<Overlap<S, D>>),
     /// Indicate a Window of remaining demand
     RemainingDemand(Window<D>),
+    /// Remaining Demand once Supply ran out
     EndDemand(Box<DI>),
 }
 
@@ -143,8 +146,8 @@ impl<I: Clone, C, W> Clone for InverseCurveIterator<I, C, W> {
     fn clone(&self) -> Self {
         InverseCurveIterator {
             iter: self.iter.clone(),
-            upper_bound: self.upper_bound.clone(),
-            previous_end: self.previous_end.clone(),
+            upper_bound: self.upper_bound,
+            previous_end: self.previous_end,
             curve_type: PhantomData,
         }
     }

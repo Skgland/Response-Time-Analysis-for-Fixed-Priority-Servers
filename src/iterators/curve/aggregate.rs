@@ -1,3 +1,5 @@
+//! Module for the implementation of the Curve aggregate operation using iterators
+
 use std::iter::{Fuse, FusedIterator};
 
 use crate::curve::Aggregate;
@@ -7,7 +9,10 @@ use crate::window::{Demand, Window};
 /// Elements for `AggregationIterator`
 #[derive(Debug, Clone)]
 pub struct Element<I> {
+    /// The Iterator that is being iterated
     curve: Box<Fuse<I>>,
+    /// If Some the element that would be the head of `curve`
+    /// if we hadn't peeked
     peek: Option<Window<Demand>>,
 }
 

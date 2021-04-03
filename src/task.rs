@@ -14,6 +14,8 @@ use crate::time::{TimeUnit, UnitNumber};
 use crate::window::{Demand, Window};
 
 pub mod curve_types {
+    //! Module for `CurveType`s of a Task
+
     /// Marker Type for Curves representing a Tasks Demand
     #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
     pub struct TaskDemand;

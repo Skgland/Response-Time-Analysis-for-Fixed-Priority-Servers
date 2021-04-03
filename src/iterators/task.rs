@@ -1,3 +1,5 @@
+//! Module for implementing `CurveIterator`s relate to Tasks
+
 use std::iter::FusedIterator;
 
 use crate::curve::curve_types::CurveType;
