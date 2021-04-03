@@ -15,4 +15,6 @@ test:
 clippy:
   stage: test
   allow_failure: true
+  before_script:
+    - "rustup component add clippy"
   script: "cargo clippy --release -- -D warnings"
