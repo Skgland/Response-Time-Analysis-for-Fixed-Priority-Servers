@@ -1,7 +1,7 @@
 //! Module for the System type
 
 use crate::curve::AggregateExt;
-use crate::iterators::curve::{AggregationIterator, InverseCurveIterator};
+use crate::iterators::curve::InverseCurveIterator;
 
 use crate::server::{
     ActualServerExecution, ConstrainedServerDemand, HigherPriorityServerDemand, Server,
@@ -10,7 +10,7 @@ use crate::server::{
 
 use crate::curve::curve_types::CurveType;
 use crate::iterators::server::actual_execution::ActualServerExecutionIterator;
-use crate::iterators::CurveIterator;
+use crate::iterators::{CurveIterator, ReclassifyIterator};
 use crate::time::TimeUnit;
 
 /// Type representing a System of Servers
@@ -41,26 +41,24 @@ impl<'a> System<'a> {
     ///
     /// Based on the papers Definition 12.
     #[must_use]
-    pub fn aggregated_higher_priority_demand_curve_iter<CDC, CDCI>(
-        &self,
-        constrained_demand_curves: CDCI,
+    pub fn aggregated_higher_priority_demand_curve_iter<'b, CSDCI>(
+        constrained_demand_curves: CSDCI,
     ) -> impl CurveIterator<
         <HigherPriorityServerDemand as CurveType>::WindowKind,
         CurveKind = HigherPriorityServerDemand,
     > + Clone
-           + '_
+           + 'b
     where
-        CDC: CurveIterator<
+        CSDCI::Item: CurveIterator<
                 <ConstrainedServerDemand as CurveType>::WindowKind,
                 CurveKind = ConstrainedServerDemand,
             > + Clone
-            + 'a,
-        CDCI: IntoIterator<Item = CDC> + Clone + 'a,
+            + 'b,
+        CSDCI: IntoIterator,
     {
         constrained_demand_curves
             .into_iter()
-            .aggregate::<AggregationIterator<_>>()
-            .reclassify()
+            .aggregate::<ReclassifyIterator<_, _, _>>()
     }
 
     /// Calculate the system wide hyper periode
@@ -100,7 +98,7 @@ impl<'a> System<'a> {
             .iter()
             .map(move |server| server.constraint_demand_curve_iter(up_to));
 
-        let ahpc = self.aggregated_higher_priority_demand_curve_iter(csdi);
+        let ahpc = System::aggregated_higher_priority_demand_curve_iter(csdi);
 
         InverseCurveIterator::new(ahpc, up_to)
     }

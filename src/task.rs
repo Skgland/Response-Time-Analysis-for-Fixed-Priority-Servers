@@ -2,10 +2,10 @@
 
 use crate::curve::curve_types::CurveType;
 use crate::curve::{AggregateExt, Curve};
-use crate::iterators::curve::{AggregationIterator, CurveDeltaIterator};
+use crate::iterators::curve::CurveDeltaIterator;
 
 use crate::iterators::task::TaskDemandIterator;
-use crate::iterators::CurveIterator;
+use crate::iterators::{CurveIterator, ReclassifyIterator};
 use crate::server::ActualServerExecution;
 use crate::system::System;
 use crate::task::curve_types::{
@@ -96,8 +96,7 @@ impl Task {
         tasks[..index]
             .iter()
             .map(move |task| task.demand_curve_iter(up_to))
-            .aggregate::<AggregationIterator<_>>()
-            .reclassify()
+            .aggregate::<ReclassifyIterator<_, _, _>>()
     }
 
     /// Calculate the available execution Curve for the task with priority `task_index` of the server with priority `server_index`

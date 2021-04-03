@@ -29,7 +29,7 @@ fn unconstrained_curve() {
         .iter()
         .map(|server| server.constraint_demand_curve_iter(up_to));
 
-    let aggregated_result = system.aggregated_higher_priority_demand_curve_iter(csdi);
+    let aggregated_result = System::aggregated_higher_priority_demand_curve_iter(csdi);
 
     let expected_aggregated_result = unsafe {
         Curve::from_windows_unchecked(vec![

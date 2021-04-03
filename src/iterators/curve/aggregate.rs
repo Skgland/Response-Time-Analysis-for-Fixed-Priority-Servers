@@ -2,8 +2,11 @@
 
 use std::iter::{Fuse, FusedIterator};
 
+use crate::curve::curve_types::CurveType;
 use crate::curve::Aggregate;
-use crate::iterators::CurveIterator;
+use crate::iterators::{CurveIterator, ReclassifyIterator};
+use crate::server::{AggregatedServerDemand, ConstrainedServerDemand, HigherPriorityServerDemand};
+use crate::task::curve_types::{HigherPriorityTaskDemand, TaskDemand};
 use crate::window::{Demand, Window};
 
 /// Elements for `AggregationIterator`
@@ -123,11 +126,26 @@ where
     }
 }
 
-impl<AI: Iterator> Aggregate<AI> for AggregationIterator<AI> {
+/// Trait to mark which curve types may be aggregated into which other curve types
+pub trait AggregateInto<Result = Self>: CurveType {}
+
+impl<T: CurveType> AggregateInto for T {}
+
+impl AggregateInto<HigherPriorityServerDemand> for ConstrainedServerDemand {}
+
+impl AggregateInto<AggregatedServerDemand> for TaskDemand {}
+impl AggregateInto<HigherPriorityTaskDemand> for TaskDemand {}
+
+impl<AI, O> Aggregate<AI>
+    for ReclassifyIterator<AggregationIterator<AI>, <AI as CurveIterator<Demand>>::CurveKind, O>
+where
+    <AI as CurveIterator<Demand>>::CurveKind: AggregateInto<O>,
+    AI: CurveIterator<Demand>,
+{
     fn aggregate<I>(iter: I) -> Self
     where
         I: Iterator<Item = AI>,
     {
-        AggregationIterator::new(iter.collect())
+        AggregationIterator::new(iter.collect()).reclassify()
     }
 }
