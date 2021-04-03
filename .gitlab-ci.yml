@@ -11,3 +11,8 @@ build:
 test:
   stage: test
   script: "cargo test  --release"
+
+clippy:
+  stage: test
+  allow_failure: true
+  script: "cargo clippy --release -- -D warnings"
