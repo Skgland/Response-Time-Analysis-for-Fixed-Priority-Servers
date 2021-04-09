@@ -127,7 +127,8 @@ pub struct InternalActualExecutionIterator<AC, CDC> {
     /// the server for which to calculate the actual execution
     server_properties: ServerProperties,
     /// the remaining available execution
-    available_execution: Box<FlattenedSplitAvailableSupply<AC>>,
+    available_execution:
+        Box<CurveSplitIterator<<UnconstrainedServerExecution as CurveType>::WindowKind, AC>>,
     /// the peek of the remaining available execution that is not yet consumed
     execution_peek: Vec<Window<<UnconstrainedServerExecution as CurveType>::WindowKind>>,
     /// the group spend_budget is referring to
@@ -172,8 +173,7 @@ impl<AC, CDC> InternalActualExecutionIterator<AC, CDC> {
     {
         // Algorithm 4. (1)
         let split_execution =
-            CurveSplitIterator::new(available_execution, server_properties.interval)
-                .flat_map((|(_, curve)| curve) as fn(_) -> _);
+            CurveSplitIterator::new(available_execution, server_properties.interval);
 
         InternalActualExecutionIterator {
             server_properties,
@@ -225,7 +225,7 @@ where
                     .pop()
                     .or_else(|| self.available_execution.next());
 
-                if let Some(supply_window) = supply {
+                if let Some(mut supply_window) = supply {
                     let window_group = supply_window.budget_group(self.server_properties.interval);
 
                     // (a)
@@ -239,8 +239,16 @@ where
                         self.spend_budget = TimeUnit::ZERO;
                         self.current_group = window_group;
                     } else if self.spend_budget >= self.server_properties.capacity {
-                        // budget exhausted skip supply window
-                        continue;
+                        if supply_window.end != WindowEnd::Infinite {
+                            // budget exhausted skip supply window
+                            continue;
+                        } else {
+                            // Infinite supply window advance to next group
+                            self.spend_budget = TimeUnit::ZERO;
+                            self.current_group += 1;
+                            supply_window.start =
+                                self.current_group * self.server_properties.interval;
+                        }
                     }
 
                     // (b)

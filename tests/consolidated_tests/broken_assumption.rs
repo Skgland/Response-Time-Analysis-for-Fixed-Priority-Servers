@@ -114,7 +114,6 @@ fn example_too_low() {
 }
 
 #[test]
-#[ignore]
 #[should_panic]
 fn execution_overlap_too_high() {
     let tasks_s1 = &[Task::new(16, 48, 0)];
@@ -146,27 +145,26 @@ fn execution_overlap_too_high() {
 
     assert!(
         curve_has_no_non_trivial_overlap(&s1, &s2),
-        "Curve 1: {:#?}\n\nCurve 2: {:#?}",
+        "Curves have non-trivial overlap:\nCurve 1: {:#?}\n\nCurve 2: {:#?}",
         &s1,
         &s2
     );
     assert!(
         curve_has_no_non_trivial_overlap(&s1, &s3),
-        "Curve 1: {:#?}\n\nCurve 3: {:#?}",
+        "Curves have non-trivial overlap:\nCurve 1: {:#?}\n\nCurve 3: {:#?}",
         &s1,
         &s3
     );
 
     assert!(
         curve_has_no_non_trivial_overlap(&s2, &s3),
-        "Curve 2: {:#?}\n\nCurve 3: {:#?}",
+        "Curves have non-trivial overlap:\nCurve 2: {:#?}\n\nCurve 3: {:#?}",
         &s2,
         &s3
     );
 }
 
 #[test]
-#[ignore]
 #[should_panic]
 fn execution_overlap_too_low() {
     let tasks_s1 = &[Task::new(16, 48, 0)];

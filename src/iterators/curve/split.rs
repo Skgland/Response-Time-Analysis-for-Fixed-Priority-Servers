@@ -1,17 +1,19 @@
 //! Module for the implementation of the Curve split operation using iterators
 
-use crate::curve::Curve;
 use crate::iterators::CurveIterator;
-use crate::time::{TimeUnit, UnitNumber};
+use crate::time::TimeUnit;
 use crate::window::window_types::WindowType;
-use crate::window::Window;
+use crate::window::{Window, WindowEnd};
 use std::iter::FusedIterator;
 
 /// Curve Iterator for splitting a Curve in fixed Intervalls
 ///
 /// Split the curve on every interval boundary as defined in Definition 8. of the paper
+/// When the last window of the input CurveIterator is an infinite window
+/// that window will be spilt at most once, and in that case the last window returned
+/// will start on a group boundary and be infinite
 ///
-/// Will yield the Groups in order
+/// Will yield the windows of the groups in order
 ///
 /// Not a `CurveIterator` as it can produce adjacent windows
 ///
@@ -50,44 +52,29 @@ impl<W: WindowType, CI> Iterator for CurveSplitIterator<W, CI>
 where
     CI: CurveIterator<W>,
 {
-    type Item = (UnitNumber, Curve<CI::CurveKind>);
+    type Item = Window<W>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let first = self.tail.take().or_else(|| self.iter.next());
 
         if let Some(first) = first {
-            // Note: windows always contains a valid curve
-            let mut windows = vec![];
-
             let k = first.start / self.interval;
-            for window in std::iter::once(first).chain(&mut self.iter) {
-                if k != window.start / self.interval {
-                    // complete window does not belong to this group
-                    self.tail = Some(window);
-                    break;
-                } else if window.end <= (k + 1) * self.interval {
-                    // window belongs completely to the current group
-                    windows.push(window);
-                } else {
-                    // window belongs only partially to this group
-                    let init = Window::new(window.start, (k + 1) * self.interval);
-                    let tail = Window::new((k + 1) * self.interval, window.end);
+            if first.end <= (k + 1) * self.interval {
+                // window belongs completely to a group
+                Some(first)
+            } else if first.start == k * self.interval && first.end == WindowEnd::Infinite {
+                // window starts on a group boundary and is infinite return as is
+                Some(first)
+            } else {
+                // window belongs only partially to this group
+                let init = Window::new(first.start, (k + 1) * self.interval);
+                let tail = Window::new((k + 1) * self.interval, first.end);
 
-                    // add initial part belonging to current group to to current group
-                    windows.push(init);
-                    // remember remaining tail for next group
-                    self.tail = Some(tail);
+                // remember remaining tail for next group
+                self.tail = Some(tail);
 
-                    // group is full return group
-                    break;
-                }
+                Some(init)
             }
-            let curve = unsafe {
-                // Safety:
-                // windows always contains a valid curve
-                Curve::from_windows_unchecked(windows)
-            };
-            Some((k, curve))
         } else {
             None
         }

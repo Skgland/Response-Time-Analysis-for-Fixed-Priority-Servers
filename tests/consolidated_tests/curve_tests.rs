@@ -4,8 +4,6 @@ use rta_for_fps::iterators::curve::{AggregationIterator, CurveDeltaIterator, Cur
 use rta_for_fps::time::TimeUnit;
 use rta_for_fps::window::{Demand, Overlap, Supply, Window};
 
-use std::collections::HashMap;
-
 #[test]
 fn aggregate_curves() {
     // Example 2.
@@ -92,25 +90,16 @@ fn split_curves() {
 
     let t_s = TimeUnit::from(10);
 
-    let expected: HashMap<_, _> = vec![
-        (0, unsafe {
-            Curve::from_windows_unchecked(vec![
-                Window::new(2, 4),
-                Window::new(5, 6),
-                Window::new(7, 10),
-            ])
-        }),
-        (1, unsafe {
-            Curve::from_windows_unchecked(vec![Window::new(10, 20)])
-        }),
-        (2, unsafe {
-            Curve::from_windows_unchecked(vec![Window::new(20, 23), Window::new(24, 26)])
-        }),
-    ]
-    .into_iter()
-    .collect();
+    let expected = vec![
+        Window::new(2, 4),
+        Window::new(5, 6),
+        Window::new(7, 10),
+        Window::new(10, 20),
+        Window::new(20, 23),
+        Window::new(24, 26),
+    ];
 
-    let result: HashMap<_, _> = CurveSplitIterator::new(c_p.into_iter(), t_s).collect();
+    let result: Vec<_> = CurveSplitIterator::new(c_p.into_iter(), t_s).collect();
 
     assert_eq!(result, expected);
 }

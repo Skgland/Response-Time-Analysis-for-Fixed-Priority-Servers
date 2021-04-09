@@ -3,12 +3,12 @@
 
 use std::iter::FusedIterator;
 
-use crate::curve::curve_types::{CurveType, UnspecifiedCurve};
+use crate::curve::curve_types::CurveType;
 use crate::curve::{Curve, PartitionResult};
 use crate::iterators::curve::{AggregationIterator, CurveSplitIterator};
 use crate::iterators::{CurveIterator, JoinAdjacentIterator};
 use crate::server::{AggregatedServerDemand, ConstrainedServerDemand, ServerProperties};
-use crate::time::{TimeUnit, UnitNumber};
+use crate::time::TimeUnit;
 use crate::window::{Demand, Window, WindowEnd};
 
 /// `CurveIterator` for `ConstrainedServerDemand`
@@ -86,9 +86,9 @@ pub struct InternalConstrainedServerDemandIterator<I> {
     /// The Server for which to calculate the constrained demand
     server_properties: ServerProperties,
     /// The remaining aggregated Demand of the Server
-    groups: Box<CurveSplitIterator<<AggregatedServerDemand as CurveType>::WindowKind, I>>,
+    demand: Box<CurveSplitIterator<<AggregatedServerDemand as CurveType>::WindowKind, I>>,
     /// The next group
-    group_peek: Option<(UnitNumber, Curve<AggregatedServerDemand>)>,
+    demand_peek: Option<Window<<AggregatedServerDemand as CurveType>::WindowKind>>,
     /// The spill from the previous group
     spill: Option<Window<<AggregatedServerDemand as CurveType>::WindowKind>>,
     /// Remaining windows till we need to process the next group
@@ -109,8 +109,8 @@ where
         let split = CurveSplitIterator::new(aggregated_demand, server_properties.interval);
         InternalConstrainedServerDemandIterator {
             server_properties,
-            groups: Box::new(split),
-            group_peek: None,
+            demand: Box::new(split),
+            demand_peek: None,
             spill: None,
             remainder: Vec::new(),
         }
@@ -138,91 +138,128 @@ where
         if let Some(window) = self.remainder.pop() {
             Some(window)
         } else {
-            let next_group = self.group_peek.take().or_else(|| self.groups.next());
+            let next_group = self.demand_peek.take().or_else(|| self.demand.next());
             let spill = self.spill.take();
 
             match (next_group, spill) {
                 (None, None) => None,
-                (Some((group_index, next_group)), spill)
-                    if (group_index
-                        == spill.as_ref().map_or(group_index, |spill| {
-                            spill.start / self.server_properties.interval
-                        })) =>
-                {
-                    // Handle next_group and potentially some spill into next_group
-                    let curve = if let Some(spill) = spill {
-                        AggregationIterator::new(vec![
+                (Some(group_head), Some(spill)) => {
+                    let k_group_head = group_head.start / self.server_properties.interval;
+                    let k_spill = spill.start / self.server_properties.interval;
+
+                    if k_group_head == k_spill {
+                        // spill spilled into next_group
+
+                        let mut windows = vec![group_head];
+
+                        for window in &mut self.demand {
+                            if window.budget_group(self.server_properties.interval) == k_group_head
+                            {
+                                windows.push(window);
+                            } else {
+                                self.demand_peek = Some(window);
+                                break;
+                            }
+                        }
+
+                        // collect next_group
+                        let next_group: Curve<AggregatedServerDemand> =
+                            unsafe { Curve::from_windows_unchecked(windows) };
+
+                        // Handle next_group and spill
+                        let curve: Curve<_> = AggregationIterator::new(vec![
                             next_group.into_iter(),
                             Curve::new(spill).into_iter(),
                         ])
-                        .collect_curve()
+                        .collect_curve();
+
+                        self.process_group(k_spill, curve)
+                    } else if k_group_head > k_spill {
+                        // restore demand_peek
+                        // then process only spill
+                        self.demand_peek = Some(group_head);
+
+                        // spill not spilled into group, next group consists only of spill
+                        let curve = Curve::new(spill);
+                        self.process_group(k_spill, curve)
                     } else {
-                        next_group
-                    };
+                        unreachable!()
+                    }
+                }
+                (Some(group_head), None) => {
+                    let k_group_head = group_head.start / self.server_properties.interval;
+                    // no spill, only next group
 
-                    let PartitionResult { index, head, tail } =
-                        curve.partition(group_index, self.server_properties);
+                    let mut windows = vec![group_head];
 
-                    let mut windows = curve.into_windows();
-
-                    self.remainder.reserve(windows.len().min(index) + 1);
-
-                    self.remainder.extend(
-                        windows
-                            .drain(..index)
-                            .chain(std::iter::once(head).filter(|window| !window.is_empty()))
-                            .rev(),
-                    );
-
-                    let delta_k: WindowEnd = tail.length()
-                        + windows
-                            .into_iter()
-                            .skip(1)
-                            .map(|window| window.length())
-                            .sum::<WindowEnd>();
-
-                    if delta_k > TimeUnit::ZERO {
-                        let spill_start = (group_index + 1) * self.server_properties.interval;
-                        self.spill = Some(Window::new(spill_start, spill_start + delta_k));
+                    for window in &mut self.demand {
+                        if window.budget_group(self.server_properties.interval) == k_group_head {
+                            windows.push(window);
+                        } else {
+                            self.demand_peek = Some(window);
+                            break;
+                        }
                     }
 
-                    let result = self.remainder.pop();
-                    assert!(result.is_some());
-                    result
+                    // collect next_group
+                    let next_group: Curve<AggregatedServerDemand> =
+                        unsafe { Curve::from_windows_unchecked(windows) };
+
+                    let curve = next_group;
+
+                    self.process_group(k_group_head, curve)
                 }
-                (Some(_), None) => unreachable!("handled in previous case!"),
-                (next_group, Some(spill)) => {
-                    self.group_peek = next_group;
-                    // only spill remaining or spill not spilled into next_group
+                (None, Some(spill)) => {
+                    // only spill remaining
 
                     let k = spill.start / self.server_properties.interval;
 
-                    let curve = Curve::<UnspecifiedCurve<_>>::new(spill);
+                    let curve = Curve::new(spill);
 
-                    let PartitionResult { index, head, tail } =
-                        curve.partition(k, self.server_properties);
-
-                    self.remainder
-                        .reserve(curve.as_windows().len().min(index) + 1);
-
-                    self.remainder.extend(
-                        curve
-                            .into_windows()
-                            .drain(..index)
-                            .chain(std::iter::once(head).filter(|window| !window.is_empty()))
-                            .rev(),
-                    );
-
-                    self.spill = (!tail.is_empty()).then(|| {
-                        let spill_start = (k + 1) * self.server_properties.interval;
-                        Window::new(spill_start, spill_start + tail.length())
-                    });
-
-                    let result = self.remainder.pop();
-                    assert!(result.is_some());
-                    result
+                    self.process_group(k, curve)
                 }
             }
         }
+    }
+}
+
+impl<I> InternalConstrainedServerDemandIterator<I>
+where
+    I: CurveIterator<Demand, CurveKind = AggregatedServerDemand>,
+{
+    fn process_group(
+        &mut self,
+        k_group_head: usize,
+        curve: Curve<AggregatedServerDemand>,
+    ) -> Option<Window<Demand>> {
+        let PartitionResult { index, head, tail } =
+            curve.partition(k_group_head, self.server_properties);
+
+        let mut windows = curve.into_windows();
+
+        self.remainder.reserve(windows.len().min(index) + 1);
+
+        self.remainder.extend(
+            windows
+                .drain(..index)
+                .chain(std::iter::once(head).filter(|window| !window.is_empty()))
+                .rev(),
+        );
+
+        let delta_k: WindowEnd = tail.length()
+            + windows
+                .into_iter()
+                .skip(1)
+                .map(|window| window.length())
+                .sum::<WindowEnd>();
+
+        if delta_k > TimeUnit::ZERO {
+            let spill_start = (k_group_head + 1) * self.server_properties.interval;
+            self.spill = Some(Window::new(spill_start, spill_start + delta_k));
+        }
+
+        let result = self.remainder.pop();
+        assert!(result.is_some());
+        result
     }
 }
