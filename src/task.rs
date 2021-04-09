@@ -12,7 +12,7 @@ use crate::task::curve_types::{
     ActualTaskExecution, AvailableTaskExecution, HigherPriorityTaskDemand,
 };
 use crate::time::{TimeUnit, UnitNumber};
-use crate::window::{Demand, Window};
+use crate::window::{Demand, Window, WindowEnd};
 
 pub mod curve_types {
     //! Module for `CurveType`s of a Task
@@ -178,7 +178,7 @@ impl Task {
         let last_job = (swh - task.offset - TimeUnit::ONE) / task.interval;
 
         let total_execution = (last_job + 1) * task.demand;
-        let mut provided = TimeUnit::ZERO;
+        let mut provided = WindowEnd::Finite(TimeUnit::ZERO);
 
         let actual_execution_time: Curve<_> = actual_execution_time_iter
             .take_while(|task| {
@@ -201,7 +201,7 @@ impl Task {
         );
 
         assert!(
-            (last_job + 1) * task.demand <= actual_execution_time.capacity(),
+            WindowEnd::Finite((last_job + 1) * task.demand) <= actual_execution_time.capacity(),
             "There should be enough capacity for the last job"
         );
 
@@ -241,8 +241,13 @@ impl Task {
             .iter()
             .enumerate()
             .scan(TimeUnit::ZERO, |acc, (index, window)| {
-                *acc += window.length();
-                (*acc < t).then(|| (index + 1, *acc))
+                match window.length() {
+                    WindowEnd::Finite(length) => {
+                        *acc += length;
+                        (*acc < t).then(|| (index + 1, *acc))
+                    }
+                    WindowEnd::Infinite => None,
+                }
             })
             .last()
             .unwrap_or((0, TimeUnit::ZERO));

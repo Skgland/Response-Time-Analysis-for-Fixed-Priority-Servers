@@ -3,7 +3,7 @@ use rta_for_fps::iterators::CurveIterator;
 use rta_for_fps::server::{Server, ServerKind};
 use rta_for_fps::system::System;
 use rta_for_fps::task::Task;
-use rta_for_fps::time::{TimeUnit, UnitNumber};
+use rta_for_fps::time::TimeUnit;
 use rta_for_fps::window::Window;
 
 #[test]
@@ -182,7 +182,7 @@ fn response_time() {
 
     let c_s2 = system
         .actual_execution_curve_iter(server_index)
-        .take_while(|window| window.end <= 16.into());
+        .take_while(|window| window.end <= TimeUnit::from(16));
 
     let expected = unsafe {
         Curve::from_windows_unchecked(vec![

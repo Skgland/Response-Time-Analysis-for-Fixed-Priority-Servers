@@ -11,6 +11,7 @@ mod incorrect {
     use rta_for_fps::server::{Server, ServerKind};
     use rta_for_fps::system::System;
     use rta_for_fps::task::Task;
+    use rta_for_fps::time::TimeUnit;
 
     #[test]
     #[ignore]
@@ -50,10 +51,10 @@ mod incorrect {
         assert!(result, "check for no non-trivial overlaps");
 
         let wcrt1 = Task::worst_case_response_time(&system, 1, 0, swh1);
-        assert_eq!(wcrt1, 12.into());
+        assert_eq!(wcrt1, TimeUnit::from(12));
 
         let wcrt2 = Task::worst_case_response_time(&system, 2, 0, swh2);
-        assert_eq!(wcrt2, 6.into());
+        assert_eq!(wcrt2, TimeUnit::from(6));
     }
 }
 

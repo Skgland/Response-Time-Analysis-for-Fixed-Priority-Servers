@@ -4,7 +4,7 @@ use crate::curve::curve_types::CurveType;
 use crate::iterators::curve::IterCurveWrapper;
 use crate::iterators::CurveIterator;
 
-use crate::window::{Overlap, Window, WindowDeltaResult};
+use crate::window::{Overlap, Window, WindowDeltaResult, WindowEnd};
 use std::fmt::Debug;
 
 use crate::time::TimeUnit;
@@ -121,10 +121,8 @@ where
 pub struct InverseCurveIterator<I, C, W> {
     /// The iterator to invert
     iter: I,
-    /// The point where total would end
-    upper_bound: TimeUnit,
     /// The end of the last window
-    previous_end: TimeUnit,
+    previous_end: WindowEnd,
     /// The type of the Produced Curves and the corresponding window type
     curve_type: PhantomData<(W, C)>,
 }
@@ -132,11 +130,10 @@ pub struct InverseCurveIterator<I, C, W> {
 impl<I, C, W> InverseCurveIterator<I, C, W> {
     /// Create a new `InverseCurveIterator`
     #[must_use]
-    pub const fn new(iter: I, upper_bound: TimeUnit) -> Self {
+    pub const fn new(iter: I) -> Self {
         InverseCurveIterator {
             iter,
-            upper_bound,
-            previous_end: TimeUnit::ZERO,
+            previous_end: WindowEnd::Finite(TimeUnit::ZERO),
             curve_type: PhantomData,
         }
     }
@@ -146,7 +143,6 @@ impl<I: Clone, C, W> Clone for InverseCurveIterator<I, C, W> {
     fn clone(&self) -> Self {
         InverseCurveIterator {
             iter: self.iter.clone(),
-            upper_bound: self.upper_bound,
             previous_end: self.previous_end,
             curve_type: PhantomData,
         }
@@ -161,28 +157,34 @@ impl<I: CurveIterator<W>, W: Debug, C: CurveType> CurveIterator<C::WindowKind>
 
 impl<I: FusedIterator, W, C> FusedIterator for InverseCurveIterator<I, W, C> where Self: Iterator {}
 
-impl<W, I: Iterator<Item = Window<W>>, C: CurveType> Iterator for InverseCurveIterator<I, C, W> {
+impl<W: Debug, I: Iterator<Item = Window<W>>, C: CurveType> Iterator
+    for InverseCurveIterator<I, C, W>
+{
     type Item = Window<C::WindowKind>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.upper_bound <= self.previous_end {
-            None
-        } else {
+        if let WindowEnd::Finite(mut previous_end) = self.previous_end {
             while let Some(window) = self.iter.next() {
                 if self.previous_end < window.start {
-                    let result = Window::new(self.previous_end, window.start);
+                    let result = Window::new(previous_end, window.start);
                     self.previous_end = window.end;
                     return Some(result);
-                } else if self.previous_end == TimeUnit::ZERO && window.start == TimeUnit::ZERO {
+                } else if self.previous_end == TimeUnit::ZERO {
                     self.previous_end = window.end;
+                    match self.previous_end {
+                        WindowEnd::Finite(end) => previous_end = end,
+                        WindowEnd::Infinite => return None,
+                    }
                 } else {
                     panic!("Overlapping Windows in CurveIterator 'self.iter'")
                 }
             }
 
-            let result = Window::new(self.previous_end, self.upper_bound);
-            self.previous_end = self.upper_bound;
+            let result = Window::new(previous_end, WindowEnd::Infinite);
+            self.previous_end = WindowEnd::Infinite;
             Some(result)
+        } else {
+            None
         }
     }
 }

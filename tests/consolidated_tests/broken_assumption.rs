@@ -85,7 +85,7 @@ fn example_too_high() {
     let wcrt =
         rta_for_fps::task::Task::worst_case_response_time(&system, servers.len() - 1, 0, swh);
 
-    assert_eq!(wcrt, 19.into());
+    assert_eq!(wcrt, TimeUnit::from(19));
 }
 
 #[test]
@@ -110,7 +110,7 @@ fn example_too_low() {
     let wcrt =
         rta_for_fps::task::Task::worst_case_response_time(&system, servers.len() - 1, 0, swh);
 
-    assert_eq!(wcrt, 22.into());
+    assert_eq!(wcrt, TimeUnit::from(22));
 }
 
 #[test]
@@ -129,17 +129,19 @@ fn execution_overlap_too_high() {
 
     let system = System::new(servers);
 
+    let up_to = TimeUnit::from(48);
+
     let s1 = system
         .actual_execution_curve_iter(0)
-        .take_while(|window| window.end <= 48.into())
+        .take_while(|window| window.end <= up_to)
         .collect_curve();
     let s2: Curve<ActualServerExecution> = system
         .actual_execution_curve_iter(1)
-        .take_while(|window| window.end <= 48.into())
+        .take_while(|window| window.end <= up_to)
         .collect_curve();
     let s3: Curve<ActualServerExecution> = system
         .actual_execution_curve_iter(2)
-        .take_while(|window| window.end <= 48.into())
+        .take_while(|window| window.end <= up_to)
         .collect_curve();
 
     assert!(
@@ -180,22 +182,23 @@ fn execution_overlap_too_low() {
     ];
 
     let system = System::new(servers);
+    let up_to = TimeUnit::from(48);
 
     let s1: Curve<ActualServerExecution> = system
         .actual_execution_curve_iter(0)
-        .take_while(|window| window.end <= 48.into())
+        .take_while(|window| window.end <= up_to)
         .collect_curve();
     let s2: Curve<ActualServerExecution> = system
         .actual_execution_curve_iter(1)
-        .take_while(|window| window.end <= 48.into())
+        .take_while(|window| window.end <= up_to)
         .collect_curve();
     let s3: Curve<ActualServerExecution> = system
         .actual_execution_curve_iter(2)
-        .take_while(|window| window.end <= 48.into())
+        .take_while(|window| window.end <= up_to)
         .collect_curve();
     let s4: Curve<ActualServerExecution> = system
         .actual_execution_curve_iter(3)
-        .take_while(|window| window.end <= 48.into())
+        .take_while(|window| window.end <= up_to)
         .collect_curve();
 
     //TODO assert messages

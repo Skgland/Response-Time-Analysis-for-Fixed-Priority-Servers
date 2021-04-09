@@ -11,7 +11,7 @@ use crate::server::{
 use crate::curve::curve_types::CurveType;
 use crate::iterators::server::actual_execution::ActualServerExecutionIterator;
 use crate::iterators::{CurveIterator, JoinAdjacentIterator, ReclassifyIterator};
-use crate::time::{TimeUnit, UnitNumber};
+use crate::time::TimeUnit;
 
 /// Type representing a System of Servers
 #[derive(Debug)]
@@ -99,8 +99,7 @@ impl<'a> System<'a> {
 
         let ahpc = System::aggregated_higher_priority_demand_curve_iter(csdi);
 
-        // TODO eliminate up_to parameter
-        InverseCurveIterator::new(ahpc, TimeUnit::from(UnitNumber::MAX))
+        InverseCurveIterator::new(ahpc)
     }
 
     /// Calculate the Constrained Execution Curve using Algorithm 4. from the paper

@@ -11,7 +11,7 @@ use crate::server::{
     ActualServerExecution, ConstrainedServerDemand, ServerProperties, UnconstrainedServerExecution,
 };
 use crate::time::{TimeUnit, UnitNumber};
-use crate::window::{Demand, Window};
+use crate::window::{Demand, Window, WindowEnd};
 
 /// `CurveIterator` for `ActualServerExecution`
 ///
@@ -248,11 +248,9 @@ where
                     let remaining_budget = self.server_properties.capacity - self.spend_budget;
 
                     let valid_demand_segment = if demand_window.length() > remaining_budget {
-                        let valid = Window::new(
-                            demand_window.start,
-                            demand_window.start + remaining_budget,
-                        );
-                        let residual = Window::new(valid.end, demand_window.end);
+                        let valid_end = demand_window.start + remaining_budget;
+                        let valid = Window::new(demand_window.start, valid_end);
+                        let residual = Window::new(valid_end, demand_window.end);
 
                         self.demand_peek = Some(residual);
                         valid
@@ -264,7 +262,18 @@ where
                     let result = Window::delta(&supply_window, &valid_demand_segment);
 
                     // (e)
-                    self.spend_budget += result.overlap.length();
+                    match result.overlap.length() {
+                        WindowEnd::Finite(length) => {
+                            self.spend_budget += length;
+                        }
+                        WindowEnd::Infinite => {
+                            unreachable!(
+                                "valid_demand_segment has a length \
+                            less than or equal to remaining_budget an therefore is finite,\
+                            therefore the overlap cannot be infinite"
+                            )
+                        }
+                    }
 
                     vec![result.remaining_supply_head, result.remaining_supply_tail]
                         .into_iter()

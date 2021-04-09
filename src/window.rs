@@ -5,6 +5,9 @@ use std::marker::PhantomData;
 
 use crate::time::{TimeUnit, UnitNumber};
 use crate::window::window_types::WindowType;
+use std::cmp::Ordering;
+use std::iter::Sum;
+use std::ops::{Add, AddAssign, Sub};
 
 pub mod window_types {
     //!  Module for the `WindowType` trait
@@ -23,16 +26,172 @@ pub mod window_types {
     impl<P: WindowType, Q: WindowType> WindowType for Overlap<P, Q> {}
 }
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+pub enum WindowEnd {
+    Finite(TimeUnit),
+    Infinite,
+}
+
+impl WindowEnd {
+    pub fn min(self, other: Self) -> Self {
+        if self < other {
+            self
+        } else {
+            other
+        }
+    }
+}
+
+impl AddAssign for WindowEnd {
+    fn add_assign(&mut self, rhs: Self) {
+        *self = &*self + &rhs;
+    }
+}
+
+impl Add for WindowEnd {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        &self + &rhs
+    }
+}
+
+impl Add<TimeUnit> for WindowEnd {
+    type Output = WindowEnd;
+
+    fn add(self, rhs: TimeUnit) -> Self::Output {
+        match self {
+            WindowEnd::Finite(us) => Self::Finite(us + rhs),
+            WindowEnd::Infinite => Self::Infinite,
+        }
+    }
+}
+
+impl Add<WindowEnd> for TimeUnit {
+    type Output = WindowEnd;
+
+    fn add(self, rhs: WindowEnd) -> Self::Output {
+        match rhs {
+            WindowEnd::Finite(them) => WindowEnd::Finite(them + self),
+            WindowEnd::Infinite => WindowEnd::Infinite,
+        }
+    }
+}
+
+impl Add for &mut WindowEnd {
+    type Output = WindowEnd;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        &*self + &*rhs
+    }
+}
+
+impl Add for &WindowEnd {
+    type Output = WindowEnd;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (WindowEnd::Finite(a), WindowEnd::Finite(b)) => WindowEnd::Finite(*a + *b),
+            (WindowEnd::Infinite, _) | (_, WindowEnd::Infinite) => WindowEnd::Infinite,
+        }
+    }
+}
+
+impl PartialOrd for WindowEnd {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match (self, other) {
+            (Self::Infinite, Self::Infinite) => Some(Ordering::Equal),
+            (Self::Infinite, Self::Finite(_)) => Some(Ordering::Greater),
+            (Self::Finite(_), Self::Infinite) => Some(Ordering::Less),
+            (Self::Finite(a), Self::Finite(b)) => a.partial_cmp(b),
+        }
+    }
+}
+
+impl PartialEq<TimeUnit> for WindowEnd {
+    fn eq(&self, other: &TimeUnit) -> bool {
+        match self {
+            WindowEnd::Finite(us) => us.eq(other),
+            WindowEnd::Infinite => false,
+        }
+    }
+}
+
+impl PartialEq<WindowEnd> for TimeUnit {
+    fn eq(&self, other: &WindowEnd) -> bool {
+        match other {
+            WindowEnd::Finite(them) => them.eq(self),
+            WindowEnd::Infinite => false,
+        }
+    }
+}
+
+impl PartialOrd<TimeUnit> for WindowEnd {
+    fn partial_cmp(&self, other: &TimeUnit) -> Option<Ordering> {
+        match self {
+            WindowEnd::Finite(us) => us.partial_cmp(other),
+            WindowEnd::Infinite => Some(Ordering::Greater),
+        }
+    }
+}
+
+impl PartialOrd<WindowEnd> for TimeUnit {
+    fn partial_cmp(&self, other: &WindowEnd) -> Option<Ordering> {
+        match other {
+            WindowEnd::Finite(them) => self.partial_cmp(them),
+            WindowEnd::Infinite => Some(Ordering::Less),
+        }
+    }
+}
+
+impl<I: Into<TimeUnit>> From<Option<I>> for WindowEnd {
+    fn from(time: Option<I>) -> Self {
+        if let Some(time) = time {
+            Self::Finite(time.into())
+        } else {
+            Self::Infinite
+        }
+    }
+}
+
+impl<I: Into<TimeUnit>> From<I> for WindowEnd {
+    fn from(time: I) -> Self {
+        Self::Finite(time.into())
+    }
+}
+
+impl Sum for WindowEnd {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.fold(WindowEnd::Finite(TimeUnit::ZERO), |acc, next| {
+            match (acc, next) {
+                (Self::Finite(a), Self::Finite(b)) => Self::Finite(a + b),
+                (WindowEnd::Infinite, _) | (_, WindowEnd::Infinite) => Self::Infinite,
+            }
+        })
+    }
+}
+
+impl Sub<TimeUnit> for WindowEnd {
+    type Output = WindowEnd;
+
+    fn sub(self, rhs: TimeUnit) -> Self::Output {
+        match self {
+            WindowEnd::Finite(time) => Self::Finite(time - rhs),
+            WindowEnd::Infinite => Self::Infinite,
+        }
+    }
+}
+
 /// Type representing a Window based on the papers Definition 1.
 ///
 /// With an extra Type Parameter to indicate the Window type
 // Not Copy to prevent accidental errors due to implicit copy
-#[derive(Debug, Eq, Hash)]
+#[derive(Debug, Hash, Eq)]
 pub struct Window<T> {
     /// The Start point of the Window
     pub start: TimeUnit,
     /// The End Point of the Window
-    pub end: TimeUnit,
+    pub end: WindowEnd,
     /// The Kind of the Window
     window_type: PhantomData<T>,
 }
@@ -56,7 +215,7 @@ impl<T> Clone for Window<T> {
 impl<T: WindowType> Window<T> {
     /// Create a new Window
     #[must_use]
-    pub fn new<I: Into<TimeUnit>>(start: I, end: I) -> Self {
+    pub fn new<I: Into<TimeUnit>, E: Into<WindowEnd>>(start: I, end: E) -> Self {
         Window {
             start: start.into(),
             end: end.into(),
@@ -69,18 +228,24 @@ impl<T: WindowType> Window<T> {
     pub fn empty() -> Self {
         Window {
             start: TimeUnit::ZERO,
-            end: TimeUnit::ZERO,
+            end: WindowEnd::Finite(TimeUnit::ZERO),
             window_type: PhantomData,
         }
     }
 
     /// Calculate the window length as defined in Definition 1. of the paper
     #[must_use]
-    pub fn length(&self) -> TimeUnit {
-        if self.start < self.end {
-            self.end - self.start
-        } else {
-            TimeUnit::ZERO
+    pub fn length(&self) -> WindowEnd {
+        match self.end {
+            WindowEnd::Finite(end) => {
+                let end = if self.start < end {
+                    end - self.start
+                } else {
+                    TimeUnit::ZERO
+                };
+                WindowEnd::Finite(end)
+            }
+            WindowEnd::Infinite => WindowEnd::Infinite,
         }
     }
 
@@ -102,14 +267,27 @@ impl<T: WindowType> Window<T> {
             }
         } else {
             let overlap_start = TimeUnit::max(supply.start, demand.start);
-            let overlap_end =
-                overlap_start + TimeUnit::min(demand.length(), supply.end - overlap_start);
+            let overlap_end: WindowEnd =
+                overlap_start + WindowEnd::min(demand.length(), supply.end - overlap_start);
             let overlap = Window::new(overlap_start, overlap_end);
 
-            let remaining_demand = Window::new(demand.start + overlap.length(), demand.end);
+            let remaining_demand = match overlap.length() {
+                WindowEnd::Finite(length) => Window::new(demand.start + length, demand.end),
+                WindowEnd::Infinite => {
+                    // Infinite supply satisfies infinite demand, no demand left
+
+                    Window::empty()
+                }
+            };
 
             let remaining_supply_head = Window::new(supply.start, overlap.start);
-            let remaining_supply_tail = Window::new(overlap.end, supply.end);
+            let remaining_supply_tail = match overlap.end {
+                WindowEnd::Finite(overlap_end) => Window::new(overlap_end, supply.end),
+                WindowEnd::Infinite => {
+                    // Infinite supply satisfies infinite demand, no tail supply left
+                    Window::empty()
+                }
+            };
 
             WindowDeltaResult {
                 remaining_demand,

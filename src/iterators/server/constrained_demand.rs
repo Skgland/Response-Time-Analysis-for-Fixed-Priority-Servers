@@ -9,7 +9,7 @@ use crate::iterators::curve::{AggregationIterator, CurveSplitIterator};
 use crate::iterators::{CurveIterator, JoinAdjacentIterator};
 use crate::server::{AggregatedServerDemand, ConstrainedServerDemand, ServerProperties};
 use crate::time::{TimeUnit, UnitNumber};
-use crate::window::{Demand, Window};
+use crate::window::{Demand, Window, WindowEnd};
 
 /// `CurveIterator` for `ConstrainedServerDemand`
 #[derive(Debug, Clone)]
@@ -174,12 +174,12 @@ where
                             .rev(),
                     );
 
-                    let delta_k = tail.length()
+                    let delta_k: WindowEnd = tail.length()
                         + windows
                             .into_iter()
                             .skip(1)
                             .map(|window| window.length())
-                            .sum();
+                            .sum::<WindowEnd>();
 
                     if delta_k > TimeUnit::ZERO {
                         let spill_start = (group_index + 1) * self.server_properties.interval;

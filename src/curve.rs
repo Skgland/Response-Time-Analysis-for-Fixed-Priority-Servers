@@ -12,7 +12,7 @@ use crate::server::{ServerKind, ServerProperties};
 use crate::iterators::CurveIterator;
 use crate::time::{TimeUnit, UnitNumber};
 use crate::window::window_types::WindowType;
-use crate::window::{Demand, Overlap, Window};
+use crate::window::{Demand, Overlap, Window, WindowEnd};
 
 pub mod curve_types;
 
@@ -89,7 +89,7 @@ impl<T: CurveType> Curve<T> {
 
     /// Return the Curves Capacity as defined by Definition 3. in the paper
     #[must_use]
-    pub fn capacity(&self) -> TimeUnit {
+    pub fn capacity(&self) -> WindowEnd {
         self.windows.iter().map(Window::length).sum()
     }
 
@@ -157,23 +157,24 @@ impl<T: CurveType<WindowKind = Demand>> Curve<T> {
                 // meaning index is exclusive here rather than inclusive as in the paper
 
                 // (1)
-                let index = self
+                let (index, sum) = self
                     .windows
                     .iter()
                     .enumerate()
                     .scan(TimeUnit::ZERO, |acc, (index, window)| {
-                        *acc += window.length();
-                        (*acc <= server_properties.capacity).then(|| index + 1)
+                        match window.length() {
+                            WindowEnd::Finite(length) => {
+                                *acc += length;
+                                (*acc <= server_properties.capacity).then(|| (index + 1, *acc))
+                            }
+                            WindowEnd::Infinite => None,
+                        }
                     })
                     .last()
-                    .unwrap_or(0);
+                    .unwrap_or((0, TimeUnit::ZERO));
 
                 // (2)
-                let remaining_capacity = server_properties.capacity
-                    - self.windows[..index]
-                        .iter()
-                        .map(Window::length)
-                        .sum::<TimeUnit>();
+                let remaining_capacity = server_properties.capacity - sum;
 
                 let (head, tail) = self.windows.get(index).map_or_else(
                     || (Window::empty(), Window::empty()),
@@ -183,7 +184,7 @@ impl<T: CurveType<WindowKind = Demand>> Curve<T> {
                             let head_start = window.start;
                             let tail_end = window.end;
                             let split = head_start + remaining_capacity;
-                            let head = Window::new(head_start, split);
+                            let head = Window::new(head_start, Some(split));
                             let tail = Window::new(split, tail_end);
                             (head, tail)
                         } else {
