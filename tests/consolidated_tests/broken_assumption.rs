@@ -9,7 +9,7 @@ use rta_for_fps::window::window_types::WindowType;
 use rta_for_fps::window::Window;
 
 #[test]
-// server 2 does not guarantee its budget every period, failing the algorithms assumption
+// server 2 does not guarantee its budget every period, failing the algorithms assumption?
 #[should_panic]
 fn remarks() {
     // Example 10.
@@ -85,7 +85,11 @@ fn example_too_high() {
     let wcrt =
         rta_for_fps::task::Task::worst_case_response_time(&system, servers.len() - 1, 0, swh);
 
-    assert_eq!(wcrt, TimeUnit::from(19));
+    assert_eq!(
+        wcrt,
+        TimeUnit::from(19),
+        "Unexpected worst case response time"
+    );
 }
 
 #[test]
@@ -110,7 +114,11 @@ fn example_too_low() {
     let wcrt =
         rta_for_fps::task::Task::worst_case_response_time(&system, servers.len() - 1, 0, swh);
 
-    assert_eq!(wcrt, TimeUnit::from(22));
+    assert_eq!(
+        wcrt,
+        TimeUnit::from(22),
+        "Unexpected worst case response time"
+    );
 }
 
 #[test]
@@ -200,14 +208,44 @@ fn execution_overlap_too_low() {
         .collect_curve();
 
     //TODO assert messages
-    assert!(curve_has_no_non_trivial_overlap(&s1, &s2));
-    assert!(curve_has_no_non_trivial_overlap(&s1, &s3));
-    assert!(curve_has_no_non_trivial_overlap(&s1, &s4));
+    assert!(
+        curve_has_no_non_trivial_overlap(&s1, &s2),
+        "Curves have non-trivial overlap:\nCurve 1: {:#?}\n\nCurve 2: {:#?}",
+        &s1,
+        &s2
+    );
+    assert!(
+        curve_has_no_non_trivial_overlap(&s1, &s3),
+        "Curves have non-trivial overlap:\nCurve 1: {:#?}\n\nCurve 3: {:#?}",
+        &s1,
+        &s3
+    );
+    assert!(
+        curve_has_no_non_trivial_overlap(&s1, &s4),
+        "Curves have non-trivial overlap:\nCurve 1: {:#?}\n\nCurve 4: {:#?}",
+        &s1,
+        &s4
+    );
 
-    assert!(curve_has_no_non_trivial_overlap(&s2, &s3));
-    assert!(curve_has_no_non_trivial_overlap(&s2, &s4));
+    assert!(
+        curve_has_no_non_trivial_overlap(&s2, &s3),
+        "Curves have non-trivial overlap:\nCurve 2: {:#?}\n\nCurve 3: {:#?}",
+        &s2,
+        &s3
+    );
+    assert!(
+        curve_has_no_non_trivial_overlap(&s2, &s4),
+        "Curves have non-trivial overlap:\nCurve 2: {:#?}\n\nCurve 4: {:#?}",
+        &s2,
+        &s4
+    );
 
-    assert!(curve_has_no_non_trivial_overlap(&s3, &s4));
+    assert!(
+        curve_has_no_non_trivial_overlap(&s3, &s4),
+        "Curves have non-trivial overlap:\nCurve 3: {:#?}\n\nCurve 4: {:#?}",
+        &s1,
+        &s2
+    );
 }
 
 pub fn curve_has_no_non_trivial_overlap<C: CurveType>(c1: &Curve<C>, c2: &Curve<C>) -> bool {

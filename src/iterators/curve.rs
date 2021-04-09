@@ -19,8 +19,10 @@ pub use split::CurveSplitIterator;
 
 use crate::curve::curve_types::CurveType;
 use crate::curve::Curve;
-use crate::iterators::CurveIterator;
-use crate::window::Window;
+use crate::iterators::{CurveIterator, JoinAdjacentIterator};
+use crate::time::{TimeUnit, UnitNumber};
+use crate::window::window_types::WindowType;
+use crate::window::{Window, WindowEnd};
 use std::fmt::Debug;
 use std::marker::PhantomData;
 
@@ -141,5 +143,114 @@ impl<I: Iterator, C> Iterator for IterCurveWrapper<I, C> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct CapacityCheckIterator<W, I, C> {
+    iter: JoinAdjacentIterator<InnerCapacityCheckIterator<W, I>, W, C>,
+}
+
+impl<W, I, C> CapacityCheckIterator<W, I, C>
+where
+    W: WindowType,
+    I: CurveIterator<W>,
+{
+    pub fn new(to_be_checked: I, capacity: TimeUnit, interval: TimeUnit) -> Self {
+        let inner = InnerCapacityCheckIterator {
+            iter: CurveSplitIterator::new(to_be_checked, interval),
+            capacity,
+            interval,
+            current_group: 0,
+            accounted: WindowEnd::Finite(TimeUnit::ZERO),
+        };
+
+        let outer = unsafe { JoinAdjacentIterator::new(inner) };
+
+        CapacityCheckIterator { iter: outer }
+    }
+}
+
+impl<W, I, C> CurveIterator<W> for CapacityCheckIterator<W, I, C>
+where
+    I: CurveIterator<W, CurveKind = C>,
+    C: CurveType<WindowKind = W> + Debug,
+    W: WindowType,
+{
+    type CurveKind = C;
+}
+
+impl<W, I, C> FusedIterator for CapacityCheckIterator<W, I, C>
+where
+    Self: Iterator,
+    I: FusedIterator,
+{
+}
+
+impl<W, I, C> Iterator for CapacityCheckIterator<W, I, C>
+where
+    I: CurveIterator<W, Item = Window<W>>,
+    W: WindowType,
+{
+    type Item = Window<W>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
+    }
+}
+
+#[derive(Debug, Clone)]
+struct InnerCapacityCheckIterator<W, I> {
+    iter: CurveSplitIterator<W, I>,
+    capacity: TimeUnit,
+    interval: TimeUnit,
+    current_group: UnitNumber,
+    accounted: WindowEnd,
+}
+
+impl<W, I> Iterator for InnerCapacityCheckIterator<W, I>
+where
+    W: WindowType,
+    I: CurveIterator<W, Item = Window<W>>,
+{
+    type Item = Window<W>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(next) = self.iter.next() {
+            println!("Next Window: {:?}", next);
+            println!("Accounted: {:?}", self.accounted);
+            println!("Interval: {:?}", self.interval);
+
+            let next_group = next.budget_group(self.interval);
+
+            println!(
+                "Current Group {}, Next Group {}",
+                self.current_group, next_group
+            );
+
+            if next_group == self.current_group {
+                self.accounted += next.length();
+            } else if next_group == self.current_group + 1 {
+                if self.accounted < self.capacity {
+                    panic!(
+                        "Not enough capacity in group {}, expected at least {:?} capacity , got {:?}, next group {:?}!",
+                        self.current_group, self.capacity, self.accounted, next_group
+                    );
+                }
+                self.current_group = next_group;
+                self.accounted = next.length();
+            } else {
+                panic!(
+                    "No capacity for group {}, expected {:?} capacity, next group {}!",
+                    self.current_group + 1,
+                    self.capacity,
+                    next_group
+                );
+            };
+
+            Some(next)
+        } else {
+            None
+        }
     }
 }

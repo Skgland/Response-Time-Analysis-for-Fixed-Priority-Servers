@@ -1,7 +1,7 @@
 //! Module for the System type
 
 use crate::curve::AggregateExt;
-use crate::iterators::curve::InverseCurveIterator;
+use crate::iterators::curve::{CapacityCheckIterator, InverseCurveIterator};
 
 use crate::server::{
     ActualServerExecution, ConstrainedServerDemand, HigherPriorityServerDemand, Server,
@@ -119,21 +119,16 @@ impl<'a> System<'a> {
            + '_ {
         let unchecked_unconstrained_execution =
             self.unconstrained_server_execution_curve_iter(server_index);
-        /*
-                let min_capacity = self.servers[server_index].properties.capacity;
 
-                // split unconstrained execution curve into groups every server.interval
-                // and check that each group has at least server.capacity of capacity
-                let checked = CurveSplitIterator::new(
-                    unchecked_unconstrained_execution,
-                    self.servers[server_index].properties.interval,
-                )
-                .inspect(move |(_, group)| assert!(group.capacity() >= min_capacity))
-                .flat_map(|(_, group)| group.into_iter());
+        let props = self.servers[server_index].properties;
 
-                let checked_unconstrained_execution = unsafe { JoinAdjacentIterator::new(checked) };
-        */
-        let checked_unconstrained_execution = unchecked_unconstrained_execution;
+        // split unconstrained execution curve into groups every server.interval
+        // and check that each group has at least server.capacity of capacity
+        let checked_unconstrained_execution = CapacityCheckIterator::new(
+            unchecked_unconstrained_execution,
+            props.capacity,
+            props.interval,
+        );
 
         let constrained_demand = self.servers[server_index].constraint_demand_curve_iter();
 
