@@ -217,16 +217,7 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(next) = self.iter.next() {
-            println!("Next Window: {:?}", next);
-            println!("Accounted: {:?}", self.accounted);
-            println!("Interval: {:?}", self.interval);
-
             let next_group = next.budget_group(self.interval);
-
-            println!(
-                "Current Group {}, Next Group {}",
-                self.current_group, next_group
-            );
 
             if next_group == self.current_group {
                 self.accounted += next.length();
