@@ -135,7 +135,7 @@ impl<T: WindowType> Window<T> {
         self.start / interval
     }
 
-    /// Create a funktion that returns true for all Windows that
+    /// Create a function that returns true for all Windows that
     /// end below or at the limit
     pub fn limit(limit: TimeUnit) -> impl Fn(&Self) -> bool + Clone {
         move |window| window.end <= limit

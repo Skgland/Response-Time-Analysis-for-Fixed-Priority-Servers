@@ -11,7 +11,7 @@ use crate::server::{
 use crate::curve::curve_types::CurveType;
 use crate::iterators::server::actual_execution::ActualServerExecutionIterator;
 use crate::iterators::{CurveIterator, JoinAdjacentIterator, ReclassifyIterator};
-use crate::time::TimeUnit;
+use crate::time::{TimeUnit, UnitNumber};
 
 /// Type representing a System of Servers
 #[derive(Debug)]
@@ -61,14 +61,14 @@ impl<'a> System<'a> {
             .aggregate::<ReclassifyIterator<_, _, _>>()
     }
 
-    /// Calculate the system wide hyper periode
+    /// Calculate the system wide hyper period
     /// accounting for all servers and tasks
     /// up to and including the server with priority `server_index`
     ///
-    /// Section 7.1 §2 Sentence 3, allows to exclude lower priority servers from the swh periode calculation,
+    /// Section 7.1 §2 Sentence 3, allows to exclude lower priority servers from the swh period calculation,
     /// when analysing tasks of a server
     #[must_use]
-    pub fn system_wide_hyper_periode(&self, server_index: usize) -> TimeUnit {
+    pub fn system_wide_hyper_period(&self, server_index: usize) -> TimeUnit {
         self.servers[..=server_index]
             .iter()
             .map(|server| server.properties.interval)
@@ -88,7 +88,6 @@ impl<'a> System<'a> {
     pub fn unconstrained_server_execution_curve_iter(
         &self,
         server_index: usize,
-        up_to: TimeUnit,
     ) -> impl CurveIterator<
         <UnconstrainedServerExecution as CurveType>::WindowKind,
         CurveKind = UnconstrainedServerExecution,
@@ -96,11 +95,12 @@ impl<'a> System<'a> {
            + '_ {
         let csdi = self.servers[..server_index]
             .iter()
-            .map(move |server| server.constraint_demand_curve_iter(up_to));
+            .map(move |server| server.constraint_demand_curve_iter());
 
         let ahpc = System::aggregated_higher_priority_demand_curve_iter(csdi);
 
-        InverseCurveIterator::new(ahpc, up_to)
+        // TODO eliminate up_to parameter
+        InverseCurveIterator::new(ahpc, TimeUnit::from(UnitNumber::MAX))
     }
 
     /// Calculate the Constrained Execution Curve using Algorithm 4. from the paper
@@ -113,14 +113,13 @@ impl<'a> System<'a> {
     pub fn actual_execution_curve_iter(
         &self,
         server_index: usize,
-        up_to: TimeUnit,
     ) -> impl CurveIterator<
         <ActualServerExecution as CurveType>::WindowKind,
         CurveKind = ActualServerExecution,
     > + Clone
            + '_ {
         let unchecked_unconstrained_execution =
-            self.unconstrained_server_execution_curve_iter(server_index, up_to);
+            self.unconstrained_server_execution_curve_iter(server_index);
 
         let min_capacity = self.servers[server_index].properties.capacity;
 
@@ -130,12 +129,15 @@ impl<'a> System<'a> {
             unchecked_unconstrained_execution,
             self.servers[server_index].properties.interval,
         )
-        .inspect(move |(_, group)| assert!(group.capacity() >= min_capacity))
+        .inspect(move |(_, group)| {
+            assert!(group.capacity() >= min_capacity);
+            println!("Checked Group")
+        })
         .flat_map(|(_, group)| group.into_iter());
 
         let checked_unconstrained_execution = unsafe { JoinAdjacentIterator::new(checked) };
 
-        let constrained_demand = self.servers[server_index].constraint_demand_curve_iter(up_to);
+        let constrained_demand = self.servers[server_index].constraint_demand_curve_iter();
 
         ActualServerExecutionIterator::new(
             self.servers[server_index].properties,

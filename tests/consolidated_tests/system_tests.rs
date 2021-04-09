@@ -3,7 +3,7 @@ use rta_for_fps::iterators::CurveIterator;
 use rta_for_fps::server::{Server, ServerKind};
 use rta_for_fps::system::System;
 use rta_for_fps::task::Task;
-use rta_for_fps::time::TimeUnit;
+use rta_for_fps::time::{TimeUnit, UnitNumber};
 use rta_for_fps::window::Window;
 
 #[test]
@@ -27,9 +27,10 @@ fn unconstrained_curve() {
 
     let csdi = system.as_servers()[..1]
         .iter()
-        .map(|server| server.constraint_demand_curve_iter(up_to));
+        .map(|server| server.constraint_demand_curve_iter());
 
-    let aggregated_result = System::aggregated_higher_priority_demand_curve_iter(csdi);
+    let aggregated_result = System::aggregated_higher_priority_demand_curve_iter(csdi)
+        .take_while(|window| window.end <= up_to);
 
     let expected_aggregated_result = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -42,7 +43,9 @@ fn unconstrained_curve() {
 
     crate::util::assert_curve_eq(&expected_aggregated_result, aggregated_result);
 
-    let unconstrained_result = system.unconstrained_server_execution_curve_iter(1, up_to);
+    let unconstrained_result = system
+        .unconstrained_server_execution_curve_iter(1)
+        .take_while(|window| window.end <= up_to);
 
     let expected_unconstrained_result = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -83,16 +86,16 @@ fn executive_curve() {
     );
 
     let hp_tasks = &[
-        Task::new(3, 30, 0),
-        Task::new(5, 30, 5),
-        Task::new(5, 30, 12),
-        Task::new(3, 30, 18),
+        Task::new(3, 24, 0),
+        Task::new(5, 24, 5),
+        Task::new(5, 24, 12),
+        Task::new(3, 24, 18),
     ];
 
     let higher_priority_load = Server::new(
         hp_tasks,
-        TimeUnit::from(30),
-        TimeUnit::from(30),
+        TimeUnit::from(24),
+        TimeUnit::from(24),
         ServerKind::Deferrable,
     );
 
@@ -104,7 +107,9 @@ fn executive_curve() {
 
     // Unconstrained execution supply curve
 
-    let uc_execution_result = system.unconstrained_server_execution_curve_iter(1, up_to);
+    let uc_execution_result = system
+        .unconstrained_server_execution_curve_iter(1)
+        .take_while(|window| window.end <= up_to);
 
     let expected_uc_execution = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -119,7 +124,9 @@ fn executive_curve() {
 
     // Constrained demand curve
 
-    let demand_result = system.as_servers()[1].constraint_demand_curve_iter(up_to);
+    let demand_result = system.as_servers()[1]
+        .constraint_demand_curve_iter()
+        .take_while(|window| window.end <= up_to);
 
     let expected_demand = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -131,7 +138,9 @@ fn executive_curve() {
 
     crate::util::assert_curve_eq(&expected_demand, demand_result);
 
-    let c_execution_result = system.actual_execution_curve_iter(1, up_to);
+    let c_execution_result = system
+        .actual_execution_curve_iter(1)
+        .take_while(|window| window.end <= up_to);
 
     let expected_c_execution = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -171,7 +180,9 @@ fn response_time() {
     let server_index = 1;
     let task_index = 0;
 
-    let c_s2 = system.actual_execution_curve_iter(server_index, TimeUnit::from(16));
+    let c_s2 = system
+        .actual_execution_curve_iter(server_index)
+        .take_while(|window| window.end <= 16.into());
 
     let expected = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -185,10 +196,9 @@ fn response_time() {
 
     crate::util::assert_curve_eq(&expected, c_s2);
 
-    let t2_demand = Task::demand_curve_iter(
-        &servers[server_index].as_tasks()[task_index],
-        TimeUnit::from(16),
-    );
+    let t2_demand = servers[server_index].as_tasks()[task_index]
+        .into_iter()
+        .take_while(|window| window.end <= TimeUnit::from(16));
 
     let expected = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -201,8 +211,8 @@ fn response_time() {
 
     crate::util::assert_curve_eq(&expected, t2_demand);
 
-    let t2_available =
-        Task::actual_execution_curve_iter(&system, server_index, task_index, TimeUnit::from(16));
+    let t2_available = Task::actual_execution_curve_iter(&system, server_index, task_index)
+        .take_while(|window| window.end <= TimeUnit::from(16));
 
     let expected = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -215,7 +225,7 @@ fn response_time() {
 
     crate::util::assert_curve_eq(&expected, t2_available);
 
-    let swh = system.system_wide_hyper_periode(server_index);
+    let swh = system.system_wide_hyper_period(server_index);
 
     assert_eq!(swh, TimeUnit::from(40));
 
@@ -250,22 +260,30 @@ fn comparison() {
 
     let up_to = TimeUnit::from(20);
 
-    let t2_d = servers[1].as_tasks()[0].demand_curve_iter(up_to);
+    let t2_d = servers[1].as_tasks()[0]
+        .into_iter()
+        .take_while(|window| window.end <= up_to);
 
     let expected_t2_d =
         unsafe { Curve::from_windows_unchecked(vec![Window::new(0, 3), Window::new(10, 13)]) };
 
     crate::util::assert_curve_eq(&expected_t2_d, t2_d);
 
-    let t3_d = servers[1].as_tasks()[1].demand_curve_iter(up_to);
+    let t3_d = servers[1].as_tasks()[1]
+        .into_iter()
+        .take_while(|window| window.end <= up_to);
 
     let expected_t3_d =
         unsafe { Curve::from_windows_unchecked(vec![Window::new(0, 1), Window::new(10, 11)]) };
 
     crate::util::assert_curve_eq(&expected_t3_d, t3_d);
 
-    let s2_aggregated_demand = servers[1].aggregated_demand_curve_iter(up_to);
-    let s2_constrained_demand = servers[1].constraint_demand_curve_iter(up_to);
+    let s2_aggregated_demand = servers[1]
+        .aggregated_demand_curve_iter()
+        .take_while(|window| window.end <= up_to);
+    let s2_constrained_demand = servers[1]
+        .constraint_demand_curve_iter()
+        .take_while(|window| window.end <= up_to);
 
     let expected_s2_demand =
         unsafe { Curve::from_windows_unchecked(vec![Window::new(0, 4), Window::new(10, 14)]) };
@@ -274,7 +292,9 @@ fn comparison() {
 
     crate::util::assert_curve_eq(&expected_s2_demand.reclassify(), s2_constrained_demand);
 
-    let s2_unconstrained_execution = system.unconstrained_server_execution_curve_iter(1, up_to);
+    let s2_unconstrained_execution = system
+        .unconstrained_server_execution_curve_iter(1)
+        .take_while(|window| window.end <= up_to);
 
     // Note: Paper lists 6,10 and 16,20 as the unconstrained curve
     // but contradicts itself later with actual curve 4,8 and 14,18
@@ -291,13 +311,17 @@ fn comparison() {
         s2_unconstrained_execution,
     );
 
-    let s2_constrained_execution = system.actual_execution_curve_iter(1, up_to);
+    let s2_constrained_execution = system
+        .actual_execution_curve_iter(1)
+        .take_while(|window| window.end <= up_to);
     let expected_s2_constrained_execution =
         unsafe { Curve::from_windows_unchecked(vec![Window::new(4, 8), Window::new(14, 18)]) };
 
     crate::util::assert_curve_eq(&expected_s2_constrained_execution, s2_constrained_execution);
 
-    let t2_execution = Task::actual_execution_curve_iter(&system, 1, 0, up_to).collect_curve();
+    let t2_execution = Task::actual_execution_curve_iter(&system, 1, 0)
+        .take_while(|window| window.end <= up_to)
+        .collect_curve();
 
     let expected_t2_execution =
         unsafe { Curve::from_windows_unchecked(vec![Window::new(4, 7), Window::new(14, 17)]) };
@@ -316,7 +340,7 @@ fn comparison() {
 
     assert_eq!(r_2_2, expected_response_time);
 
-    let swh = system.system_wide_hyper_periode(1);
+    let swh = system.system_wide_hyper_period(1);
 
     let wcrt = Task::worst_case_response_time(&system, 1, 0, swh);
     assert_eq!(wcrt, expected_response_time);

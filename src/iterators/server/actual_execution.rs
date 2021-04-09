@@ -208,8 +208,9 @@ where
 {
     type Item = Window<<ActualServerExecution as CurveType>::WindowKind>;
 
-    // 4.
+    // Algorithm 4. (4)
     fn next(&mut self) -> Option<Self::Item> {
+        // (c)
         let demand = self
             .demand_peek
             .take()

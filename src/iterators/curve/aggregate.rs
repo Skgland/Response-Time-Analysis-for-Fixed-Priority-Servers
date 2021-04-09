@@ -89,7 +89,7 @@ where
             // if we reach it again without aggregating more we are done
             let mut aggregate_index = original_index;
 
-            loop {
+            'outer: loop {
                 let (tail, head) = self.curves.split_at_mut(original_index + 1);
 
                 // start after index and cycle through all elements
@@ -116,7 +116,7 @@ where
 
                     if aggregate_index == index {
                         // reached this again without aggregating
-                        return Some(overlap);
+                        break 'outer Some(overlap);
                     }
                 }
             }

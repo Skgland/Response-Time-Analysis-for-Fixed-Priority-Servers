@@ -17,7 +17,9 @@ fn deferrable_server() {
         ServerKind::Deferrable,
     );
 
-    let result = server.constraint_demand_curve_iter(TimeUnit::from(18));
+    let result = server
+        .constraint_demand_curve_iter()
+        .take_while(|window| window.end <= 18.into());
 
     let expected_result = unsafe {
         // the example in the paper is confusing as

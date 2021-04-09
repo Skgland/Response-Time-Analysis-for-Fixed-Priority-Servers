@@ -184,6 +184,7 @@ where
                         current.start <= peek.start,
                         "The wrapped Iterator violated its invariant of windows being ordered!"
                     );
+
                     if current.overlaps(peek) {
                         let overlap = Window::new(current.start, peek.end);
                         // assert that windows where adjacent and didn't overlap further as this

@@ -44,6 +44,7 @@ impl<C: CurveType> FromCurveIterator<C> for Curve<C> {
     {
         let windows = iter.into_iter().collect();
         unsafe {
+            // Safety:
             // windows collected from `CurveIterator`
             // which invariants guarantee that this is safe
             Curve::from_windows_unchecked(windows)

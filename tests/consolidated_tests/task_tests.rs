@@ -15,7 +15,7 @@ fn demand_curve() {
 
     let up_to = TimeUnit::from(18);
 
-    let c_2 = t_2.demand_curve_iter(up_to);
+    let c_2 = t_2.into_iter().take_while(|window| window.end <= up_to);
 
     let expected_c_2 = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -28,7 +28,7 @@ fn demand_curve() {
 
     crate::util::assert_curve_eq(&expected_c_2, c_2);
 
-    let c_3 = t_3.demand_curve_iter(up_to);
+    let c_3 = t_3.into_iter().take_while(|window| window.end <= up_to);
 
     let expected_c_3 = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -50,11 +50,14 @@ fn aggregated_demand_curve() {
 
     let up_to = TimeUnit::from(18);
 
-    let result: Curve<TaskDemand> = AggregationIterator::new(vec![
-        t_2.demand_curve_iter(up_to),
-        t_3.demand_curve_iter(up_to),
-    ])
-    .collect_curve();
+    let f = |window: &Window<_>| window.end <= up_to;
+
+    let t2_demand = t_2.into_iter().take_while(f);
+
+    let t3_demand = t_3.into_iter().take_while(f);
+
+    let result: Curve<TaskDemand> =
+        AggregationIterator::new(vec![t2_demand, t3_demand]).collect_curve();
 
     let expected_result = unsafe {
         Curve::from_windows_unchecked(vec![

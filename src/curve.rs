@@ -124,7 +124,7 @@ impl<T: CurveType> Curve<T> {
                 (None, None) => break true,
                 (Some(_), None) | (None, Some(_)) => break false,
                 (Some(left), Some(right)) => {
-                    if left.ne(&right) {
+                    if left != &right {
                         break false;
                     }
                 }

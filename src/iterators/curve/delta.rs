@@ -173,8 +173,10 @@ impl<W, I: Iterator<Item = Window<W>>, C: CurveType> Iterator for InverseCurveIt
                     let result = Window::new(self.previous_end, window.start);
                     self.previous_end = window.end;
                     return Some(result);
-                } else {
+                } else if self.previous_end == TimeUnit::ZERO && window.start == TimeUnit::ZERO {
                     self.previous_end = window.end;
+                } else {
+                    panic!("Overlapping Windows in CurveIterator 'self.iter'")
                 }
             }
 
@@ -328,8 +330,9 @@ where
                 remaining_supply.or_else(lazy_supply_iter)
             }
         } else {
-            // demand or supply or both are gone, finish up
-            // the corresponding remaining_ should also be empty
+            // demand or supply or both are gone, finish up.
+            // if demand is gone remaining_demand should be None
+            // likewise for supply
 
             let remaining_supply = self.remaining_supply.pop().map(Delta::RemainingSupply);
 
