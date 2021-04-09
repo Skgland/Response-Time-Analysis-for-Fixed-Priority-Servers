@@ -1,15 +1,17 @@
 //! Module for the implementation of the Curve split operation using iterators
 
+use std::iter::FusedIterator;
+
 use crate::iterators::CurveIterator;
 use crate::time::TimeUnit;
 use crate::window::window_types::WindowType;
-use crate::window::{Window, WindowEnd};
-use std::iter::FusedIterator;
+use crate::window::Window;
+use crate::window::WindowEnd;
 
-/// Curve Iterator for splitting a Curve in fixed Intervalls
+/// Curve Iterator for splitting a Curve in fixed Intervals
 ///
 /// Split the curve on every interval boundary as defined in Definition 8. of the paper
-/// When the last window of the input CurveIterator is an infinite window
+/// When the last window of the input `CurveIterator` is an infinite window
 /// that window will be spilt at most once, and in that case the last window returned
 /// will start on a group boundary and be infinite
 ///
@@ -57,14 +59,14 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         let first = self.tail.take().or_else(|| self.iter.next());
 
-        if let Some(first) = first {
+        first.map(|first| {
             let k = first.start / self.interval;
-            if first.end <= (k + 1) * self.interval {
+            if first.end <= (k + 1) * self.interval
+                || first.start == k * self.interval && first.end == WindowEnd::Infinite
+            {
                 // window belongs completely to a group
-                Some(first)
-            } else if first.start == k * self.interval && first.end == WindowEnd::Infinite {
-                // window starts on a group boundary and is infinite return as is
-                Some(first)
+                // or window starts on a group boundary and is infinite return as is
+                first
             } else {
                 // window belongs only partially to this group
                 let init = Window::new(first.start, (k + 1) * self.interval);
@@ -73,10 +75,8 @@ where
                 // remember remaining tail for next group
                 self.tail = Some(tail);
 
-                Some(init)
+                init
             }
-        } else {
-            None
-        }
+        })
     }
 }

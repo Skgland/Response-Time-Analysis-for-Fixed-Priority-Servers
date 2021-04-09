@@ -11,7 +11,8 @@ use crate::server::{
     ActualServerExecution, ConstrainedServerDemand, ServerProperties, UnconstrainedServerExecution,
 };
 use crate::time::{TimeUnit, UnitNumber};
-use crate::window::{Demand, Window, WindowEnd};
+use crate::window::WindowEnd;
+use crate::window::{Demand, Window};
 
 /// `CurveIterator` for `ActualServerExecution`
 ///
@@ -239,15 +240,15 @@ where
                         self.spend_budget = TimeUnit::ZERO;
                         self.current_group = window_group;
                     } else if self.spend_budget >= self.server_properties.capacity {
-                        if supply_window.end != WindowEnd::Infinite {
-                            // budget exhausted skip supply window
-                            continue;
-                        } else {
+                        if supply_window.end == WindowEnd::Infinite {
                             // Infinite supply window advance to next group
                             self.spend_budget = TimeUnit::ZERO;
                             self.current_group += 1;
                             supply_window.start =
                                 self.current_group * self.server_properties.interval;
+                        } else {
+                            // budget exhausted skip supply window
+                            continue;
                         }
                     }
 

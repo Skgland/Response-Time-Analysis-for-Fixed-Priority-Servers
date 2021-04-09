@@ -1,6 +1,7 @@
 //! Module for the implementation of the `CurveIterator`s used to calculate
 //! the constrained demand curve of a Server
 
+use std::cmp::Ordering;
 use std::iter::FusedIterator;
 
 use crate::curve::curve_types::CurveType;
@@ -9,7 +10,8 @@ use crate::iterators::curve::{AggregationIterator, CurveSplitIterator};
 use crate::iterators::{CurveIterator, JoinAdjacentIterator};
 use crate::server::{AggregatedServerDemand, ConstrainedServerDemand, ServerProperties};
 use crate::time::TimeUnit;
-use crate::window::{Demand, Window, WindowEnd};
+use crate::window::WindowEnd;
+use crate::window::{Demand, Window};
 
 /// `CurveIterator` for `ConstrainedServerDemand`
 #[derive(Debug, Clone)]
@@ -147,43 +149,48 @@ where
                     let k_group_head = group_head.start / self.server_properties.interval;
                     let k_spill = spill.start / self.server_properties.interval;
 
-                    if k_group_head == k_spill {
-                        // spill spilled into next_group
-
-                        let mut windows = vec![group_head];
-
-                        for window in &mut self.demand {
-                            if window.budget_group(self.server_properties.interval) == k_group_head
-                            {
-                                windows.push(window);
-                            } else {
-                                self.demand_peek = Some(window);
-                                break;
-                            }
+                    match k_group_head.cmp(&k_spill) {
+                        Ordering::Less => {
+                            unreachable!("Groups are processed in order and spill can only go into the future")
                         }
+                        Ordering::Equal => {
+                            // spill spilled into next_group
 
-                        // collect next_group
-                        let next_group: Curve<AggregatedServerDemand> =
-                            unsafe { Curve::from_windows_unchecked(windows) };
+                            let mut windows = vec![group_head];
 
-                        // Handle next_group and spill
-                        let curve: Curve<_> = AggregationIterator::new(vec![
-                            next_group.into_iter(),
-                            Curve::new(spill).into_iter(),
-                        ])
-                        .collect_curve();
+                            for window in &mut self.demand {
+                                if window.budget_group(self.server_properties.interval)
+                                    == k_group_head
+                                {
+                                    windows.push(window);
+                                } else {
+                                    self.demand_peek = Some(window);
+                                    break;
+                                }
+                            }
 
-                        self.process_group(k_spill, curve)
-                    } else if k_group_head > k_spill {
-                        // restore demand_peek
-                        // then process only spill
-                        self.demand_peek = Some(group_head);
+                            // collect next_group
+                            let next_group: Curve<AggregatedServerDemand> =
+                                unsafe { Curve::from_windows_unchecked(windows) };
 
-                        // spill not spilled into group, next group consists only of spill
-                        let curve = Curve::new(spill);
-                        self.process_group(k_spill, curve)
-                    } else {
-                        unreachable!()
+                            // Handle next_group and spill
+                            let curve: Curve<_> = AggregationIterator::new(vec![
+                                next_group.into_iter(),
+                                Curve::new(spill).into_iter(),
+                            ])
+                            .collect_curve();
+
+                            self.process_group(k_spill, curve)
+                        }
+                        Ordering::Greater => {
+                            // restore demand_peek
+                            // then process only spill
+                            self.demand_peek = Some(group_head);
+
+                            // spill not spilled into group, next group consists only of spill
+                            let curve = Curve::new(spill);
+                            self.process_group(k_spill, curve)
+                        }
                     }
                 }
                 (Some(group_head), None) => {
@@ -227,6 +234,7 @@ impl<I> InternalConstrainedServerDemandIterator<I>
 where
     I: CurveIterator<Demand, CurveKind = AggregatedServerDemand>,
 {
+    /// Process the group with index `k_group_head` and `demand `curve`
     fn process_group(
         &mut self,
         k_group_head: usize,

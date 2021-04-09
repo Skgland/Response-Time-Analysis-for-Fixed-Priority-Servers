@@ -3,7 +3,6 @@
 use crate::curve::curve_types::CurveType;
 use crate::curve::{AggregateExt, Curve};
 use crate::iterators::curve::CurveDeltaIterator;
-
 use crate::iterators::task::TaskDemandIterator;
 use crate::iterators::{CurveIterator, ReclassifyIterator};
 use crate::server::ActualServerExecution;
@@ -12,7 +11,8 @@ use crate::task::curve_types::{
     ActualTaskExecution, AvailableTaskExecution, HigherPriorityTaskDemand,
 };
 use crate::time::{TimeUnit, UnitNumber};
-use crate::window::{Demand, Window, WindowEnd};
+use crate::window::WindowEnd;
+use crate::window::{Demand, Window};
 
 pub mod curve_types {
     //! Module for `CurveType`s of a Task

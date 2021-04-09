@@ -93,9 +93,11 @@ impl<'a> System<'a> {
         CurveKind = UnconstrainedServerExecution,
     > + Clone
            + '_ {
+        #![allow(clippy::redundant_closure_for_method_calls)]
+
         let csdi = self.servers[..server_index]
             .iter()
-            .map(move |server| server.constraint_demand_curve_iter());
+            .map(|server| server.constraint_demand_curve_iter());
 
         let ahpc = System::aggregated_higher_priority_demand_curve_iter(csdi);
 

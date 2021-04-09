@@ -7,12 +7,12 @@ use std::fmt::Debug;
 use curve_types::CurveType;
 
 use crate::iterators::curve::{CurveDeltaIterator, Delta};
-use crate::server::{ServerKind, ServerProperties};
-
 use crate::iterators::CurveIterator;
+use crate::server::{ServerKind, ServerProperties};
 use crate::time::{TimeUnit, UnitNumber};
 use crate::window::window_types::WindowType;
-use crate::window::{Demand, Overlap, Window, WindowEnd};
+use crate::window::WindowEnd;
+use crate::window::{Demand, Overlap, Window};
 
 pub mod curve_types;
 

@@ -5,16 +5,16 @@
 //! also `FromIterator` implementation for `Curve`
 //!
 
+use std::fmt::Debug;
 use std::iter::FusedIterator;
+use std::marker::PhantomData;
 
+pub use aggregate::AggregationIterator;
 pub use delta::{
     CurveDeltaIterator,
     Delta::{self, *},
     InverseCurveIterator,
 };
-
-pub use aggregate::AggregationIterator;
-
 pub use split::CurveSplitIterator;
 
 use crate::curve::curve_types::CurveType;
@@ -22,9 +22,8 @@ use crate::curve::Curve;
 use crate::iterators::{CurveIterator, JoinAdjacentIterator};
 use crate::time::{TimeUnit, UnitNumber};
 use crate::window::window_types::WindowType;
-use crate::window::{Window, WindowEnd};
-use std::fmt::Debug;
-use std::marker::PhantomData;
+use crate::window::Window;
+use crate::window::WindowEnd;
 
 mod aggregate;
 mod delta;
@@ -146,8 +145,12 @@ impl<I: Iterator, C> Iterator for IterCurveWrapper<I, C> {
     }
 }
 
+/// Checks that each interval contains a minimum amount of capacity
+/// # Panics
+/// during usage if this is not the case
 #[derive(Debug, Clone)]
 pub struct CapacityCheckIterator<W, I, C> {
+    /// the inner iterator doing all the work
     iter: JoinAdjacentIterator<InnerCapacityCheckIterator<W, I>, W, C>,
 }
 
@@ -156,6 +159,13 @@ where
     W: WindowType,
     I: CurveIterator<W>,
 {
+    /// Create a new `CapacityCheckIterator`
+    ///
+    /// That checks that ever `interval` of the curve `to_be_checked` contains at least
+    /// `capacity` of capacity
+    ///
+    /// The returned Iterator panics when not enough capacity was available in a processed group.
+    /// The panics occurs when the first window of the next group is requested
     pub fn new(to_be_checked: I, capacity: TimeUnit, interval: TimeUnit) -> Self {
         let inner = InnerCapacityCheckIterator {
             iter: CurveSplitIterator::new(to_be_checked, interval),
@@ -199,12 +209,18 @@ where
     }
 }
 
+/// Inner Iterator for the `CapacityCheckIterator`
 #[derive(Debug, Clone)]
 struct InnerCapacityCheckIterator<W, I> {
+    /// wrapped curve split iterator
     iter: CurveSplitIterator<W, I>,
+    /// the capacity each interval should have at least
     capacity: TimeUnit,
+    /// the interval in which to check for sufficient capacity
     interval: TimeUnit,
+    /// the current group being accounted
     current_group: UnitNumber,
+    /// the capacity currently witnessed up to now in the current group
     accounted: WindowEnd,
 }
 

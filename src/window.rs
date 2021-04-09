@@ -5,16 +5,14 @@ use std::marker::PhantomData;
 
 use crate::time::{TimeUnit, UnitNumber};
 use crate::window::window_types::WindowType;
-use std::cmp::Ordering;
-use std::iter::Sum;
-use std::ops::{Add, AddAssign, Sub};
 
 pub mod window_types {
     //!  Module for the `WindowType` trait
 
+    use std::fmt::Debug;
+
     use crate::seal::Seal;
     use crate::window::{Demand, Overlap, Supply};
-    use std::fmt::Debug;
 
     /// Marker Trait for Window Types
     pub trait WindowType: Seal + Debug {}
@@ -26,161 +24,9 @@ pub mod window_types {
     impl<P: WindowType, Q: WindowType> WindowType for Overlap<P, Q> {}
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
-pub enum WindowEnd {
-    Finite(TimeUnit),
-    Infinite,
-}
+mod window_end;
 
-impl WindowEnd {
-    pub fn min(self, other: Self) -> Self {
-        if self < other {
-            self
-        } else {
-            other
-        }
-    }
-}
-
-impl AddAssign for WindowEnd {
-    fn add_assign(&mut self, rhs: Self) {
-        *self = &*self + &rhs;
-    }
-}
-
-impl Add for WindowEnd {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        &self + &rhs
-    }
-}
-
-impl Add<TimeUnit> for WindowEnd {
-    type Output = WindowEnd;
-
-    fn add(self, rhs: TimeUnit) -> Self::Output {
-        match self {
-            WindowEnd::Finite(us) => Self::Finite(us + rhs),
-            WindowEnd::Infinite => Self::Infinite,
-        }
-    }
-}
-
-impl Add<WindowEnd> for TimeUnit {
-    type Output = WindowEnd;
-
-    fn add(self, rhs: WindowEnd) -> Self::Output {
-        match rhs {
-            WindowEnd::Finite(them) => WindowEnd::Finite(them + self),
-            WindowEnd::Infinite => WindowEnd::Infinite,
-        }
-    }
-}
-
-impl Add for &mut WindowEnd {
-    type Output = WindowEnd;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        &*self + &*rhs
-    }
-}
-
-impl Add for &WindowEnd {
-    type Output = WindowEnd;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (WindowEnd::Finite(a), WindowEnd::Finite(b)) => WindowEnd::Finite(*a + *b),
-            (WindowEnd::Infinite, _) | (_, WindowEnd::Infinite) => WindowEnd::Infinite,
-        }
-    }
-}
-
-impl PartialOrd for WindowEnd {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        match (self, other) {
-            (Self::Infinite, Self::Infinite) => Some(Ordering::Equal),
-            (Self::Infinite, Self::Finite(_)) => Some(Ordering::Greater),
-            (Self::Finite(_), Self::Infinite) => Some(Ordering::Less),
-            (Self::Finite(a), Self::Finite(b)) => a.partial_cmp(b),
-        }
-    }
-}
-
-impl PartialEq<TimeUnit> for WindowEnd {
-    fn eq(&self, other: &TimeUnit) -> bool {
-        match self {
-            WindowEnd::Finite(us) => us.eq(other),
-            WindowEnd::Infinite => false,
-        }
-    }
-}
-
-impl PartialEq<WindowEnd> for TimeUnit {
-    fn eq(&self, other: &WindowEnd) -> bool {
-        match other {
-            WindowEnd::Finite(them) => them.eq(self),
-            WindowEnd::Infinite => false,
-        }
-    }
-}
-
-impl PartialOrd<TimeUnit> for WindowEnd {
-    fn partial_cmp(&self, other: &TimeUnit) -> Option<Ordering> {
-        match self {
-            WindowEnd::Finite(us) => us.partial_cmp(other),
-            WindowEnd::Infinite => Some(Ordering::Greater),
-        }
-    }
-}
-
-impl PartialOrd<WindowEnd> for TimeUnit {
-    fn partial_cmp(&self, other: &WindowEnd) -> Option<Ordering> {
-        match other {
-            WindowEnd::Finite(them) => self.partial_cmp(them),
-            WindowEnd::Infinite => Some(Ordering::Less),
-        }
-    }
-}
-
-impl<I: Into<TimeUnit>> From<Option<I>> for WindowEnd {
-    fn from(time: Option<I>) -> Self {
-        if let Some(time) = time {
-            Self::Finite(time.into())
-        } else {
-            Self::Infinite
-        }
-    }
-}
-
-impl<I: Into<TimeUnit>> From<I> for WindowEnd {
-    fn from(time: I) -> Self {
-        Self::Finite(time.into())
-    }
-}
-
-impl Sum for WindowEnd {
-    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
-        iter.fold(WindowEnd::Finite(TimeUnit::ZERO), |acc, next| {
-            match (acc, next) {
-                (Self::Finite(a), Self::Finite(b)) => Self::Finite(a + b),
-                (WindowEnd::Infinite, _) | (_, WindowEnd::Infinite) => Self::Infinite,
-            }
-        })
-    }
-}
-
-impl Sub<TimeUnit> for WindowEnd {
-    type Output = WindowEnd;
-
-    fn sub(self, rhs: TimeUnit) -> Self::Output {
-        match self {
-            WindowEnd::Finite(time) => Self::Finite(time - rhs),
-            WindowEnd::Infinite => Self::Infinite,
-        }
-    }
-}
+pub use window_end::WindowEnd;
 
 /// Type representing a Window based on the papers Definition 1.
 ///
@@ -290,10 +136,10 @@ impl<T: WindowType> Window<T> {
             };
 
             WindowDeltaResult {
-                remaining_demand,
                 remaining_supply_head,
                 remaining_supply_tail,
                 overlap,
+                remaining_demand,
             }
         }
     }

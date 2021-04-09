@@ -1,16 +1,16 @@
 //! Module for the implementation of the Curve delta operation using iterators
 
+use std::fmt::Debug;
+use std::iter::FusedIterator;
+use std::marker::PhantomData;
+
 use crate::curve::curve_types::CurveType;
 use crate::iterators::curve::IterCurveWrapper;
 use crate::iterators::CurveIterator;
-
-use crate::window::{Overlap, Window, WindowDeltaResult, WindowEnd};
-use std::fmt::Debug;
-
 use crate::time::TimeUnit;
 use crate::window::window_types::WindowType;
-use std::iter::FusedIterator;
-use std::marker::PhantomData;
+use crate::window::WindowEnd;
+use crate::window::{Overlap, Window, WindowDeltaResult};
 
 /// Item type of the `CurveDeltaIterator`
 #[derive(Debug)]
