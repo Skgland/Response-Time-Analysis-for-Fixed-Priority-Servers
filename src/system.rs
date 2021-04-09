@@ -128,10 +128,7 @@ impl<'a> System<'a> {
             unchecked_unconstrained_execution,
             self.servers[server_index].properties.interval,
         )
-        .inspect(move |(_, group)| {
-            assert!(group.capacity() >= min_capacity);
-            println!("Checked Group")
-        })
+        .inspect(move |(_, group)| assert!(group.capacity() >= min_capacity))
         .flat_map(|(_, group)| group.into_iter());
 
         let checked_unconstrained_execution = unsafe { JoinAdjacentIterator::new(checked) };
