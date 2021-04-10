@@ -317,6 +317,7 @@ pub struct PartitionResult {
 pub trait AggregateExt: Iterator + Sized {
     /// aggregate all iterator elements
     /// acts similar to [`std::iter::Iterator::sum`]
+    #[must_use]
     fn aggregate<A: Aggregate<Self::Item>>(self) -> A {
         A::aggregate(self)
     }
@@ -328,6 +329,7 @@ impl<I: Iterator> AggregateExt for I {}
 pub trait Aggregate<A = Self> {
     /// aggregate all elements of `iter` into a new Self
     /// pendant to [`std::iter::Sum`]
+    #[must_use]
     fn aggregate<I>(iter: I) -> Self
     where
         I: Iterator<Item = A>;

@@ -68,6 +68,7 @@ where
     type CurveKind: CurveType<WindowKind = W>;
 
     /// collect the iterator mirroring [`std::iter::Iterator::collect`]
+    #[must_use]
     fn collect_curve<R: FromCurveIterator<Self::CurveKind>>(self) -> R
     where
         Self: Sized,
@@ -76,6 +77,7 @@ where
     }
 
     /// reclassify a `CurveIterator`
+    #[must_use]
     fn reclassify<O>(self) -> ReclassifyIterator<Self, Self::CurveKind, O>
     where
         Self: Sized,
