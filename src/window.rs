@@ -158,12 +158,6 @@ impl<T: WindowType> Window<T> {
     pub fn budget_group(&self, interval: TimeUnit) -> UnitNumber {
         self.start / interval
     }
-
-    /// Create a function that returns true for all Windows that
-    /// end below or at the limit
-    pub fn limit(limit: TimeUnit) -> impl Fn(&Self) -> bool + Clone {
-        move |window| window.end <= limit
-    }
 }
 
 impl Window<Demand> {
