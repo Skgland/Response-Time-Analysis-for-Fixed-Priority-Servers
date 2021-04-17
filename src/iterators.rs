@@ -103,8 +103,10 @@ where
     }
 }
 
+/// Wrap a `CurveIterator` to be a `CurveIterator` and an `Iterator`
 #[derive(Debug, Clone)]
 pub struct CurveIteratorIterator<I> {
+    /// the wrapped `CurveIterator`
     iter: I,
 }
 

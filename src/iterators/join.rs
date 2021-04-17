@@ -1,3 +1,5 @@
+//! Module for the implementation of the `JoinAdjacentIterator`
+
 use std::fmt::Debug;
 use std::iter::Fuse;
 use std::marker::PhantomData;
