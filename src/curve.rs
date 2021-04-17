@@ -113,10 +113,7 @@ impl<T: CurveType> Curve<T> {
 
     /// compare the curve to a curve iterator
     /// consuming the iterator in the process
-    pub fn eq_curve_iterator<CI: CurveIterator<T::WindowKind, CurveKind = T>>(
-        &self,
-        mut other: CI,
-    ) -> bool {
+    pub fn eq_curve_iterator<CI: CurveIterator<CurveKind = T>>(&self, mut other: CI) -> bool {
         let mut windows = self.as_windows().iter();
         loop {
             match (windows.next(), other.next_window()) {
@@ -253,8 +250,10 @@ pub struct CurveDeltaResult<
 
 impl<DW: WindowType, SW: WindowType, DI, SI> CurveDeltaIterator<DW, SW, DI, SI>
 where
-    DI: CurveIterator<DW>,
-    SI: CurveIterator<SW>,
+    DI: CurveIterator,
+    DI::CurveKind: CurveType<WindowKind = DW>,
+    SI: CurveIterator,
+    SI::CurveKind: CurveType<WindowKind = SW>,
 {
     /// collect the complete `CurveDeltaIterator`
     ///

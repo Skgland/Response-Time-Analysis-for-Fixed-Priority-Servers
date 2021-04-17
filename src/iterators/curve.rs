@@ -33,17 +33,17 @@ mod split;
 /// Mirroring [`std::iter::FromIterator`]
 pub trait FromCurveIterator<C: CurveType> {
     /// Construct a value from iter
-    fn from_curve_iter<CI: CurveIterator<C::WindowKind, CurveKind = C>>(iter: CI) -> Self;
+    fn from_curve_iter<CI: CurveIterator<CurveKind = C>>(iter: CI) -> Self;
 }
 
 impl<C: CurveType, T: FromIterator<Window<C::WindowKind>>> FromCurveIterator<C> for T {
-    fn from_curve_iter<CI: CurveIterator<C::WindowKind, CurveKind = C>>(iter: CI) -> Self {
+    fn from_curve_iter<CI: CurveIterator<CurveKind = C>>(iter: CI) -> Self {
         iter.into_iterator().collect()
     }
 }
 
 impl<C: CurveType> FromCurveIterator<C> for Curve<C> {
-    fn from_curve_iter<CI: CurveIterator<C::WindowKind, CurveKind = C>>(iter: CI) -> Self {
+    fn from_curve_iter<CI: CurveIterator<CurveKind = C>>(iter: CI) -> Self {
         let windows = iter.into_iterator().collect();
         unsafe {
             // Safety:
@@ -80,7 +80,7 @@ impl<C: CurveType> IntoIterator for Curve<C> {
     }
 }
 
-impl<C: CurveType> CurveIterator<C::WindowKind> for CurveIter<C> {
+impl<C: CurveType> CurveIterator for CurveIter<C> {
     type CurveKind = C;
 
     fn next_window(&mut self) -> Option<Window<C::WindowKind>> {
@@ -131,7 +131,7 @@ impl<I, C> IterCurveWrapper<I, C> {
     }
 }
 
-impl<C, I> CurveIterator<C::WindowKind> for IterCurveWrapper<I, C>
+impl<C, I> CurveIterator for IterCurveWrapper<I, C>
 where
     Self: Debug,
     C: CurveType,
@@ -156,7 +156,8 @@ pub struct CapacityCheckIterator<W, I, C> {
 impl<W, I, C> CapacityCheckIterator<W, I, C>
 where
     W: WindowType,
-    I: CurveIterator<W>,
+    I: CurveIterator,
+    I::CurveKind: CurveType<WindowKind = W>,
 {
     /// Create a new `CapacityCheckIterator`
     ///
@@ -180,9 +181,9 @@ where
     }
 }
 
-impl<W, I, C> CurveIterator<W> for CapacityCheckIterator<W, I, C>
+impl<W, I, C> CurveIterator for CapacityCheckIterator<W, I, C>
 where
-    I: CurveIterator<W, CurveKind = C>,
+    I: CurveIterator<CurveKind = C>,
     C: CurveType<WindowKind = W> + Debug,
     W: WindowType,
 {
@@ -211,7 +212,8 @@ struct InnerCapacityCheckIterator<W, I> {
 impl<W, I> Iterator for InnerCapacityCheckIterator<W, I>
 where
     W: WindowType,
-    I: CurveIterator<W>,
+    I: CurveIterator,
+    I::CurveKind: CurveType<WindowKind = W>,
 {
     type Item = Window<W>;
 

@@ -1,6 +1,5 @@
 //! Module for the Task definition
 
-use crate::curve::curve_types::CurveType;
 use crate::curve::{AggregateExt, Curve};
 use crate::iterators::curve::CurveDeltaIterator;
 use crate::iterators::task::TaskDemandIterator;
@@ -74,11 +73,7 @@ impl Task {
     pub fn higher_priority_task_demand_iter(
         tasks: &[Self],
         index: usize,
-    ) -> impl CurveIterator<
-        <HigherPriorityTaskDemand as CurveType>::WindowKind,
-        CurveKind = HigherPriorityTaskDemand,
-    > + Clone
-           + '_ {
+    ) -> impl CurveIterator<CurveKind = HigherPriorityTaskDemand> + Clone + '_ {
         tasks[..index]
             .iter()
             .map(|task| task.into_iter())
@@ -93,22 +88,10 @@ impl Task {
     pub fn available_execution_curve_impl<'a, HPTD, ASEC>(
         constrained_server_execution_curve: ASEC,
         higher_priority_task_demand: HPTD,
-    ) -> impl CurveIterator<
-        <AvailableTaskExecution as CurveType>::WindowKind,
-        CurveKind = AvailableTaskExecution,
-    > + Clone
-           + 'a
+    ) -> impl CurveIterator<CurveKind = AvailableTaskExecution> + Clone + 'a
     where
-        HPTD: CurveIterator<
-                <HigherPriorityTaskDemand as CurveType>::WindowKind,
-                CurveKind = HigherPriorityTaskDemand,
-            > + Clone
-            + 'a,
-        ASEC: CurveIterator<
-                <ActualServerExecution as CurveType>::WindowKind,
-                CurveKind = ActualServerExecution,
-            > + Clone
-            + 'a,
+        HPTD: CurveIterator<CurveKind = HigherPriorityTaskDemand> + Clone + 'a,
+        ASEC: CurveIterator<CurveKind = ActualServerExecution> + Clone + 'a,
     {
         let delta = CurveDeltaIterator::new(
             constrained_server_execution_curve,
@@ -129,11 +112,7 @@ impl Task {
         system: &'a System,
         server_index: usize,
         task_index: usize,
-    ) -> impl CurveIterator<
-        <ActualTaskExecution as CurveType>::WindowKind,
-        CurveKind = ActualTaskExecution,
-    > + Clone
-           + 'a {
+    ) -> impl CurveIterator<CurveKind = ActualTaskExecution> + Clone + 'a {
         let asec = system.actual_execution_curve_iter(server_index);
         let hptd = Task::higher_priority_task_demand_iter(
             system.as_servers()[server_index].as_tasks(),
@@ -276,7 +255,7 @@ impl Task {
 
 impl IntoIterator for Task {
     type Item = Window<Demand>;
-    type IntoIter = CurveIteratorIterator<TaskDemandIterator, Demand>;
+    type IntoIter = CurveIteratorIterator<TaskDemandIterator>;
 
     /// Generate the Demand Curve for the Task
     ///

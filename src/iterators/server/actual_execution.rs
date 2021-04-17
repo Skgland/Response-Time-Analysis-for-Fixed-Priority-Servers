@@ -44,14 +44,8 @@ impl<AC, DC> ActualServerExecutionIterator<AC, DC> {
         constrained_demand: DC,
     ) -> Self
     where
-        AC: CurveIterator<
-            <UnconstrainedServerExecution as CurveType>::WindowKind,
-            CurveKind = UnconstrainedServerExecution,
-        >,
-        DC: CurveIterator<
-            <ConstrainedServerDemand as CurveType>::WindowKind,
-            CurveKind = ConstrainedServerDemand,
-        >,
+        AC: CurveIterator<CurveKind = UnconstrainedServerExecution>,
+        DC: CurveIterator<CurveKind = ConstrainedServerDemand>,
     {
         let inner = InternalActualExecutionIterator::new(
             server_properties,
@@ -70,17 +64,10 @@ impl<AC, DC> ActualServerExecutionIterator<AC, DC> {
     }
 }
 
-impl<AC, DC> CurveIterator<<ActualServerExecution as CurveType>::WindowKind>
-    for ActualServerExecutionIterator<AC, DC>
+impl<AC, DC> CurveIterator for ActualServerExecutionIterator<AC, DC>
 where
-    AC: CurveIterator<
-        <UnconstrainedServerExecution as CurveType>::WindowKind,
-        CurveKind = UnconstrainedServerExecution,
-    >,
-    DC: CurveIterator<
-        <ConstrainedServerDemand as CurveType>::WindowKind,
-        CurveKind = ConstrainedServerDemand,
-    >,
+    AC: CurveIterator<CurveKind = UnconstrainedServerExecution>,
+    DC: CurveIterator<CurveKind = ConstrainedServerDemand>,
 {
     type CurveKind = ActualServerExecution;
 
@@ -145,10 +132,7 @@ impl<AC, CDC> InternalActualExecutionIterator<AC, CDC> {
         constrained_demand: CDC,
     ) -> Self
     where
-        AC: CurveIterator<
-            <UnconstrainedServerExecution as CurveType>::WindowKind,
-            CurveKind = UnconstrainedServerExecution,
-        >,
+        AC: CurveIterator<CurveKind = UnconstrainedServerExecution>,
     {
         // Algorithm 4. (1)
         let split_execution =
@@ -176,14 +160,8 @@ where
 
 impl<AC, CDC> Iterator for InternalActualExecutionIterator<AC, CDC>
 where
-    AC: CurveIterator<
-        <UnconstrainedServerExecution as CurveType>::WindowKind,
-        CurveKind = UnconstrainedServerExecution,
-    >,
-    CDC: CurveIterator<
-        <ConstrainedServerDemand as CurveType>::WindowKind,
-        CurveKind = ConstrainedServerDemand,
-    >,
+    AC: CurveIterator<CurveKind = UnconstrainedServerExecution>,
+    CDC: CurveIterator<CurveKind = ConstrainedServerDemand>,
 {
     type Item = Window<<ActualServerExecution as CurveType>::WindowKind>;
 

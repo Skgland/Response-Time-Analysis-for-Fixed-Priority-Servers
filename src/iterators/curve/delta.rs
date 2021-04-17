@@ -62,12 +62,17 @@ impl<S, D, SI: Clone, DI: Clone> Clone for RemainingSupplyIterator<S, D, SI, DI>
     }
 }
 
-impl<S: WindowType, D: WindowType, SI, DI> CurveIterator<S>
-    for RemainingSupplyIterator<S, D, SI, DI>
+impl<SI, DI> CurveIterator
+    for RemainingSupplyIterator<
+        <SI::CurveKind as CurveType>::WindowKind,
+        <DI::CurveKind as CurveType>::WindowKind,
+        SI,
+        DI,
+    >
 where
     Self: Debug,
-    SI: CurveIterator<S>,
-    DI: CurveIterator<D>,
+    SI: CurveIterator,
+    DI: CurveIterator,
 {
     type CurveKind = SI::CurveKind;
 
@@ -107,16 +112,16 @@ where
 /// Calculate the Inverse of a Curve
 /// directly rather than calculating the delta between total and the curve
 #[derive(Debug)]
-pub struct InverseCurveIterator<I, C, W> {
+pub struct InverseCurveIterator<I, C> {
     /// The iterator to invert
     iter: I,
     /// The end of the last window
     previous_end: WindowEnd,
     /// The type of the Produced Curves and the corresponding window type
-    curve_type: PhantomData<(W, C)>,
+    curve_type: PhantomData<C>,
 }
 
-impl<I, C, W> InverseCurveIterator<I, C, W> {
+impl<I, C> InverseCurveIterator<I, C> {
     /// Create a new `InverseCurveIterator`
     #[must_use]
     pub const fn new(iter: I) -> Self {
@@ -128,7 +133,7 @@ impl<I, C, W> InverseCurveIterator<I, C, W> {
     }
 }
 
-impl<I: Clone, C, W> Clone for InverseCurveIterator<I, C, W> {
+impl<I: Clone, C> Clone for InverseCurveIterator<I, C> {
     fn clone(&self) -> Self {
         InverseCurveIterator {
             iter: self.iter.clone(),
@@ -138,9 +143,7 @@ impl<I: Clone, C, W> Clone for InverseCurveIterator<I, C, W> {
     }
 }
 
-impl<I: CurveIterator<W>, W: Debug, C: CurveType> CurveIterator<C::WindowKind>
-    for InverseCurveIterator<I, C, W>
-{
+impl<I: CurveIterator, C: CurveType> CurveIterator for InverseCurveIterator<I, C> {
     type CurveKind = C;
 
     fn next_window(&mut self) -> Option<Window<C::WindowKind>> {
@@ -209,8 +212,13 @@ impl<S, D, SI, DI> CurveDeltaIterator<D, S, DI, SI> {
     }
 }
 
-impl<DW: WindowType, SW: WindowType, DI: CurveIterator<DW>, SI: CurveIterator<SW>>
-    CurveDeltaIterator<DW, SW, DI, SI>
+impl<DI: CurveIterator, SI: CurveIterator>
+    CurveDeltaIterator<
+        <DI::CurveKind as CurveType>::WindowKind,
+        <SI::CurveKind as CurveType>::WindowKind,
+        DI,
+        SI,
+    >
 {
     /// Create a new Iterator for computing the delta between the supply and demand curve
     pub fn new(supply: SI, demand: DI) -> Self {
@@ -223,9 +231,16 @@ impl<DW: WindowType, SW: WindowType, DI: CurveIterator<DW>, SI: CurveIterator<SW
     }
 
     /// Turn the `CurveDeltaIterator` into a `CurveIterator` that returns only the Overlap Windows
-    pub fn overlap<C: CurveType<WindowKind = Overlap<SW, DW>>>(
+    pub fn overlap<
+        C: CurveType<
+            WindowKind = Overlap<
+                <SI::CurveKind as CurveType>::WindowKind,
+                <DI::CurveKind as CurveType>::WindowKind,
+            >,
+        >,
+    >(
         self,
-    ) -> impl CurveIterator<C::WindowKind, CurveKind = C> + Clone
+    ) -> impl CurveIterator<CurveKind = C> + Clone
     where
         Self: Clone + Debug,
     {
@@ -252,8 +267,10 @@ impl<DW, SW, DI, SI> Iterator for CurveDeltaIterator<DW, SW, DI, SI>
 where
     DW: WindowType,
     SW: WindowType,
-    DI: CurveIterator<DW>,
-    SI: CurveIterator<SW>,
+    DI: CurveIterator,
+    DI::CurveKind: CurveType<WindowKind = DW>,
+    SI: CurveIterator,
+    SI::CurveKind: CurveType<WindowKind = SW>,
 {
     type Item = Delta<SW, DW, SI, DI>;
 

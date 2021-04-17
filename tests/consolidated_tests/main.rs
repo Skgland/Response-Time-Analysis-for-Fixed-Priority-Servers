@@ -68,7 +68,7 @@ mod util {
     #[track_caller]
     pub fn assert_curve_eq<C: CurveType>(
         expected: &Curve<C>,
-        result: impl CurveIterator<C::WindowKind, CurveKind = C> + Clone,
+        result: impl CurveIterator<CurveKind = C> + Clone,
     ) {
         if !expected.eq_curve_iterator(result.clone()) {
             panic!(

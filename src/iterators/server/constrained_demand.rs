@@ -28,7 +28,7 @@ pub struct ConstrainedServerDemandIterator<I> {
 
 impl<I> ConstrainedServerDemandIterator<I>
 where
-    I: CurveIterator<Demand, CurveKind = AggregatedServerDemand>,
+    I: CurveIterator<CurveKind = AggregatedServerDemand>,
 {
     /// Create a new `ConstrainedServerDemandIterator`
     pub fn new(server_properties: ServerProperties, aggregated_demand: I) -> Self {
@@ -46,10 +46,9 @@ where
     }
 }
 
-impl<'a, I> CurveIterator<<ConstrainedServerDemand as CurveType>::WindowKind>
-    for ConstrainedServerDemandIterator<I>
+impl<'a, I> CurveIterator for ConstrainedServerDemandIterator<I>
 where
-    I: CurveIterator<Demand, CurveKind = AggregatedServerDemand>,
+    I: CurveIterator<CurveKind = AggregatedServerDemand>,
 {
     type CurveKind = ConstrainedServerDemand;
 
@@ -81,10 +80,7 @@ pub struct InternalConstrainedServerDemandIterator<I> {
 
 impl<'a, I> InternalConstrainedServerDemandIterator<I>
 where
-    I: CurveIterator<
-        <AggregatedServerDemand as CurveType>::WindowKind,
-        CurveKind = AggregatedServerDemand,
-    >,
+    I: CurveIterator<CurveKind = AggregatedServerDemand>,
 {
     /// Create a new `InternalConstrainedServerDemandIterator`
     /// the main part for calculating the Constraint Server Demand Curve
@@ -101,8 +97,7 @@ where
     }
 }
 
-impl<I: CurveIterator<AggregatedServerDemand>> FusedIterator
-    for InternalConstrainedServerDemandIterator<I>
+impl<I: CurveIterator> FusedIterator for InternalConstrainedServerDemandIterator<I>
 where
     Self: Iterator,
     CurveSplitIterator<<AggregatedServerDemand as CurveType>::WindowKind, I>: FusedIterator,
@@ -111,7 +106,7 @@ where
 
 impl<I> Iterator for InternalConstrainedServerDemandIterator<I>
 where
-    I: CurveIterator<Demand, CurveKind = AggregatedServerDemand>,
+    I: CurveIterator<CurveKind = AggregatedServerDemand>,
 {
     type Item = Window<<ConstrainedServerDemand as CurveType>::WindowKind>;
 
@@ -214,7 +209,7 @@ where
 
 impl<I> InternalConstrainedServerDemandIterator<I>
 where
-    I: CurveIterator<Demand, CurveKind = AggregatedServerDemand>,
+    I: CurveIterator<CurveKind = AggregatedServerDemand>,
 {
     /// Process the group with index `k_group_head` and `demand `curve`
     fn process_group(

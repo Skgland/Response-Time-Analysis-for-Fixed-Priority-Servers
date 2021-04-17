@@ -31,9 +31,9 @@ impl<I: Clone, C, O> Clone for ReclassifyIterator<I, C, O> {
     }
 }
 
-impl<I, O, C> CurveIterator<O::WindowKind> for ReclassifyIterator<I, C, O>
+impl<I, O, C> CurveIterator for ReclassifyIterator<I, C, O>
 where
-    I: CurveIterator<C::WindowKind, CurveKind = C>,
+    I: CurveIterator<CurveKind = C>,
     O: CurveType<WindowKind = C::WindowKind>,
     C: CurveType,
 {
@@ -51,9 +51,9 @@ where
 ///
 /// Or in other words all finite prefixes of the Iterator are a valid Curves
 ///
-pub trait CurveIterator<W>: Debug {
+pub trait CurveIterator: Debug {
     /// The type of the curve being iterated
-    type CurveKind: CurveType<WindowKind = W>;
+    type CurveKind: CurveType;
 
     /// calculate and returns the next window of the curve iterator
     /// advancing the iterator in the process
@@ -80,77 +80,57 @@ pub trait CurveIterator<W>: Debug {
         }
     }
 
-    fn take_while_curve<F>(self, fun: F) -> TakeWhile<CurveIteratorIterator<Self, W>, F>
+    fn take_while_curve<F>(self, fun: F) -> TakeWhile<CurveIteratorIterator<Self>, F>
     where
         Self: Sized,
-        F: for<'a> FnMut(&'a Window<W>) -> bool,
+        F: for<'a> FnMut(&'a Window<<Self::CurveKind as CurveType>::WindowKind>) -> bool,
     {
         self.into_iterator().take_while(fun)
     }
 
-    fn fuse_curve(self) -> Fuse<CurveIteratorIterator<Self, W>>
+    fn fuse_curve(self) -> Fuse<CurveIteratorIterator<Self>>
     where
         Self: Sized,
     {
         self.into_iterator().fuse()
     }
 
-    fn into_iterator(
-        self,
-    ) -> CurveIteratorIterator<Self, <Self::CurveKind as CurveType>::WindowKind>
+    fn into_iterator(self) -> CurveIteratorIterator<Self>
     where
         Self: Sized,
     {
-        CurveIteratorIterator {
-            iter: self,
-            window: PhantomData,
-        }
+        CurveIteratorIterator { iter: self }
     }
 }
 
-#[derive(Debug)]
-pub struct CurveIteratorIterator<I, W> {
+#[derive(Debug, Clone)]
+pub struct CurveIteratorIterator<I> {
     iter: I,
-    window: PhantomData<W>,
 }
 
-impl<I, W> Clone for CurveIteratorIterator<I, W>
+impl<I> CurveIterator for CurveIteratorIterator<I>
 where
-    I: Clone,
-{
-    fn clone(&self) -> Self {
-        Self {
-            iter: self.iter.clone(),
-            window: PhantomData,
-        }
-    }
-}
-
-impl<I, W> CurveIterator<W> for CurveIteratorIterator<I, W>
-where
-    I: CurveIterator<W>,
-    W: Debug,
+    I: CurveIterator,
 {
     type CurveKind = I::CurveKind;
 
-    fn next_window(&mut self) -> Option<Window<W>> {
+    fn next_window(&mut self) -> Option<Window<<Self::CurveKind as CurveType>::WindowKind>> {
         self.iter.next_window()
     }
 }
 
-impl<I, W> Iterator for CurveIteratorIterator<I, W>
+impl<I> Iterator for CurveIteratorIterator<I>
 where
-    I: CurveIterator<W>,
-    I::CurveKind: CurveType<WindowKind = W>,
+    I: CurveIterator,
 {
-    type Item = Window<W>;
+    type Item = Window<<I::CurveKind as CurveType>::WindowKind>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next_window()
     }
 }
 
-impl<W> CurveIterator<W> for Empty<Window<W>>
+impl<W> CurveIterator for Empty<Window<W>>
 where
     W: WindowType,
 {
@@ -161,9 +141,10 @@ where
     }
 }
 
-impl<W: WindowType, CI> CurveIterator<W> for Fuse<CI>
+impl<W: WindowType, CI> CurveIterator for Fuse<CI>
 where
-    CI: CurveIterator<W> + Iterator<Item = Window<W>>,
+    CI: CurveIterator + Iterator<Item = Window<W>>,
+    CI::CurveKind: CurveType<WindowKind = W>,
 {
     type CurveKind = CI::CurveKind;
 
@@ -172,12 +153,13 @@ where
     }
 }
 
-impl<W, P, I> CurveIterator<W> for TakeWhile<I, P>
+impl<W, P, CI> CurveIterator for TakeWhile<CI, P>
 where
     P: for<'r> FnMut(&'r Window<W>) -> bool,
-    I: CurveIterator<W> + Iterator<Item = Window<W>>,
+    CI: CurveIterator + Iterator<Item = Window<W>>,
+    CI::CurveKind: CurveType<WindowKind = W>,
 {
-    type CurveKind = I::CurveKind;
+    type CurveKind = CI::CurveKind;
 
     fn next_window(&mut self) -> Option<Window<<Self::CurveKind as CurveType>::WindowKind>> {
         self.next()
@@ -225,7 +207,7 @@ impl<I, W, C> JoinAdjacentIterator<I, W, C> {
     }
 }
 
-impl<C, I> CurveIterator<C::WindowKind> for JoinAdjacentIterator<I, C::WindowKind, C>
+impl<C, I> CurveIterator for JoinAdjacentIterator<I, C::WindowKind, C>
 where
     Self: Debug,
     C: CurveType,

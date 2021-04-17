@@ -26,10 +26,10 @@ pub struct Element<I> {
 #[derive(Debug, Clone)]
 pub struct AggregationIterator<I> {
     /// The CurveIterators to aggregate
-    curves: Vec<Element<CurveIteratorIterator<I, Demand>>>,
+    curves: Vec<Element<CurveIteratorIterator<I>>>,
 }
 
-impl<I: CurveIterator<Demand>> AggregationIterator<I> {
+impl<I: CurveIterator> AggregationIterator<I> {
     /// Create a new `AggregationIterator`
     #[must_use]
     pub fn new(curves: Vec<I>) -> Self {
@@ -45,9 +45,10 @@ impl<I: CurveIterator<Demand>> AggregationIterator<I> {
     }
 }
 
-impl<I> CurveIterator<Demand> for AggregationIterator<I>
+impl<I> CurveIterator for AggregationIterator<I>
 where
-    I: CurveIterator<Demand>,
+    I: CurveIterator,
+    I::CurveKind: CurveType<WindowKind = Demand>,
 {
     type CurveKind = I::CurveKind;
 
@@ -132,10 +133,11 @@ impl AggregateInto<AggregatedServerDemand> for TaskDemand {}
 impl AggregateInto<HigherPriorityTaskDemand> for TaskDemand {}
 
 impl<AI, O> Aggregate<AI>
-    for ReclassifyIterator<AggregationIterator<AI>, <AI as CurveIterator<Demand>>::CurveKind, O>
+    for ReclassifyIterator<AggregationIterator<AI>, <AI as CurveIterator>::CurveKind, O>
 where
-    <AI as CurveIterator<Demand>>::CurveKind: AggregateInto<O>,
-    AI: CurveIterator<Demand>,
+    <AI as CurveIterator>::CurveKind: AggregateInto<O>,
+    AI: CurveIterator,
+    AI::CurveKind: CurveType<WindowKind = Demand>,
 {
     fn aggregate<I>(iter: I) -> Self
     where

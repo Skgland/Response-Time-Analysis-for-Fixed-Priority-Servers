@@ -2,6 +2,7 @@
 
 use std::iter::FusedIterator;
 
+use crate::curve::curve_types::CurveType;
 use crate::iterators::CurveIterator;
 use crate::time::TimeUnit;
 use crate::window::window_types::WindowType;
@@ -31,7 +32,7 @@ pub struct CurveSplitIterator<W, CI> {
 
 impl<W: WindowType, CI> CurveSplitIterator<W, CI>
 where
-    CI: CurveIterator<W>,
+    CI: CurveIterator,
 {
     /// Split the `CurveIterator` at every interval
     pub fn new(iter: CI, interval: TimeUnit) -> Self {
@@ -52,9 +53,10 @@ where
 
 impl<W: WindowType, CI> Iterator for CurveSplitIterator<W, CI>
 where
-    CI: CurveIterator<W>,
+    CI: CurveIterator,
+    CI::CurveKind: CurveType<WindowKind = W>,
 {
-    type Item = Window<W>;
+    type Item = Window<<CI::CurveKind as CurveType>::WindowKind>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let first = self.tail.take().or_else(|| self.iter.next_window());

@@ -8,7 +8,6 @@ use crate::server::{
     UnconstrainedServerExecution,
 };
 
-use crate::curve::curve_types::CurveType;
 use crate::iterators::server::actual_execution::ActualServerExecutionIterator;
 use crate::iterators::{CurveIterator, ReclassifyIterator};
 use crate::time::TimeUnit;
@@ -43,17 +42,9 @@ impl<'a> System<'a> {
     #[must_use]
     pub fn aggregated_higher_priority_demand_curve_iter<'b, CSDCI>(
         constrained_demand_curves: CSDCI,
-    ) -> impl CurveIterator<
-        <HigherPriorityServerDemand as CurveType>::WindowKind,
-        CurveKind = HigherPriorityServerDemand,
-    > + Clone
-           + 'b
+    ) -> impl CurveIterator<CurveKind = HigherPriorityServerDemand> + Clone + 'b
     where
-        CSDCI::Item: CurveIterator<
-                <ConstrainedServerDemand as CurveType>::WindowKind,
-                CurveKind = ConstrainedServerDemand,
-            > + Clone
-            + 'b,
+        CSDCI::Item: CurveIterator<CurveKind = ConstrainedServerDemand> + Clone + 'b,
         CSDCI: IntoIterator,
     {
         constrained_demand_curves
@@ -88,11 +79,7 @@ impl<'a> System<'a> {
     pub fn unconstrained_server_execution_curve_iter(
         &self,
         server_index: usize,
-    ) -> impl CurveIterator<
-        <UnconstrainedServerExecution as CurveType>::WindowKind,
-        CurveKind = UnconstrainedServerExecution,
-    > + Clone
-           + '_ {
+    ) -> impl CurveIterator<CurveKind = UnconstrainedServerExecution> + Clone + '_ {
         #![allow(clippy::redundant_closure_for_method_calls)]
 
         let csdi = self.servers[..server_index]
@@ -114,11 +101,7 @@ impl<'a> System<'a> {
     pub fn actual_execution_curve_iter(
         &self,
         server_index: usize,
-    ) -> impl CurveIterator<
-        <ActualServerExecution as CurveType>::WindowKind,
-        CurveKind = ActualServerExecution,
-    > + Clone
-           + '_ {
+    ) -> impl CurveIterator<CurveKind = ActualServerExecution> + Clone + '_ {
         let unchecked_unconstrained_execution =
             self.unconstrained_server_execution_curve_iter(server_index);
 
