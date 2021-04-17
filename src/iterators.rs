@@ -204,7 +204,7 @@ where
         self.peek_ref_mut().as_mut()
     }
 
-    pub fn peek_option_ref(&mut self) -> Option<PeekRef<'_, IT>> {
+    pub fn peek_ref(&mut self) -> Option<PeekRef<'_, IT>> {
         self.peek_ref_mut();
         PeekRef::new(&mut self.peek_window)
     }

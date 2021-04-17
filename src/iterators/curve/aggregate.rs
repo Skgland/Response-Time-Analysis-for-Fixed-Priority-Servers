@@ -52,7 +52,7 @@ where
             .iter_mut()
             .enumerate()
             .filter_map(|(index, element)| {
-                if let Some(mut some_ref) = element.peek_option_ref() {
+                if let Some(mut some_ref) = element.peek_ref() {
                     Some((index, some_ref.as_mut().start, some_ref))
                 } else {
                     None
