@@ -67,6 +67,12 @@ where
     /// The type of the curve being iterated
     type CurveKind: CurveType<WindowKind = W>;
 
+    /// calculate and returns the next window of the curve iterator
+    /// advancing the iterator in the process
+    fn next_window(&mut self) -> Option<Window<<Self::CurveKind as CurveType>::WindowKind>> {
+        self.next()
+    }
+
     /// collect the iterator mirroring [`std::iter::Iterator::collect`]
     #[must_use]
     fn collect_curve<R: FromCurveIterator<Self::CurveKind>>(self) -> R
