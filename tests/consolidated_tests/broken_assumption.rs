@@ -207,7 +207,6 @@ fn execution_overlap_too_low() {
         .take_while_curve(|window| window.end <= up_to)
         .collect_curve();
 
-    //TODO assert messages
     assert!(
         curve_has_no_non_trivial_overlap(&s1, &s2),
         "Curves have non-trivial overlap:\nCurve 1: {:#?}\n\nCurve 2: {:#?}",
