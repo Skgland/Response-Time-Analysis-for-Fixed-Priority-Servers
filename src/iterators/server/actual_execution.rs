@@ -6,7 +6,8 @@ use std::iter::{FlatMap, FusedIterator};
 use crate::curve::curve_types::CurveType;
 use crate::curve::Curve;
 use crate::iterators::curve::CurveSplitIterator;
-use crate::iterators::{CurveIterator, JoinAdjacentIterator};
+use crate::iterators::join::JoinAdjacentIterator;
+use crate::iterators::CurveIterator;
 use crate::server::{
     ActualServerExecution, ConstrainedServerDemand, ServerProperties, UnconstrainedServerExecution,
 };

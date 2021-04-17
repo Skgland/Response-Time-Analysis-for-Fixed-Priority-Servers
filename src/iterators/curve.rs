@@ -19,7 +19,8 @@ pub use split::CurveSplitIterator;
 
 use crate::curve::curve_types::CurveType;
 use crate::curve::Curve;
-use crate::iterators::{CurveIterator, JoinAdjacentIterator};
+use crate::iterators::join::JoinAdjacentIterator;
+use crate::iterators::CurveIterator;
 use crate::time::{TimeUnit, UnitNumber};
 use crate::window::window_types::WindowType;
 use crate::window::Window;
