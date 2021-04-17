@@ -83,31 +83,9 @@ where
     >,
 {
     type CurveKind = ActualServerExecution;
-}
 
-impl<AC, DC> FusedIterator for ActualServerExecutionIterator<AC, DC>
-where
-    Self: Iterator,
-    AC: FusedIterator,
-    DC: FusedIterator,
-{
-}
-
-impl<AC, DC> Iterator for ActualServerExecutionIterator<AC, DC>
-where
-    AC: CurveIterator<
-        <UnconstrainedServerExecution as CurveType>::WindowKind,
-        CurveKind = UnconstrainedServerExecution,
-    >,
-    DC: CurveIterator<
-        <ConstrainedServerDemand as CurveType>::WindowKind,
-        CurveKind = ConstrainedServerDemand,
-    >,
-{
-    type Item = Window<<ActualServerExecution as CurveType>::WindowKind>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next()
+    fn next_window(&mut self) -> Option<Window<<Self::CurveKind as CurveType>::WindowKind>> {
+        self.iter.next_window()
     }
 }
 
@@ -215,7 +193,7 @@ where
         let demand = self
             .demand_peek
             .take()
-            .or_else(|| self.constrained_demand.next());
+            .or_else(|| self.constrained_demand.next_window());
 
         // as we typically deal with limited demand but endless supply
         // check demand first
@@ -295,7 +273,7 @@ where
                     assert!(
                         self.demand_peek
                             .take()
-                            .or_else(|| self.constrained_demand.next())
+                            .or_else(|| self.constrained_demand.next_window())
                             .is_none(),
                         "While calculating the actual execution the supply dried up before the demand"
                     );

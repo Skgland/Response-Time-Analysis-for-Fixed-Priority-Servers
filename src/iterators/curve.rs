@@ -6,7 +6,7 @@
 //!
 
 use std::fmt::Debug;
-use std::iter::FusedIterator;
+use std::iter::{FromIterator, FusedIterator};
 use std::marker::PhantomData;
 
 pub use aggregate::AggregationIterator;
@@ -33,17 +33,18 @@ mod split;
 /// Mirroring [`std::iter::FromIterator`]
 pub trait FromCurveIterator<C: CurveType> {
     /// Construct a value from iter
-    fn from_curve_iter<CI: IntoIterator>(iter: CI) -> Self
-    where
-        CI::IntoIter: CurveIterator<C::WindowKind, CurveKind = C>;
+    fn from_curve_iter<CI: CurveIterator<C::WindowKind, CurveKind = C>>(iter: CI) -> Self;
+}
+
+impl<C: CurveType, T: FromIterator<Window<C::WindowKind>>> FromCurveIterator<C> for T {
+    fn from_curve_iter<CI: CurveIterator<C::WindowKind, CurveKind = C>>(iter: CI) -> Self {
+        iter.into_iterator().collect()
+    }
 }
 
 impl<C: CurveType> FromCurveIterator<C> for Curve<C> {
-    fn from_curve_iter<CI: IntoIterator>(iter: CI) -> Self
-    where
-        CI::IntoIter: CurveIterator<C::WindowKind, CurveKind = C>,
-    {
-        let windows = iter.into_iter().collect();
+    fn from_curve_iter<CI: CurveIterator<C::WindowKind, CurveKind = C>>(iter: CI) -> Self {
+        let windows = iter.into_iterator().collect();
         unsafe {
             // Safety:
             // windows collected from `CurveIterator`
@@ -81,6 +82,10 @@ impl<C: CurveType> IntoIterator for Curve<C> {
 
 impl<C: CurveType> CurveIterator<C::WindowKind> for CurveIter<C> {
     type CurveKind = C;
+
+    fn next_window(&mut self) -> Option<Window<C::WindowKind>> {
+        self.curve.pop()
+    }
 }
 
 impl<C: CurveType> FusedIterator for CurveIter<C> {}
@@ -89,7 +94,7 @@ impl<C: CurveType> Iterator for CurveIter<C> {
     type Item = Window<C::WindowKind>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.curve.pop()
+        self.next_window()
     }
 }
 
@@ -133,14 +138,8 @@ where
     I: Iterator<Item = Window<C::WindowKind>>,
 {
     type CurveKind = C;
-}
 
-impl<I, C> FusedIterator for IterCurveWrapper<I, C> where I: FusedIterator {}
-
-impl<I: Iterator, C> Iterator for IterCurveWrapper<I, C> {
-    type Item = I::Item;
-
-    fn next(&mut self) -> Option<Self::Item> {
+    fn next_window(&mut self) -> Option<Window<C::WindowKind>> {
         self.iter.next()
     }
 }
@@ -188,24 +187,9 @@ where
     W: WindowType,
 {
     type CurveKind = C;
-}
 
-impl<W, I, C> FusedIterator for CapacityCheckIterator<W, I, C>
-where
-    Self: Iterator,
-    I: FusedIterator,
-{
-}
-
-impl<W, I, C> Iterator for CapacityCheckIterator<W, I, C>
-where
-    I: CurveIterator<W, Item = Window<W>>,
-    W: WindowType,
-{
-    type Item = Window<W>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next()
+    fn next_window(&mut self) -> Option<Window<C::WindowKind>> {
+        self.iter.next_window()
     }
 }
 
@@ -227,7 +211,7 @@ struct InnerCapacityCheckIterator<W, I> {
 impl<W, I> Iterator for InnerCapacityCheckIterator<W, I>
 where
     W: WindowType,
-    I: CurveIterator<W, Item = Window<W>>,
+    I: CurveIterator<W>,
 {
     type Item = Window<W>;
 

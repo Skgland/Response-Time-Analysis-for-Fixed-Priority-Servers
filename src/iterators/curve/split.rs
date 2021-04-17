@@ -57,7 +57,7 @@ where
     type Item = Window<W>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let first = self.tail.take().or_else(|| self.iter.next());
+        let first = self.tail.take().or_else(|| self.iter.next_window());
 
         first.map(|first| {
             let k = first.start / self.interval;

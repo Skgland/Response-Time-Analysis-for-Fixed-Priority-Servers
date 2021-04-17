@@ -52,27 +52,9 @@ where
     I: CurveIterator<Demand, CurveKind = AggregatedServerDemand>,
 {
     type CurveKind = ConstrainedServerDemand;
-}
 
-impl<'a, I> FusedIterator for ConstrainedServerDemandIterator<I>
-where
-    Self: Iterator,
-    JoinAdjacentIterator<
-        InternalConstrainedServerDemandIterator<I>,
-        Demand,
-        ConstrainedServerDemand,
-    >: FusedIterator,
-{
-}
-
-impl<'a, I> Iterator for ConstrainedServerDemandIterator<I>
-where
-    I: CurveIterator<Demand, CurveKind = AggregatedServerDemand>,
-{
-    type Item = I::Item;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next()
+    fn next_window(&mut self) -> Option<Window<<Self::CurveKind as CurveType>::WindowKind>> {
+        self.iter.next_window()
     }
 }
 

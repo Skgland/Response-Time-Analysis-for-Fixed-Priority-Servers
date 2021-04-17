@@ -1,10 +1,10 @@
 //! Module for the implementation of the Curve aggregate operation using iterators
 
-use std::iter::{Fuse, FusedIterator};
+use std::iter::Fuse;
 
 use crate::curve::curve_types::CurveType;
 use crate::curve::Aggregate;
-use crate::iterators::{CurveIterator, ReclassifyIterator};
+use crate::iterators::{CurveIterator, CurveIteratorIterator, ReclassifyIterator};
 use crate::server::{AggregatedServerDemand, ConstrainedServerDemand, HigherPriorityServerDemand};
 use crate::task::curve_types::{HigherPriorityTaskDemand, TaskDemand};
 use crate::window::{Demand, Window};
@@ -26,10 +26,10 @@ pub struct Element<I> {
 #[derive(Debug, Clone)]
 pub struct AggregationIterator<I> {
     /// The CurveIterators to aggregate
-    curves: Vec<Element<I>>,
+    curves: Vec<Element<CurveIteratorIterator<I, Demand>>>,
 }
 
-impl<I: Iterator> AggregationIterator<I> {
+impl<I: CurveIterator<Demand>> AggregationIterator<I> {
     /// Create a new `AggregationIterator`
     #[must_use]
     pub fn new(curves: Vec<I>) -> Self {
@@ -37,7 +37,7 @@ impl<I: Iterator> AggregationIterator<I> {
             curves: curves
                 .into_iter()
                 .map(|curve| Element {
-                    curve: Box::new(curve.fuse()),
+                    curve: Box::new(curve.fuse_curve()),
                     peek: None,
                 })
                 .collect(),
@@ -45,24 +45,18 @@ impl<I: Iterator> AggregationIterator<I> {
     }
 }
 
-impl<I: CurveIterator<Demand>> CurveIterator<Demand> for AggregationIterator<I> {
-    type CurveKind = I::CurveKind;
-}
-
-impl<I> FusedIterator for AggregationIterator<I> where Self: Iterator {}
-
-impl<I> Iterator for AggregationIterator<I>
+impl<I> CurveIterator<Demand> for AggregationIterator<I>
 where
     I: CurveIterator<Demand>,
 {
-    type Item = I::Item;
+    type CurveKind = I::CurveKind;
 
-    fn next(&mut self) -> Option<Self::Item> {
+    fn next_window(&mut self) -> Option<Window<Demand>> {
         #![allow(clippy::option_if_let_else)] // false positive
 
         // fill all peek slots
         for element in &mut self.curves {
-            element.peek = element.peek.take().or_else(|| element.curve.next());
+            element.peek = element.peek.take().or_else(|| element.curve.next_window());
         }
 
         // find curve with earliest peek
@@ -71,7 +65,7 @@ where
             .iter_mut()
             .enumerate()
             .filter_map(|(index, element)| {
-                element.peek = element.peek.take().or_else(|| element.curve.next());
+                element.peek = element.peek.take().or_else(|| element.curve.next_window());
                 if let Some(peek) = element.peek.as_mut() {
                     Some((index, peek.start, &mut element.peek))
                 } else {
@@ -101,7 +95,8 @@ where
                     .chain(tail.iter_mut().enumerate());
 
                 for (index, element) in iter {
-                    if let Some(peek) = element.peek.take().or_else(|| element.curve.next()) {
+                    if let Some(peek) = element.peek.take().or_else(|| element.curve.next_window())
+                    {
                         if let Some(overlap_window) = overlap.aggregate(&peek) {
                             // update last aggregated index
                             aggregate_index = index;

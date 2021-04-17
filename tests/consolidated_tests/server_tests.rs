@@ -1,4 +1,5 @@
 use rta_for_fps::curve::Curve;
+use rta_for_fps::iterators::CurveIterator;
 use rta_for_fps::server::{Server, ServerKind};
 use rta_for_fps::task::Task;
 use rta_for_fps::time::TimeUnit;
@@ -19,7 +20,7 @@ fn deferrable_server() {
 
     let result = server
         .constraint_demand_curve_iter()
-        .take_while(|window| window.end <= TimeUnit::from(18));
+        .take_while_curve(|window| window.end <= TimeUnit::from(18));
 
     let expected_result = unsafe {
         // the example in the paper is confusing as

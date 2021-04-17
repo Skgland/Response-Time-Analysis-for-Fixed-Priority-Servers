@@ -70,22 +70,11 @@ where
     DI: CurveIterator<D>,
 {
     type CurveKind = SI::CurveKind;
-}
 
-impl<S, D, SI, DI> FusedIterator for RemainingSupplyIterator<S, D, SI, DI> where Self: Iterator {}
-
-impl<S, D, SI, DI> Iterator for RemainingSupplyIterator<S, D, SI, DI>
-where
-    CurveDeltaIterator<D, S, DI, SI>: Iterator<Item = Delta<S, D, SI, DI>>,
-    SI: CurveIterator<S>,
-    DI: CurveIterator<D>,
-{
-    type Item = Window<S>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+    fn next_window(&mut self) -> Option<Window<<SI::CurveKind as CurveType>::WindowKind>> {
         'outer: loop {
             if let Some(end_supply) = self.end_supply.as_mut() {
-                if let Some(supply) = end_supply.next() {
+                if let Some(supply) = end_supply.next_window() {
                     return Some(supply);
                 } else {
                     self.end_supply = None;
@@ -153,18 +142,10 @@ impl<I: CurveIterator<W>, W: Debug, C: CurveType> CurveIterator<C::WindowKind>
     for InverseCurveIterator<I, C, W>
 {
     type CurveKind = C;
-}
 
-impl<I: FusedIterator, W, C> FusedIterator for InverseCurveIterator<I, W, C> where Self: Iterator {}
-
-impl<W: Debug, I: Iterator<Item = Window<W>>, C: CurveType> Iterator
-    for InverseCurveIterator<I, C, W>
-{
-    type Item = Window<C::WindowKind>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+    fn next_window(&mut self) -> Option<Window<C::WindowKind>> {
         if let WindowEnd::Finite(mut previous_end) = self.previous_end {
-            while let Some(window) = self.iter.next() {
+            while let Some(window) = self.iter.next_window() {
                 if self.previous_end < window.start {
                     let result = Window::new(previous_end, window.start);
                     self.previous_end = window.end;
@@ -246,7 +227,7 @@ impl<DW: WindowType, SW: WindowType, DI: CurveIterator<DW>, SI: CurveIterator<SW
         self,
     ) -> impl CurveIterator<C::WindowKind, CurveKind = C> + Clone
     where
-        Self: Clone,
+        Self: Clone + Debug,
     {
         let inner = self.filter_map(Delta::overlap);
         unsafe {
@@ -281,10 +262,16 @@ where
 
         if let (Some(supply_iter), Some(demand_iter)) = (self.supply.as_mut(), self.demand.as_mut())
         {
-            let demand = self.remaining_demand.take().or_else(|| demand_iter.next());
+            let demand = self
+                .remaining_demand
+                .take()
+                .or_else(|| demand_iter.next_window());
 
             if let Some(demand_window) = demand {
-                let supply = self.remaining_supply.pop().or_else(|| supply_iter.next());
+                let supply = self
+                    .remaining_supply
+                    .pop()
+                    .or_else(|| supply_iter.next_window());
 
                 if let Some(supply_window) = supply {
                     if demand_window.start < supply_window.end {

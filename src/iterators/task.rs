@@ -1,7 +1,5 @@
 //! Module for implementing `CurveIterator`s relate to Tasks
 
-use std::iter::FusedIterator;
-
 use crate::curve::curve_types::CurveType;
 use crate::iterators::CurveIterator;
 use crate::task::curve_types::TaskDemand;
@@ -28,14 +26,8 @@ impl<'a> TaskDemandIterator {
 
 impl<'a> CurveIterator<Demand> for TaskDemandIterator {
     type CurveKind = TaskDemand;
-}
 
-impl FusedIterator for TaskDemandIterator {}
-
-impl Iterator for TaskDemandIterator {
-    type Item = Window<<TaskDemand as CurveType>::WindowKind>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+    fn next_window(&mut self) -> Option<Window<<Self::CurveKind as CurveType>::WindowKind>> {
         // using checked arithmetic to stop on overflow
         let start = self
             .task

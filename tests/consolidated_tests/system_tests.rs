@@ -30,7 +30,7 @@ fn unconstrained_curve() {
         .map(|server| server.constraint_demand_curve_iter());
 
     let aggregated_result = System::aggregated_higher_priority_demand_curve_iter(csdi)
-        .take_while(|window| window.end <= up_to);
+        .take_while_curve(|window| window.end <= up_to);
 
     let expected_aggregated_result = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -45,7 +45,7 @@ fn unconstrained_curve() {
 
     let unconstrained_result = system
         .unconstrained_server_execution_curve_iter(1)
-        .take_while(|window| window.end <= up_to);
+        .take_while_curve(|window| window.end <= up_to);
 
     let expected_unconstrained_result = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -109,7 +109,7 @@ fn executive_curve() {
 
     let uc_execution_result = system
         .unconstrained_server_execution_curve_iter(1)
-        .take_while(|window| window.end <= up_to);
+        .take_while_curve(|window| window.end <= up_to);
 
     let expected_uc_execution = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -126,7 +126,7 @@ fn executive_curve() {
 
     let demand_result = system.as_servers()[1]
         .constraint_demand_curve_iter()
-        .take_while(|window| window.end <= up_to);
+        .take_while_curve(|window| window.end <= up_to);
 
     let expected_demand = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -140,7 +140,7 @@ fn executive_curve() {
 
     let c_execution_result = system
         .actual_execution_curve_iter(1)
-        .take_while(|window| window.end <= up_to);
+        .take_while_curve(|window| window.end <= up_to);
 
     let expected_c_execution = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -182,7 +182,7 @@ fn response_time() {
 
     let c_s2 = system
         .actual_execution_curve_iter(server_index)
-        .take_while(|window| window.end <= TimeUnit::from(16));
+        .take_while_curve(|window| window.end <= TimeUnit::from(16));
 
     let expected = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -212,7 +212,7 @@ fn response_time() {
     crate::util::assert_curve_eq(&expected, t2_demand);
 
     let t2_available = Task::actual_execution_curve_iter(&system, server_index, task_index)
-        .take_while(|window| window.end <= TimeUnit::from(16));
+        .take_while_curve(|window| window.end <= TimeUnit::from(16));
 
     let expected = unsafe {
         Curve::from_windows_unchecked(vec![
@@ -280,10 +280,10 @@ fn comparison() {
 
     let s2_aggregated_demand = servers[1]
         .aggregated_demand_curve_iter()
-        .take_while(|window| window.end <= up_to);
+        .take_while_curve(|window| window.end <= up_to);
     let s2_constrained_demand = servers[1]
         .constraint_demand_curve_iter()
-        .take_while(|window| window.end <= up_to);
+        .take_while_curve(|window| window.end <= up_to);
 
     let expected_s2_demand =
         unsafe { Curve::from_windows_unchecked(vec![Window::new(0, 4), Window::new(10, 14)]) };
@@ -294,7 +294,7 @@ fn comparison() {
 
     let s2_unconstrained_execution = system
         .unconstrained_server_execution_curve_iter(1)
-        .take_while(|window| window.end <= up_to);
+        .take_while_curve(|window| window.end <= up_to);
 
     // Note: Paper lists 6,10 and 16,20 as the unconstrained curve
     // but contradicts itself later with actual curve 4,8 and 14,18
@@ -313,14 +313,14 @@ fn comparison() {
 
     let s2_constrained_execution = system
         .actual_execution_curve_iter(1)
-        .take_while(|window| window.end <= up_to);
+        .take_while_curve(|window| window.end <= up_to);
     let expected_s2_constrained_execution =
         unsafe { Curve::from_windows_unchecked(vec![Window::new(4, 8), Window::new(14, 18)]) };
 
     crate::util::assert_curve_eq(&expected_s2_constrained_execution, s2_constrained_execution);
 
     let t2_execution = Task::actual_execution_curve_iter(&system, 1, 0)
-        .take_while(|window| window.end <= up_to)
+        .take_while_curve(|window| window.end <= up_to)
         .collect_curve();
 
     let expected_t2_execution =

@@ -44,7 +44,7 @@ fn remarks() {
     let j = 24;
     let arrival = task.job_arrival(j - 1);
     let execution = Task::actual_execution_curve_iter(&system, server_index, task_index)
-        .take_while(|window| window.end <= swh)
+        .take_while_curve(|window| window.end <= swh)
         .collect_curve();
 
     assert_eq!(arrival, TimeUnit::from(4600 * 2));
@@ -140,15 +140,15 @@ fn execution_overlap_too_high() {
 
     let s1 = system
         .actual_execution_curve_iter(0)
-        .take_while(|window| window.end <= up_to)
+        .take_while_curve(|window| window.end <= up_to)
         .collect_curve();
     let s2: Curve<ActualServerExecution> = system
         .actual_execution_curve_iter(1)
-        .take_while(|window| window.end <= up_to)
+        .take_while_curve(|window| window.end <= up_to)
         .collect_curve();
     let s3: Curve<ActualServerExecution> = system
         .actual_execution_curve_iter(2)
-        .take_while(|window| window.end <= up_to)
+        .take_while_curve(|window| window.end <= up_to)
         .collect_curve();
 
     assert!(
@@ -192,19 +192,19 @@ fn execution_overlap_too_low() {
 
     let s1: Curve<ActualServerExecution> = system
         .actual_execution_curve_iter(0)
-        .take_while(|window| window.end <= up_to)
+        .take_while_curve(|window| window.end <= up_to)
         .collect_curve();
     let s2: Curve<ActualServerExecution> = system
         .actual_execution_curve_iter(1)
-        .take_while(|window| window.end <= up_to)
+        .take_while_curve(|window| window.end <= up_to)
         .collect_curve();
     let s3: Curve<ActualServerExecution> = system
         .actual_execution_curve_iter(2)
-        .take_while(|window| window.end <= up_to)
+        .take_while_curve(|window| window.end <= up_to)
         .collect_curve();
     let s4: Curve<ActualServerExecution> = system
         .actual_execution_curve_iter(3)
-        .take_while(|window| window.end <= up_to)
+        .take_while_curve(|window| window.end <= up_to)
         .collect_curve();
 
     //TODO assert messages

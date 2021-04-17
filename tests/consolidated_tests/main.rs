@@ -37,10 +37,10 @@ mod incorrect {
         let swh2 = system.system_wide_hyper_period(2);
         let aes1 = system
             .actual_execution_curve_iter(1)
-            .take_while(|window| window.end <= swh1);
+            .take_while_curve(|window| window.end <= swh1);
         let aes2 = system
             .actual_execution_curve_iter(2)
-            .take_while(|window| window.end <= swh2);
+            .take_while_curve(|window| window.end <= swh2);
 
         let aes1c = aes1.collect_curve();
         let aes2c = aes2.collect_curve();

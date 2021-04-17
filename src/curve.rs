@@ -118,9 +118,8 @@ impl<T: CurveType> Curve<T> {
         mut other: CI,
     ) -> bool {
         let mut windows = self.as_windows().iter();
-
         loop {
-            match (windows.next(), other.next()) {
+            match (windows.next(), other.next_window()) {
                 (None, None) => break true,
                 (Some(_), None) | (None, Some(_)) => break false,
                 (Some(left), Some(right)) => {
@@ -281,12 +280,12 @@ where
                 Delta::RemainingSupply(supply) => result.remaining_supply.windows.push(supply),
                 Delta::Overlap(overlap) => result.overlap.windows.push(overlap),
                 Delta::RemainingDemand(demand) => result.remaining_demand.windows.push(demand),
-                Delta::EndSupply(supply) => {
-                    supply.for_each(|window| result.remaining_supply.windows.push(window))
-                }
-                Delta::EndDemand(demand) => {
-                    demand.for_each(|window| result.remaining_demand.windows.push(window))
-                }
+                Delta::EndSupply(supply) => supply
+                    .into_iterator()
+                    .for_each(|window| result.remaining_supply.windows.push(window)),
+                Delta::EndDemand(demand) => demand
+                    .into_iterator()
+                    .for_each(|window| result.remaining_demand.windows.push(window)),
             }
         }
 
