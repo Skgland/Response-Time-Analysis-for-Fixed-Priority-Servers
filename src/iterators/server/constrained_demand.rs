@@ -8,7 +8,7 @@ use crate::curve::curve_types::CurveType;
 use crate::curve::{Curve, PartitionResult};
 use crate::iterators::curve::{AggregationIterator, CurveSplitIterator};
 use crate::iterators::join::JoinAdjacentIterator;
-use crate::iterators::CurveIterator;
+use crate::iterators::{CurveIterator, Peeker};
 use crate::server::{AggregatedServerDemand, ConstrainedServerDemand, ServerProperties};
 use crate::time::TimeUnit;
 use crate::window::WindowEnd;
@@ -70,9 +70,10 @@ pub struct InternalConstrainedServerDemandIterator<I> {
     /// The Server for which to calculate the constrained demand
     server_properties: ServerProperties,
     /// The remaining aggregated Demand of the Server
-    demand: Box<CurveSplitIterator<<AggregatedServerDemand as CurveType>::WindowKind, I>>,
-    /// The next group
-    demand_peek: Option<Window<<AggregatedServerDemand as CurveType>::WindowKind>>,
+    demand: Peeker<
+        Box<CurveSplitIterator<<AggregatedServerDemand as CurveType>::WindowKind, I>>,
+        Window<<AggregatedServerDemand as CurveType>::WindowKind>,
+    >,
     /// The spill from the previous group
     spill: Option<Window<<AggregatedServerDemand as CurveType>::WindowKind>>,
     /// Remaining windows till we need to process the next group
@@ -90,8 +91,7 @@ where
         let split = CurveSplitIterator::new(aggregated_demand, server_properties.interval);
         InternalConstrainedServerDemandIterator {
             server_properties,
-            demand: Box::new(split),
-            demand_peek: None,
+            demand: Peeker::new(Box::new(split)),
             spill: None,
             remainder: Vec::new(),
         }
@@ -118,7 +118,7 @@ where
         if let Some(window) = self.remainder.pop() {
             Some(window)
         } else {
-            let next_group = self.demand_peek.take().or_else(|| self.demand.next());
+            let next_group = self.demand.next();
             let spill = self.spill.take();
 
             match (next_group, spill) {
@@ -142,7 +142,7 @@ where
                                 {
                                     windows.push(window);
                                 } else {
-                                    self.demand_peek = Some(window);
+                                    self.demand.restore_peek(window);
                                     break;
                                 }
                             }
@@ -163,7 +163,7 @@ where
                         Ordering::Greater => {
                             // restore demand_peek
                             // then process only spill
-                            self.demand_peek = Some(group_head);
+                            self.demand.restore_peek(group_head);
 
                             // spill not spilled into group, next group consists only of spill
                             let curve = Curve::new(spill);
@@ -181,7 +181,7 @@ where
                         if window.budget_group(self.server_properties.interval) == k_group_head {
                             windows.push(window);
                         } else {
-                            self.demand_peek = Some(window);
+                            self.demand.restore_peek(window);
                             break;
                         }
                     }
