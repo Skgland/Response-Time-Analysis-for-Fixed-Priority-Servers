@@ -51,6 +51,7 @@ pub trait CurveIterator: Debug {
         }
     }
 
+    /// Basically [`std::iter::Iterator::take_while`] but for `CurveIterator`
     fn take_while_curve<F>(self, fun: F) -> TakeWhile<CurveIteratorIterator<Self>, F>
     where
         Self: Sized,
@@ -59,6 +60,7 @@ pub trait CurveIterator: Debug {
         self.into_iterator().take_while(fun)
     }
 
+    /// Basically [`std::iter::Iterator::fuse`] but for `CurveIterator`
     fn fuse_curve(self) -> Fuse<CurveIteratorIterator<Self>>
     where
         Self: Sized,
@@ -66,6 +68,7 @@ pub trait CurveIterator: Debug {
         self.into_iterator().fuse()
     }
 
+    /// Wrap the `CurveIterator` to allow usage of standart Iterator adapters
     fn into_iterator(self) -> CurveIteratorIterator<Self>
     where
         Self: Sized,
