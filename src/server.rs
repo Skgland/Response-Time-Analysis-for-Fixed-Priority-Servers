@@ -102,7 +102,7 @@ impl<'a> Server<'a> {
         self.tasks
             .iter()
             .map(|task| task.into_iter())
-            .aggregate::<ReclassifyIterator<_, _, _>>()
+            .aggregate::<ReclassifyIterator<_, _>>()
     }
 
     /// Calculate the constrained demand curve

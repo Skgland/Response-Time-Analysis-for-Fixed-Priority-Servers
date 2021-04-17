@@ -49,7 +49,7 @@ impl<'a> System<'a> {
     {
         constrained_demand_curves
             .into_iter()
-            .aggregate::<ReclassifyIterator<_, _, _>>()
+            .aggregate::<ReclassifyIterator<_, _>>()
     }
 
     /// Calculate the system wide hyper period

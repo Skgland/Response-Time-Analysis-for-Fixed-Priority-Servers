@@ -15,14 +15,14 @@ pub mod task;
 
 /// `CurveIterator` wrapper to change the Curve type to any compatibly `CurveType`
 #[derive(Debug)]
-pub struct ReclassifyIterator<I, C, O> {
+pub struct ReclassifyIterator<I, O> {
     /// the wrapped CurveIterator
     iter: I,
-    /// The original and output curve type and `CurveType`
-    phantom: PhantomData<(C, O)>,
+    /// The output curve type and `CurveType`
+    phantom: PhantomData<O>,
 }
 
-impl<I: Clone, C, O> Clone for ReclassifyIterator<I, C, O> {
+impl<I: Clone, O> Clone for ReclassifyIterator<I, O> {
     fn clone(&self) -> Self {
         ReclassifyIterator {
             iter: self.iter.clone(),
@@ -31,11 +31,10 @@ impl<I: Clone, C, O> Clone for ReclassifyIterator<I, C, O> {
     }
 }
 
-impl<I, O, C> CurveIterator for ReclassifyIterator<I, C, O>
+impl<I, O> CurveIterator for ReclassifyIterator<I, O>
 where
-    I: CurveIterator<CurveKind = C>,
-    O: CurveType<WindowKind = C::WindowKind>,
-    C: CurveType,
+    I: CurveIterator,
+    O: CurveType<WindowKind = <I::CurveKind as CurveType>::WindowKind>,
 {
     type CurveKind = O;
 
@@ -70,7 +69,7 @@ pub trait CurveIterator: Debug {
 
     /// reclassify a `CurveIterator`
     #[must_use]
-    fn reclassify<O>(self) -> ReclassifyIterator<Self, Self::CurveKind, O>
+    fn reclassify<O>(self) -> ReclassifyIterator<Self, O>
     where
         Self: Sized,
     {

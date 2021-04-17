@@ -77,7 +77,7 @@ impl Task {
         tasks[..index]
             .iter()
             .map(|task| task.into_iter())
-            .aggregate::<ReclassifyIterator<_, _, _>>()
+            .aggregate::<ReclassifyIterator<_, _>>()
     }
 
     /// Calculate the available execution Curve for the task with priority `task_index` of the server with priority `server_index`

@@ -132,8 +132,7 @@ impl AggregateInto<HigherPriorityServerDemand> for ConstrainedServerDemand {}
 impl AggregateInto<AggregatedServerDemand> for TaskDemand {}
 impl AggregateInto<HigherPriorityTaskDemand> for TaskDemand {}
 
-impl<AI, O> Aggregate<AI>
-    for ReclassifyIterator<AggregationIterator<AI>, <AI as CurveIterator>::CurveKind, O>
+impl<AI, O> Aggregate<AI> for ReclassifyIterator<AggregationIterator<AI>, O>
 where
     <AI as CurveIterator>::CurveKind: AggregateInto<O>,
     AI: CurveIterator,
