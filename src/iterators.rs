@@ -121,6 +121,59 @@ where
     }
 }
 
+#[derive(Debug)]
+pub struct PeekRef<'a, I> {
+    container: *mut Option<Option<I>>,
+    inner: *mut I,
+    mut_ref: PhantomData<&'a mut I>,
+}
+
+impl<'a, I> PeekRef<'a, I> {
+    pub fn new(option: &'a mut Option<Option<I>>) -> Option<PeekRef<'a, I>> {
+        let option_ref = option as *mut Option<Option<I>>;
+        if let Some(inner) = option.as_mut().and_then(|inner| inner.as_mut()) {
+            Some(PeekRef {
+                container: option_ref,
+                inner: inner as *mut I,
+                mut_ref: PhantomData::<&'a mut I>,
+            })
+        } else {
+            None
+        }
+    }
+
+    pub fn take(self) -> I {
+        unsafe {
+            // Safety:
+            // This type is constructed from mutable references to Options that contain the Some variant
+            // This types interface makes sure that the inner pointer stays valid until this value is
+            // dropped or take is called
+            //
+            // As we consume self it is safe to invalidate inner as we don't use it here
+            // and drop our self at the end of the function
+            self.container.as_mut()
+        }
+        .expect("Constructed from a reference")
+        .take()
+        .expect("Constructed only for Some variant")
+        .expect("Constructed only for Some variant containing Some variant")
+    }
+
+    pub fn as_mut(&mut self) -> &mut I {
+        unsafe {
+            // Safety:
+            // This type is constructed from mutable references to Options that contain the Some variant
+            // This types interface makes sure that the inner pointer stays valid until this value is
+            // dropped or take is called
+            //
+            // As we have a mutable reference to self we can't have given out another reference
+            // currently
+            self.inner.as_mut()
+        }
+        .expect("Constructed from reference")
+    }
+}
+
 /// A version of the standard libraries [`Peekable`](std::iter::Peekable) that lets one restore/replace/clear the peek element
 #[derive(Debug, Clone)]
 pub struct Peeker<I, IT> {
@@ -146,9 +199,14 @@ where
     }
 
     /// Take a mutable peek at the element that will be returned from the next next call
-    /// Changing the value behing the reference will change the next element
+    /// Changing the value behind the reference will change the next element
     pub fn peek_mut(&mut self) -> Option<&mut IT> {
         self.peek_ref_mut().as_mut()
+    }
+
+    pub fn peek_option_ref(&mut self) -> Option<PeekRef<'_, IT>> {
+        self.peek_ref_mut();
+        PeekRef::new(&mut self.peek_window)
     }
 
     /// Make sure the peek slot is filled and return a mutable reference to the inner option

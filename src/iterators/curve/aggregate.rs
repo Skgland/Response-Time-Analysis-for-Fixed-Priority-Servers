@@ -52,14 +52,14 @@ where
             .iter_mut()
             .enumerate()
             .filter_map(|(index, element)| {
-                if let Some(peek) = element.peek() {
-                    Some((index, peek.start, element))
+                if let Some(mut some_ref) = element.peek_option_ref() {
+                    Some((index, some_ref.as_mut().start, some_ref))
                 } else {
                     None
                 }
             })
             .min_by_key(|(_, start, _)| *start)
-            .and_then(|(index, _, element)| element.next().map(|peek| (index, peek)));
+            .map(|(index, _, some_ref)| (index, some_ref.take()));
 
         // take peek
         if let Some((original_index, first_peek)) = result {
