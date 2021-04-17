@@ -117,7 +117,7 @@ pub struct InverseCurveIterator<I, C> {
     iter: I,
     /// The end of the last window
     previous_end: WindowEnd,
-    /// The type of the Produced Curves and the corresponding window type
+    /// The type of the Produced Curves
     curve_type: PhantomData<C>,
 }
 
