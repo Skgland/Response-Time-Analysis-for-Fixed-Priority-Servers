@@ -94,35 +94,6 @@ fn example_too_high() {
 
 #[test]
 #[should_panic]
-fn example_too_low() {
-    let tasks_s1 = &[Task::new(16, 48, 0)];
-    let tasks_s2 = &[Task::new(4, 12, 0)];
-    let tasks_s3 = &[Task::new(10, 48, 33)];
-    let tasks_s4 = &[Task::new(1, 24, 0)];
-
-    let servers = &[
-        Server::new(tasks_s1, 12.into(), 24.into(), ServerKind::Deferrable),
-        Server::new(tasks_s2, 6.into(), 12.into(), ServerKind::Deferrable),
-        Server::new(tasks_s3, 10.into(), 48.into(), ServerKind::Deferrable),
-        Server::new(tasks_s4, 1.into(), 24.into(), ServerKind::Deferrable),
-    ];
-
-    let system = System::new(servers);
-
-    let swh = system.system_wide_hyper_period(servers.len() - 1);
-
-    let wcrt =
-        rta_for_fps::task::Task::worst_case_response_time(&system, servers.len() - 1, 0, swh);
-
-    assert_eq!(
-        wcrt,
-        TimeUnit::from(22),
-        "Unexpected worst case response time"
-    );
-}
-
-#[test]
-#[should_panic]
 fn execution_overlap_too_high() {
     let tasks_s1 = &[Task::new(16, 48, 0)];
     let tasks_s2 = &[Task::new(4, 12, 0)];
@@ -169,6 +140,35 @@ fn execution_overlap_too_high() {
         "Curves have non-trivial overlap:\nCurve 2: {:#?}\n\nCurve 3: {:#?}",
         &s2,
         &s3
+    );
+}
+
+#[test]
+#[should_panic]
+fn example_too_low() {
+    let tasks_s1 = &[Task::new(16, 48, 0)];
+    let tasks_s2 = &[Task::new(4, 12, 0)];
+    let tasks_s3 = &[Task::new(10, 48, 33)];
+    let tasks_s4 = &[Task::new(1, 24, 0)];
+
+    let servers = &[
+        Server::new(tasks_s1, 12.into(), 24.into(), ServerKind::Deferrable),
+        Server::new(tasks_s2, 6.into(), 12.into(), ServerKind::Deferrable),
+        Server::new(tasks_s3, 10.into(), 48.into(), ServerKind::Deferrable),
+        Server::new(tasks_s4, 1.into(), 24.into(), ServerKind::Deferrable),
+    ];
+
+    let system = System::new(servers);
+
+    let swh = system.system_wide_hyper_period(servers.len() - 1);
+
+    let wcrt =
+        rta_for_fps::task::Task::worst_case_response_time(&system, servers.len() - 1, 0, swh);
+
+    assert_eq!(
+        wcrt,
+        TimeUnit::from(22),
+        "Unexpected worst case response time"
     );
 }
 

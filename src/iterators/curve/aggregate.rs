@@ -4,19 +4,17 @@ use std::iter::Fuse;
 
 use crate::curve::curve_types::CurveType;
 use crate::curve::Aggregate;
-use crate::iterators::{CurveIterator, CurveIteratorIterator, ReclassifyIterator};
+use crate::iterators::{CurveIterator, CurveIteratorIterator, Peeker, ReclassifyIterator};
 use crate::server::{AggregatedServerDemand, ConstrainedServerDemand, HigherPriorityServerDemand};
 use crate::task::curve_types::{HigherPriorityTaskDemand, TaskDemand};
 use crate::window::{Demand, Window};
 
+/// TODO remove Element type and inline field
 /// Elements for `AggregationIterator`
 #[derive(Debug, Clone)]
 pub struct Element<I> {
     /// The Iterator that is being iterated
-    curve: Box<Fuse<I>>,
-    /// If Some the element that would be the head of `curve`
-    /// if we hadn't peeked
-    peek: Option<Window<Demand>>,
+    curve: Peeker<Box<Fuse<I>>, Window<Demand>>,
 }
 
 /// Iterator for Aggregating two Curve Iterators
@@ -29,7 +27,11 @@ pub struct AggregationIterator<I> {
     curves: Vec<Element<CurveIteratorIterator<I>>>,
 }
 
-impl<I: CurveIterator> AggregationIterator<I> {
+impl<I> AggregationIterator<I>
+where
+    I: CurveIterator,
+    I::CurveKind: CurveType<WindowKind = Demand>,
+{
     /// Create a new `AggregationIterator`
     #[must_use]
     pub fn new(curves: Vec<I>) -> Self {
@@ -37,8 +39,7 @@ impl<I: CurveIterator> AggregationIterator<I> {
             curves: curves
                 .into_iter()
                 .map(|curve| Element {
-                    curve: Box::new(curve.fuse_curve()),
-                    peek: None,
+                    curve: Peeker::new(Box::new(curve.fuse_curve())),
                 })
                 .collect(),
         }
@@ -55,30 +56,24 @@ where
     fn next_window(&mut self) -> Option<Window<Demand>> {
         #![allow(clippy::option_if_let_else)] // false positive
 
-        // fill all peek slots
-        for element in &mut self.curves {
-            element.peek = element.peek.take().or_else(|| element.curve.next_window());
-        }
-
         // find curve with earliest peek
         let result = self
             .curves
             .iter_mut()
             .enumerate()
             .filter_map(|(index, element)| {
-                element.peek = element.peek.take().or_else(|| element.curve.next_window());
-                if let Some(peek) = element.peek.as_mut() {
-                    Some((index, peek.start, &mut element.peek))
+                if let Some(peek) = element.curve.peek() {
+                    Some((index, peek.start, element))
                 } else {
                     None
                 }
             })
             .min_by_key(|(_, start, _)| *start)
-            .and_then(|(index, _, peek)| peek.take().map(|peek| (index, peek)));
+            .and_then(|(index, _, element)| element.curve.next().map(|peek| (index, peek)));
 
         // take peek
         if let Some((original_index, first_peek)) = result {
-            let mut overlap = first_peek;
+            let mut overlap: Window<_> = first_peek;
 
             // the index that was last aggregated into overlap
             // if we reach it again without aggregating more we are done
@@ -96,17 +91,15 @@ where
                     .chain(tail.iter_mut().enumerate());
 
                 for (index, element) in iter {
-                    if let Some(peek) = element.peek.take().or_else(|| element.curve.next_window())
-                    {
+                    if let Some(peek) = element.curve.peek() {
                         if let Some(overlap_window) = overlap.aggregate(&peek) {
                             // update last aggregated index
                             aggregate_index = index;
                             // replace overlap with new overlap_window
                             overlap = overlap_window;
+                            // clear the peek as we have used it
+                            element.curve.clear_peek();
                             continue;
-                        } else {
-                            // restore peek
-                            element.peek = Some(peek);
                         }
                     }
 

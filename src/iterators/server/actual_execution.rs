@@ -7,7 +7,7 @@ use crate::curve::curve_types::CurveType;
 use crate::curve::Curve;
 use crate::iterators::curve::CurveSplitIterator;
 use crate::iterators::join::JoinAdjacentIterator;
-use crate::iterators::CurveIterator;
+use crate::iterators::{CurveIterator, CurveIteratorIterator, Peeker};
 use crate::server::{
     ActualServerExecution, ConstrainedServerDemand, ServerProperties, UnconstrainedServerExecution,
 };
@@ -26,7 +26,7 @@ pub struct ActualServerExecutionIterator<AC, DC> {
     /// internal Iterator
     iter: Box<
         JoinAdjacentIterator<
-            InternalActualExecutionIterator<AC, DC>,
+            InternalActualExecutionIterator<AC, CurveIteratorIterator<DC>>,
             <ActualServerExecution as CurveType>::WindowKind,
             ActualServerExecution,
         >,
@@ -51,7 +51,7 @@ impl<AC, DC> ActualServerExecutionIterator<AC, DC> {
         let inner = InternalActualExecutionIterator::new(
             server_properties,
             available_execution,
-            constrained_demand,
+            constrained_demand.into_iterator(),
         );
         let outer = unsafe {
             // Safety:
@@ -104,9 +104,7 @@ pub struct InternalActualExecutionIterator<AC, CDC> {
     // remembering one group is enough as we go through them in order
     spend_budget: TimeUnit,
     /// remaining constrained demand
-    constrained_demand: CDC,
-    /// unused peek of teh remaining constrained demand
-    demand_peek: Option<Window<Demand>>,
+    constrained_demand: Peeker<CurveIteratorIterator<CDC>, Window<Demand>>,
 }
 
 impl<'a, AC: Clone, CDC: Clone> Clone for InternalActualExecutionIterator<AC, CDC> {
@@ -118,7 +116,6 @@ impl<'a, AC: Clone, CDC: Clone> Clone for InternalActualExecutionIterator<AC, CD
             current_group: self.current_group,
             spend_budget: self.spend_budget,
             constrained_demand: self.constrained_demand.clone(),
-            demand_peek: self.demand_peek.clone(),
         }
     }
 }
@@ -134,6 +131,8 @@ impl<AC, CDC> InternalActualExecutionIterator<AC, CDC> {
     ) -> Self
     where
         AC: CurveIterator<CurveKind = UnconstrainedServerExecution>,
+        CDC: CurveIterator,
+        CDC::CurveKind: CurveType<WindowKind = Demand>,
     {
         // Algorithm 4. (1)
         let split_execution =
@@ -145,8 +144,7 @@ impl<AC, CDC> InternalActualExecutionIterator<AC, CDC> {
             execution_peek: Vec::new(),
             current_group: 0,
             spend_budget: TimeUnit::ZERO,
-            constrained_demand: (constrained_demand),
-            demand_peek: None,
+            constrained_demand: Peeker::new(constrained_demand.into_iterator()),
         }
     }
 }
@@ -162,17 +160,15 @@ where
 impl<AC, CDC> Iterator for InternalActualExecutionIterator<AC, CDC>
 where
     AC: CurveIterator<CurveKind = UnconstrainedServerExecution>,
-    CDC: CurveIterator<CurveKind = ConstrainedServerDemand>,
+    CDC: CurveIterator,
+    CDC::CurveKind: CurveType<WindowKind = Demand>,
 {
     type Item = Window<<ActualServerExecution as CurveType>::WindowKind>;
 
     // Algorithm 4. (4)
     fn next(&mut self) -> Option<Self::Item> {
         // (c)
-        let demand = self
-            .demand_peek
-            .take()
-            .or_else(|| self.constrained_demand.next_window());
+        let demand = self.constrained_demand.next();
 
         // as we typically deal with limited demand but endless supply
         // check demand first
@@ -218,7 +214,7 @@ where
                         let valid = Window::new(demand_window.start, valid_end);
                         let residual = Window::new(valid_end, demand_window.end);
 
-                        self.demand_peek = Some(residual);
+                        self.constrained_demand.restore_peek(residual);
                         valid
                     } else {
                         demand_window
@@ -235,11 +231,16 @@ where
                         WindowEnd::Infinite => {
                             unreachable!(
                                 "valid_demand_segment has a length \
-                            less than or equal to remaining_budget an therefore is finite,\
-                            therefore the overlap cannot be infinite"
+                            less than or equal to remaining_budget and therefore is finite,\
+                            as such the overlap cannot be infinite"
                             )
                         }
                     }
+
+                    // TODO
+                    // it should be possible to also use a peeker for execution_peek and available_execution
+                    // as the remaining_supply_head should always be useless and as such returned for the next next call
+                    // we would still need to store it in between the call
 
                     vec![result.remaining_supply_head, result.remaining_supply_tail]
                         .into_iter()
@@ -250,10 +251,7 @@ where
                     break Some(result.overlap);
                 } else {
                     assert!(
-                        self.demand_peek
-                            .take()
-                            .or_else(|| self.constrained_demand.next_window())
-                            .is_none(),
+                        self.constrained_demand.next().is_none(),
                         "While calculating the actual execution the supply dried up before the demand"
                     );
                     // out of demand and supply

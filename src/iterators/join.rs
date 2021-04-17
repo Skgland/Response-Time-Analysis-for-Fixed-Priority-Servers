@@ -5,7 +5,7 @@ use std::iter::Fuse;
 use std::marker::PhantomData;
 
 use crate::curve::curve_types::CurveType;
-use crate::iterators::CurveIterator;
+use crate::iterators::{CurveIterator, Peeker};
 use crate::window::Window;
 
 /// `CurveIterator` for turning an Iterator that returns ordered windows,
@@ -15,9 +15,7 @@ pub struct JoinAdjacentIterator<I, W, C> {
     /// the Iterator to join into a `CurveIterator`
     /// forced to be fused as otherwise we might
     /// violate a `CurveIterator` invariants
-    iter: Fuse<I>,
-    /// the peek of the wrapped iterator
-    peek: Option<Window<W>>,
+    iter: Peeker<Fuse<I>, Window<W>>,
     /// The `CurveType` this produces
     curve_type: PhantomData<C>,
 }
@@ -26,7 +24,6 @@ impl<I: Clone, W, C> Clone for JoinAdjacentIterator<I, W, C> {
     fn clone(&self) -> Self {
         JoinAdjacentIterator {
             iter: self.iter.clone(),
-            peek: self.peek.clone(),
             curve_type: PhantomData,
         }
     }
@@ -39,11 +36,10 @@ impl<I, W, C> JoinAdjacentIterator<I, W, C> {
     /// The Iterator I must return Windows in order that are either don't overlap or at most adjacent
     pub unsafe fn new(iter: I) -> Self
     where
-        I: Iterator,
+        I: Iterator<Item = Window<W>>,
     {
         JoinAdjacentIterator {
-            iter: iter.fuse(),
-            peek: None,
+            iter: Peeker::new(iter.fuse()),
             curve_type: PhantomData,
         }
     }
@@ -59,10 +55,10 @@ where
 
     fn next_window(&mut self) -> Option<Window<C::WindowKind>> {
         loop {
-            let current = self.peek.take().or_else(|| self.iter.next());
-            self.peek = self.iter.next();
+            let current = self.iter.next();
+            let peek = self.iter.peek();
 
-            match (current, self.peek.as_ref()) {
+            match (current, peek) {
                 (current, None) => break current,
                 (None, Some(_)) => {
                     unreachable!("next is filled first")
@@ -79,7 +75,7 @@ where
                         // assert that windows where adjacent and didn't overlap further as this
                         // as that is assumed by `JoinAdjacentIterator`
                         assert_eq!(overlap.length(), current.length() + peek.length());
-                        self.peek = Some(overlap);
+                        self.iter.replace_peek(overlap);
                     } else {
                         break Some(current);
                     }

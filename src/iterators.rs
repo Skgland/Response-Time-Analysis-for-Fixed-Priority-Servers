@@ -121,6 +121,82 @@ where
     }
 }
 
+/// A version of the standard libraries [`Peekable`](std::iter::Peekable) that lets one restore/replace/clear the peek element
+#[derive(Debug, Clone)]
+pub struct Peeker<I, IT> {
+    iter: I,
+    peek_window: Option<Option<IT>>,
+}
+
+impl<I, IT> Peeker<I, IT>
+where
+    I: Iterator<Item = IT>,
+{
+    /// Create a new `Peeker`
+    pub fn new(inner: I) -> Self {
+        Self {
+            iter: inner,
+            peek_window: None,
+        }
+    }
+
+    /// Take a peek at the element that will be returned from the next next call
+    pub fn peek(&mut self) -> Option<&IT> {
+        self.peek_ref_mut().as_ref()
+    }
+
+    /// Take a mutable peek at the element that will be returned from the next next call
+    /// Changing the value behing the reference will change the next element
+    pub fn peek_mut(&mut self) -> Option<&mut IT> {
+        self.peek_ref_mut().as_mut()
+    }
+
+    /// Make sure the peek slot is filled and return a mutable reference to the inner option
+    fn peek_ref_mut(&mut self) -> &mut Option<IT> {
+        let iter = &mut self.iter;
+        self.peek_window.get_or_insert_with(|| iter.next())
+    }
+
+    /// Clear the window that was peeked at
+    ///
+    /// # Panics
+    /// If there is no window held as peek
+    fn clear_peek(&mut self) {
+        assert!(self.peek_window.take().flatten().is_some())
+    }
+
+    /// Replace an existing peek window with a new one
+    ///
+    /// # Panics
+    /// If there is no window held as peek
+    pub fn replace_peek(&mut self, window: IT) -> IT {
+        self.peek_window.replace(Some(window)).flatten().unwrap()
+    }
+
+    /// Set a peek window if there currently is none
+    ///
+    /// # Panics
+    /// If there is a window held as peek
+    pub fn restore_peek(&mut self, window: IT) {
+        if let None = self.peek_window.take().flatten() {
+            self.peek_window = Some(Some(window))
+        } else {
+            panic!("Restoring over existing peek window!")
+        }
+    }
+}
+
+impl<I, IT> Iterator for Peeker<I, IT>
+where
+    I: Iterator<Item = IT>,
+{
+    type Item = IT;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.peek_window.take().unwrap_or_else(|| self.iter.next())
+    }
+}
+
 impl<I> Iterator for CurveIteratorIterator<I>
 where
     I: CurveIterator,
