@@ -52,7 +52,7 @@ impl<'a, I> PeekRef<'a, I> {
             self.container.as_mut()
         }
         .take()
-        .expect("Constructed only for Some variant")
+        .flatten()
         .expect("Constructed only for Some variant containing Some variant")
     }
 
