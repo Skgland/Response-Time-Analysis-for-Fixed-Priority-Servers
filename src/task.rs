@@ -3,7 +3,7 @@
 use crate::curve::{AggregateExt, Curve};
 use crate::iterators::curve::CurveDeltaIterator;
 use crate::iterators::task::TaskDemandIterator;
-use crate::iterators::{CurveIterator, CurveIteratorIterator, ReclassifyIterator};
+use crate::iterators::{CurveIterator, ReclassifyIterator};
 use crate::server::ActualServerExecution;
 use crate::system::System;
 use crate::task::curve_types::{
@@ -255,12 +255,12 @@ impl Task {
 
 impl IntoIterator for Task {
     type Item = Window<Demand>;
-    type IntoIter = CurveIteratorIterator<TaskDemandIterator>;
+    type IntoIter = TaskDemandIterator;
 
     /// Generate the Demand Curve for the Task
     ///
     /// Based on Definition 9. and 10. of the paper
     fn into_iter(self) -> Self::IntoIter {
-        TaskDemandIterator::new(self).into_iterator()
+        TaskDemandIterator::new(self)
     }
 }

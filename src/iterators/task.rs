@@ -5,7 +5,7 @@ use crate::iterators::CurveIterator;
 use crate::task::curve_types::TaskDemand;
 use crate::task::Task;
 use crate::time::{TimeUnit, UnitNumber};
-use crate::window::Window;
+use crate::window::{Demand, Window};
 
 /// `CurveIterator` for a Tasks Demand
 #[derive(Debug, Clone)]
@@ -16,7 +16,7 @@ pub struct TaskDemandIterator {
     next_job: UnitNumber,
 }
 
-impl<'a> TaskDemandIterator {
+impl TaskDemandIterator {
     /// Create a `CurveIterator` for a Tasks Demand
     #[must_use]
     pub const fn new(task: Task) -> Self {
@@ -24,7 +24,7 @@ impl<'a> TaskDemandIterator {
     }
 }
 
-impl<'a> CurveIterator for TaskDemandIterator {
+impl CurveIterator for TaskDemandIterator {
     type CurveKind = TaskDemand;
 
     fn next_window(&mut self) -> Option<Window<<Self::CurveKind as CurveType>::WindowKind>> {
@@ -37,5 +37,13 @@ impl<'a> CurveIterator for TaskDemandIterator {
         let end = UnitNumber::checked_add(start, self.task.demand.as_unit())?;
         self.next_job = self.next_job.checked_add(1)?;
         Some(Window::new(TimeUnit::from(start), TimeUnit::from(end)))
+    }
+}
+
+impl Iterator for TaskDemandIterator {
+    type Item = Window<Demand>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next_window()
     }
 }
