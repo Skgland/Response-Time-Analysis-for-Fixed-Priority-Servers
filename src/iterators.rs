@@ -10,6 +10,7 @@ use crate::window::window_types::WindowType;
 use crate::window::Window;
 
 pub mod curve;
+pub mod join;
 pub mod server;
 pub mod task;
 
@@ -164,5 +165,3 @@ where
         self.next()
     }
 }
-
-mod join;
