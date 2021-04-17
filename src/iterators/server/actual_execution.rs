@@ -7,7 +7,8 @@ use crate::curve::curve_types::CurveType;
 use crate::curve::Curve;
 use crate::iterators::curve::CurveSplitIterator;
 use crate::iterators::join::JoinAdjacentIterator;
-use crate::iterators::{CurveIterator, CurveIteratorIterator, Peeker};
+use crate::iterators::peek::Peeker;
+use crate::iterators::{CurveIterator, CurveIteratorIterator};
 use crate::server::{
     ActualServerExecution, ConstrainedServerDemand, ServerProperties, UnconstrainedServerExecution,
 };

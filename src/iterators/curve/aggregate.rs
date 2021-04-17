@@ -4,7 +4,8 @@ use std::iter::Fuse;
 
 use crate::curve::curve_types::CurveType;
 use crate::curve::Aggregate;
-use crate::iterators::{CurveIterator, CurveIteratorIterator, Peeker, ReclassifyIterator};
+use crate::iterators::peek::Peeker;
+use crate::iterators::{CurveIterator, CurveIteratorIterator, ReclassifyIterator};
 use crate::server::{AggregatedServerDemand, ConstrainedServerDemand, HigherPriorityServerDemand};
 use crate::task::curve_types::{HigherPriorityTaskDemand, TaskDemand};
 use crate::window::{Demand, Window};
@@ -52,8 +53,8 @@ where
             .iter_mut()
             .enumerate()
             .filter_map(|(index, element)| {
-                if let Some(mut some_ref) = element.peek_ref() {
-                    Some((index, some_ref.as_mut().start, some_ref))
+                if let Some(some_ref) = element.peek_ref() {
+                    Some((index, some_ref.start, some_ref))
                 } else {
                     None
                 }
@@ -81,14 +82,14 @@ where
                     .chain(tail.iter_mut().enumerate());
 
                 for (index, element) in iter {
-                    if let Some(peek) = element.peek() {
-                        if let Some(overlap_window) = overlap.aggregate(&peek) {
+                    if let Some(peek) = element.peek_ref() {
+                        if let Some(overlap_window) = overlap.aggregate(&*peek) {
                             // update last aggregated index
                             aggregate_index = index;
                             // replace overlap with new overlap_window
                             overlap = overlap_window;
                             // clear the peek as we have used it
-                            element.clear_peek();
+                            peek.take();
                             continue;
                         }
                     }

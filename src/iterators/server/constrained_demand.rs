@@ -8,7 +8,8 @@ use crate::curve::curve_types::CurveType;
 use crate::curve::{Curve, PartitionResult};
 use crate::iterators::curve::{AggregationIterator, CurveSplitIterator};
 use crate::iterators::join::JoinAdjacentIterator;
-use crate::iterators::{CurveIterator, Peeker};
+use crate::iterators::peek::Peeker;
+use crate::iterators::CurveIterator;
 use crate::server::{AggregatedServerDemand, ConstrainedServerDemand, ServerProperties};
 use crate::time::TimeUnit;
 use crate::window::WindowEnd;
@@ -118,7 +119,7 @@ where
         if let Some(window) = self.remainder.pop() {
             Some(window)
         } else {
-            let next_group = self.demand.next();
+            let next_group = self.demand.peek_ref();
             let spill = self.spill.take();
 
             match (next_group, spill) {
@@ -134,7 +135,7 @@ where
                         Ordering::Equal => {
                             // spill spilled into next_group
 
-                            let mut windows = vec![group_head];
+                            let mut windows = vec![group_head.take()];
 
                             for window in &mut self.demand {
                                 if window.budget_group(self.server_properties.interval)
@@ -161,10 +162,6 @@ where
                             self.process_group(k_spill, curve)
                         }
                         Ordering::Greater => {
-                            // restore demand_peek
-                            // then process only spill
-                            self.demand.restore_peek(group_head);
-
                             // spill not spilled into group, next group consists only of spill
                             let curve = Curve::new(spill);
                             self.process_group(k_spill, curve)
@@ -175,7 +172,7 @@ where
                     let k_group_head = group_head.start / self.server_properties.interval;
                     // no spill, only next group
 
-                    let mut windows = vec![group_head];
+                    let mut windows = vec![group_head.take()];
 
                     for window in &mut self.demand {
                         if window.budget_group(self.server_properties.interval) == k_group_head {

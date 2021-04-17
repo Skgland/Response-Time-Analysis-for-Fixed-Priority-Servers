@@ -5,7 +5,8 @@ use std::iter::Fuse;
 use std::marker::PhantomData;
 
 use crate::curve::curve_types::CurveType;
-use crate::iterators::{CurveIterator, Peeker};
+use crate::iterators::peek::Peeker;
+use crate::iterators::CurveIterator;
 use crate::window::Window;
 
 /// `CurveIterator` for turning an Iterator that returns ordered windows,
@@ -56,14 +57,16 @@ where
     fn next_window(&mut self) -> Option<Window<C::WindowKind>> {
         loop {
             let current = self.iter.next();
-            let peek = self.iter.peek();
+            let peek = self.iter.peek_ref();
 
             match (current, peek) {
                 (current, None) => break current,
                 (None, Some(_)) => {
                     unreachable!("next is filled first")
                 }
-                (Some(current), Some(peek)) => {
+                (Some(current), Some(mut peek_ref)) => {
+                    let peek = &*peek_ref;
+
                     // assert correct order
                     assert!(
                         current.start <= peek.start,
@@ -75,7 +78,7 @@ where
                         // assert that windows where adjacent and didn't overlap further as this
                         // as that is assumed by `JoinAdjacentIterator`
                         assert_eq!(overlap.length(), current.length() + peek.length());
-                        self.iter.replace_peek(overlap);
+                        *peek_ref = overlap;
                     } else {
                         break Some(current);
                     }
