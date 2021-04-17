@@ -16,6 +16,10 @@ use crate::time::{TimeUnit, UnitNumber};
 use crate::window::WindowEnd;
 use crate::window::{Demand, Window};
 
+/// Type alias for the `WindowKind` of the `ActualServerExecution` `CurveType`
+/// to reduce type complexity
+type ActualExecutionWindow = <ActualServerExecution as CurveType>::WindowKind;
+
 /// `CurveIterator` for `ActualServerExecution`
 ///
 /// Calculate the Constrained Execution Curve using Algorithm 4. from the paper
@@ -28,7 +32,7 @@ pub struct ActualServerExecutionIterator<AC, DC> {
     iter: Box<
         JoinAdjacentIterator<
             InternalActualExecutionIterator<AC, CurveIteratorIterator<DC>>,
-            <ActualServerExecution as CurveType>::WindowKind,
+            ActualExecutionWindow,
             ActualServerExecution,
         >,
     >,

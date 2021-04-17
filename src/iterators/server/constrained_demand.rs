@@ -59,6 +59,10 @@ where
     }
 }
 
+/// Type alias for the `WindowKind` of the `AggregatedServerDemand` `CurveType`
+/// to reduce type complexity
+type AggregateDemandWindow = <AggregatedServerDemand as CurveType>::WindowKind;
+
 /// Iterator used internally in the `ConstrainedServerDemandIterator`
 ///
 /// When iterating returns windows in order that are either non-overlapping or adjacent
@@ -71,10 +75,8 @@ pub struct InternalConstrainedServerDemandIterator<I> {
     /// The Server for which to calculate the constrained demand
     server_properties: ServerProperties,
     /// The remaining aggregated Demand of the Server
-    demand: Peeker<
-        Box<CurveSplitIterator<<AggregatedServerDemand as CurveType>::WindowKind, I>>,
-        Window<<AggregatedServerDemand as CurveType>::WindowKind>,
-    >,
+    demand:
+        Peeker<Box<CurveSplitIterator<AggregateDemandWindow, I>>, Window<AggregateDemandWindow>>,
     /// The spill from the previous group
     spill: Option<Window<<AggregatedServerDemand as CurveType>::WindowKind>>,
     /// Remaining windows till we need to process the next group
