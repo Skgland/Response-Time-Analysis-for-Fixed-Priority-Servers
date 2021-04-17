@@ -9,14 +9,6 @@ use crate::server::{AggregatedServerDemand, ConstrainedServerDemand, HigherPrior
 use crate::task::curve_types::{HigherPriorityTaskDemand, TaskDemand};
 use crate::window::{Demand, Window};
 
-/// TODO remove Element type and inline field
-/// Elements for `AggregationIterator`
-#[derive(Debug, Clone)]
-pub struct Element<I> {
-    /// The Iterator that is being iterated
-    curve: Peeker<Box<Fuse<I>>, Window<Demand>>,
-}
-
 /// Iterator for Aggregating two Curve Iterators
 ///
 /// Aggregate multiple (Demand) Curves as defined in Definition 5. of the paper
@@ -24,7 +16,7 @@ pub struct Element<I> {
 #[derive(Debug, Clone)]
 pub struct AggregationIterator<I> {
     /// The CurveIterators to aggregate
-    curves: Vec<Element<CurveIteratorIterator<I>>>,
+    curves: Vec<Peeker<Fuse<CurveIteratorIterator<I>>, Window<Demand>>>,
 }
 
 impl<I> AggregationIterator<I>
@@ -38,9 +30,7 @@ where
         AggregationIterator {
             curves: curves
                 .into_iter()
-                .map(|curve| Element {
-                    curve: Peeker::new(Box::new(curve.fuse_curve())),
-                })
+                .map(|curve| Peeker::new(curve.fuse_curve()))
                 .collect(),
         }
     }
@@ -62,14 +52,14 @@ where
             .iter_mut()
             .enumerate()
             .filter_map(|(index, element)| {
-                if let Some(peek) = element.curve.peek() {
+                if let Some(peek) = element.peek() {
                     Some((index, peek.start, element))
                 } else {
                     None
                 }
             })
             .min_by_key(|(_, start, _)| *start)
-            .and_then(|(index, _, element)| element.curve.next().map(|peek| (index, peek)));
+            .and_then(|(index, _, element)| element.next().map(|peek| (index, peek)));
 
         // take peek
         if let Some((original_index, first_peek)) = result {
@@ -91,14 +81,14 @@ where
                     .chain(tail.iter_mut().enumerate());
 
                 for (index, element) in iter {
-                    if let Some(peek) = element.curve.peek() {
+                    if let Some(peek) = element.peek() {
                         if let Some(overlap_window) = overlap.aggregate(&peek) {
                             // update last aggregated index
                             aggregate_index = index;
                             // replace overlap with new overlap_window
                             overlap = overlap_window;
                             // clear the peek as we have used it
-                            element.curve.clear_peek();
+                            element.clear_peek();
                             continue;
                         }
                     }
