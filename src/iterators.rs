@@ -13,36 +13,6 @@ pub mod curve;
 pub mod server;
 pub mod task;
 
-/// `CurveIterator` wrapper to change the Curve type to any compatibly `CurveType`
-#[derive(Debug)]
-pub struct ReclassifyIterator<I, O> {
-    /// the wrapped CurveIterator
-    iter: I,
-    /// The output curve type and `CurveType`
-    phantom: PhantomData<O>,
-}
-
-impl<I: Clone, O> Clone for ReclassifyIterator<I, O> {
-    fn clone(&self) -> Self {
-        ReclassifyIterator {
-            iter: self.iter.clone(),
-            phantom: PhantomData,
-        }
-    }
-}
-
-impl<I, O> CurveIterator for ReclassifyIterator<I, O>
-where
-    I: CurveIterator,
-    O: CurveType<WindowKind = <I::CurveKind as CurveType>::WindowKind>,
-{
-    type CurveKind = O;
-
-    fn next_window(&mut self) -> Option<Window<O::WindowKind>> {
-        self.iter.next_window()
-    }
-}
-
 /// Trait representing an Iterator that has the guarantees of a curve:
 /// 1. Windows ordered by start
 /// 2. Windows non-overlapping
@@ -99,6 +69,36 @@ pub trait CurveIterator: Debug {
         Self: Sized,
     {
         CurveIteratorIterator { iter: self }
+    }
+}
+
+/// `CurveIterator` wrapper to change the Curve type to any compatibly `CurveType`
+#[derive(Debug)]
+pub struct ReclassifyIterator<I, O> {
+    /// the wrapped CurveIterator
+    iter: I,
+    /// The output curve type and `CurveType`
+    phantom: PhantomData<O>,
+}
+
+impl<I: Clone, O> Clone for ReclassifyIterator<I, O> {
+    fn clone(&self) -> Self {
+        ReclassifyIterator {
+            iter: self.iter.clone(),
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<I, O> CurveIterator for ReclassifyIterator<I, O>
+where
+    I: CurveIterator,
+    O: CurveType<WindowKind = <I::CurveKind as CurveType>::WindowKind>,
+{
+    type CurveKind = O;
+
+    fn next_window(&mut self) -> Option<Window<O::WindowKind>> {
+        self.iter.next_window()
     }
 }
 
