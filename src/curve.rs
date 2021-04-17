@@ -282,9 +282,9 @@ where
                 Delta::EndSupply(supply) => supply
                     .into_iterator()
                     .for_each(|window| result.remaining_supply.windows.push(window)),
-                Delta::EndDemand(demand) => demand
-                    .into_iterator()
-                    .for_each(|window| result.remaining_demand.windows.push(window)),
+                Delta::EndDemand(demand) => {
+                    demand.for_each(|window| result.remaining_demand.windows.push(window))
+                }
             }
         }
 

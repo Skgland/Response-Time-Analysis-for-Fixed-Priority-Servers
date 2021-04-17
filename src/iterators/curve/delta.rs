@@ -6,7 +6,8 @@ use std::marker::PhantomData;
 
 use crate::curve::curve_types::CurveType;
 use crate::iterators::curve::IterCurveWrapper;
-use crate::iterators::CurveIterator;
+use crate::iterators::peek::Peeker;
+use crate::iterators::{CurveIterator, CurveIteratorIterator};
 use crate::time::TimeUnit;
 use crate::window::window_types::WindowType;
 use crate::window::WindowEnd;
@@ -24,7 +25,7 @@ pub enum Delta<S, D, SI, DI> {
     /// Indicate a Window of remaining demand
     RemainingDemand(Window<D>),
     /// Remaining Demand once Supply ran out
-    EndDemand(Box<DI>),
+    EndDemand(Peeker<CurveIteratorIterator<Box<DI>>, Window<D>>),
 }
 
 impl<S, D, SI, DI> Delta<S, D, SI, DI> {
@@ -181,11 +182,9 @@ impl<I: CurveIterator, C: CurveType> CurveIterator for InverseCurveIterator<I, C
 #[derive(Debug)]
 pub struct CurveDeltaIterator<DW, SW, DI, SI> {
     /// remaining demand curve
-    demand: Option<Box<DI>>,
+    demand: Option<Peeker<CurveIteratorIterator<Box<DI>>, Window<DW>>>,
     /// remaining supply curve
     supply: Option<Box<SI>>,
-    /// peek of the demand curve
-    remaining_demand: Option<Window<DW>>,
     /// peek of the supply curve
     remaining_supply: Vec<Window<SW>>,
 }
@@ -195,7 +194,6 @@ impl<DW, SW, DI: Clone, SI: Clone> Clone for CurveDeltaIterator<DW, SW, DI, SI> 
         CurveDeltaIterator {
             demand: self.demand.clone(),
             supply: self.supply.clone(),
-            remaining_demand: self.remaining_demand.clone(),
             remaining_supply: self.remaining_supply.clone(),
         }
     }
@@ -223,9 +221,8 @@ impl<DI: CurveIterator, SI: CurveIterator>
     /// Create a new Iterator for computing the delta between the supply and demand curve
     pub fn new(supply: SI, demand: DI) -> Self {
         CurveDeltaIterator {
-            demand: Some(Box::new(demand)),
+            demand: Some(Peeker::new(Box::new(demand).into_iterator())),
             supply: Some(Box::new(supply)),
-            remaining_demand: None,
             remaining_supply: Vec::new(),
         }
     }
@@ -279,10 +276,7 @@ where
 
         if let (Some(supply_iter), Some(demand_iter)) = (self.supply.as_mut(), self.demand.as_mut())
         {
-            let demand = self
-                .remaining_demand
-                .take()
-                .or_else(|| demand_iter.next_window());
+            let demand = demand_iter.peek_ref();
 
             if let Some(demand_window) = demand {
                 let supply = self
@@ -297,25 +291,26 @@ where
                             remaining_supply_tail,
                             overlap,
                             remaining_demand,
-                        } = Window::delta(&supply_window, &demand_window);
+                        } = Window::delta(&supply_window, &demand_window.take());
+
+                        let remaining_supply = &mut self.remaining_supply;
 
                         // remember remaining supply
                         vec![remaining_supply_head, remaining_supply_tail]
                             .into_iter()
                             .filter(|window| !window.is_empty())
                             .rev()
-                            .for_each(|window| self.remaining_supply.push(window));
+                            .for_each(|window| remaining_supply.push(window));
 
                         // remember remaining demand
-                        self.remaining_demand =
-                            Some(remaining_demand).filter(|window| !window.is_empty());
+                        if !remaining_demand.is_empty() {
+                            demand_iter.restore_peek(remaining_demand);
+                        }
 
                         // return overlap
                         Some(Delta::Overlap(overlap))
                     } else {
                         // supply is not usable for the demand
-                        // remember unused demand
-                        self.remaining_demand = Some(demand_window);
                         // return unusable supply
                         Some(Delta::RemainingSupply(supply_window))
                     }
@@ -323,7 +318,7 @@ where
                     // no supply left
                     // clear supply iter
                     self.supply = None;
-                    Some(Delta::RemainingDemand(demand_window))
+                    Some(Delta::RemainingDemand(demand_window.take()))
                 }
             } else {
                 // no demand left
@@ -342,16 +337,13 @@ where
 
             let remaining_supply = self.remaining_supply.pop().map(Delta::RemainingSupply);
 
-            let rd = &mut self.remaining_demand;
             let s = &mut self.supply;
             let d = &mut self.demand;
 
-            let lazy_remaining_demand = || rd.take().map(Delta::RemainingDemand);
             let lazy_supply_iter = || s.take().map(Delta::EndSupply);
             let lazy_demand_iter = || d.take().map(Delta::EndDemand);
 
             remaining_supply
-                .or_else(lazy_remaining_demand)
                 .or_else(lazy_supply_iter)
                 .or_else(lazy_demand_iter)
         }

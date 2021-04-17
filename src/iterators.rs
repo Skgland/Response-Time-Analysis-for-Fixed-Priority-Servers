@@ -125,6 +125,22 @@ where
     }
 }
 
+impl<CI: CurveIterator> CurveIterator for &mut CI {
+    type CurveKind = CI::CurveKind;
+
+    fn next_window(&mut self) -> Option<Window<<Self::CurveKind as CurveType>::WindowKind>> {
+        CI::next_window(self)
+    }
+}
+
+impl<CI: CurveIterator> CurveIterator for Box<CI> {
+    type CurveKind = CI::CurveKind;
+
+    fn next_window(&mut self) -> Option<Window<<Self::CurveKind as CurveType>::WindowKind>> {
+        CI::next_window(self)
+    }
+}
+
 impl<I> Iterator for CurveIteratorIterator<I>
 where
     I: CurveIterator,
