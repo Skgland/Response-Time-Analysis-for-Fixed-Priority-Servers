@@ -1,0 +1,56 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8x]{inputenc}
+\usepackage{ucs}
+\usepackage[english]{babel}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage[left=2cm,right=2cm,top=2cm,bottom=2cm]{geometry}
+
+\usepackage{tikz}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.16}
+
+\usepgfplotslibrary{external}
+\tikzexternalize
+\tikzsetexternalprefix{build/}
+
+\author{Bennet Bleßmann}
+\begin{document}
+
+Recreation of graphics from original paper:
+
+
+Figure 4:
+
+\begin{tikzpicture}
+
+\begin{axis}[
+	width=\textwidth,
+	height=0.6\textwidth,
+	grid=both,
+	xlabel={Time},
+    ylabel={Execution Demand},
+	xtick={0,2,...,52},
+    ytick={0,1,...,25},
+    xmin=0,
+    xmax=52,
+    ymin=0,
+    ymax=25,
+    legend columns=3,
+    legend style={
+    	  draw=none,
+		  at={(axis description cs:0.5,-0.15)},
+		  anchor=north
+		}
+    ]
+\addplot[red,dashed,ultra thick] table [col sep=comma] {data/t1.csv};
+\addplot[green,ultra thick] table [col sep=comma] {data/t2.csv};
+\addplot[blue,densely dotted,ultra thick] table [x=x, y=y, col sep=comma] {data/t1andt2.csv};
+\legend{{Task1(C=1,T=5)}, {Task2(C=2,T=8)}, {Aggregated Demand}}
+\end{axis}
+
+\end{tikzpicture}
+
+\end{document}
