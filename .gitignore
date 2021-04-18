@@ -2,3 +2,4 @@
 Cargo.lock
 /.idea/
 /*.iml
+/rta-for-fps-*/target/

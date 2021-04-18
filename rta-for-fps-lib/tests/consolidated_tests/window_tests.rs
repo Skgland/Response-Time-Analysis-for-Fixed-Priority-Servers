@@ -1,4 +1,4 @@
-use rta_for_fps::window::{Demand, Supply, Window};
+use crate::rta_lib::window::{Demand, Supply, Window};
 
 #[test]
 fn aggregate_windows() {

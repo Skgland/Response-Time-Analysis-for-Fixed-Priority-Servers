@@ -1,8 +1,10 @@
-use rta_for_fps::curve::curve_types::UnspecifiedCurve;
-use rta_for_fps::curve::Curve;
-use rta_for_fps::iterators::curve::{AggregationIterator, CurveDeltaIterator, CurveSplitIterator};
-use rta_for_fps::time::TimeUnit;
-use rta_for_fps::window::{Demand, Overlap, Supply, Window};
+use crate::rta_lib::curve::curve_types::UnspecifiedCurve;
+use crate::rta_lib::curve::Curve;
+use crate::rta_lib::iterators::curve::{
+    AggregationIterator, CurveDeltaIterator, CurveSplitIterator,
+};
+use crate::rta_lib::time::TimeUnit;
+use crate::rta_lib::window::{Demand, Overlap, Supply, Window};
 
 #[test]
 fn aggregate_curves() {

@@ -5,13 +5,15 @@ mod system_tests;
 mod task_tests;
 mod window_tests;
 
+use rta_for_fps_lib as rta_lib;
+
 mod incorrect {
     use crate::broken_assumption::curve_has_no_non_trivial_overlap;
-    use rta_for_fps::iterators::CurveIterator;
-    use rta_for_fps::server::{Server, ServerKind};
-    use rta_for_fps::system::System;
-    use rta_for_fps::task::Task;
-    use rta_for_fps::time::TimeUnit;
+    use crate::rta_lib::iterators::CurveIterator;
+    use crate::rta_lib::server::{Server, ServerKind};
+    use crate::rta_lib::system::System;
+    use crate::rta_lib::task::Task;
+    use crate::rta_lib::time::TimeUnit;
 
     #[test]
     #[ignore]
@@ -59,9 +61,9 @@ mod incorrect {
 }
 
 mod util {
-    use rta_for_fps::curve::curve_types::CurveType;
-    use rta_for_fps::curve::Curve;
-    use rta_for_fps::iterators::CurveIterator;
+    use crate::rta_lib::curve::curve_types::CurveType;
+    use crate::rta_lib::curve::Curve;
+    use crate::rta_lib::iterators::CurveIterator;
 
     /// # Panics
     /// When the Curve represents not the same Curve as the the CurveIterator
