@@ -1,10 +1,10 @@
-use rta_for_fps::curve::Curve;
-use rta_for_fps::iterators::curve::AggregationIterator;
-use rta_for_fps::iterators::CurveIterator;
-use rta_for_fps::task::curve_types::TaskDemand;
-use rta_for_fps::task::Task;
-use rta_for_fps::time::TimeUnit;
-use rta_for_fps::window::Window;
+use crate::rta_lib::curve::Curve;
+use crate::rta_lib::iterators::curve::AggregationIterator;
+use crate::rta_lib::iterators::CurveIterator;
+use crate::rta_lib::task::curve_types::TaskDemand;
+use crate::rta_lib::task::Task;
+use crate::rta_lib::time::TimeUnit;
+use crate::rta_lib::window::Window;
 
 #[test]
 fn demand_curve() {

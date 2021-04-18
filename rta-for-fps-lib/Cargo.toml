@@ -1,0 +1,15 @@
+[package]
+name = "rta-for-fps-lib"
+version = "0.1.0"
+authors = ["Bennet Bleßmann <bennet.blessmann@stu.uni-kiel.de>"]
+edition = "2018"
+description = "An Implementation of the paper 'Response Time Analysis for Fixed Priority Servers' by Hamann et al"
+repository = "https://git.informatik.uni-kiel.de/stu201758/rta-for-fps-rs"
+keywords = ["analysis", "lib"]
+categories = ["algorithms", "science", "simulation"]
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]

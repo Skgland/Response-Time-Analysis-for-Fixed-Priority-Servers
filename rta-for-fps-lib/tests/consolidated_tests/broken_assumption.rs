@@ -1,12 +1,12 @@
-use rta_for_fps::curve::curve_types::CurveType;
-use rta_for_fps::curve::Curve;
-use rta_for_fps::iterators::CurveIterator;
-use rta_for_fps::server::{ActualServerExecution, Server, ServerKind};
-use rta_for_fps::system::System;
-use rta_for_fps::task::Task;
-use rta_for_fps::time::TimeUnit;
-use rta_for_fps::window::window_types::WindowType;
-use rta_for_fps::window::Window;
+use crate::rta_lib::curve::curve_types::CurveType;
+use crate::rta_lib::curve::Curve;
+use crate::rta_lib::iterators::CurveIterator;
+use crate::rta_lib::server::{ActualServerExecution, Server, ServerKind};
+use crate::rta_lib::system::System;
+use crate::rta_lib::task::Task;
+use crate::rta_lib::time::TimeUnit;
+use crate::rta_lib::window::window_types::WindowType;
+use crate::rta_lib::window::Window;
 
 #[test]
 // server 2 does not guarantee its budget every period, failing the algorithms assumption?
@@ -83,7 +83,7 @@ fn example_too_high() {
 
     let swh = system.system_wide_hyper_period(servers.len() - 1);
     let wcrt =
-        rta_for_fps::task::Task::worst_case_response_time(&system, servers.len() - 1, 0, swh);
+        crate::rta_lib::task::Task::worst_case_response_time(&system, servers.len() - 1, 0, swh);
 
     assert_eq!(
         wcrt,
@@ -163,7 +163,7 @@ fn example_too_low() {
     let swh = system.system_wide_hyper_period(servers.len() - 1);
 
     let wcrt =
-        rta_for_fps::task::Task::worst_case_response_time(&system, servers.len() - 1, 0, swh);
+        crate::rta_lib::task::Task::worst_case_response_time(&system, servers.len() - 1, 0, swh);
 
     assert_eq!(
         wcrt,
