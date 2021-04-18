@@ -3,3 +3,7 @@ Cargo.lock
 /.idea/
 /*.iml
 /rta-for-fps-*/target/
+*.csv
+/out/
+/latex/build/
+*.pdf
