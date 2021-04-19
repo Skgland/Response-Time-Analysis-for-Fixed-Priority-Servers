@@ -58,7 +58,7 @@ impl<T> Clone for Window<T> {
     }
 }
 
-impl<T: WindowType> Window<T> {
+impl<T> Window<T> {
     /// Create a new Window
     #[must_use]
     pub fn new<I: Into<TimeUnit>, E: Into<WindowEnd>>(start: I, end: E) -> Self {
@@ -103,7 +103,10 @@ impl<T: WindowType> Window<T> {
 
     /// Calculate the Window delta as defined in Definition 6. of the paper
     #[must_use]
-    pub fn delta<Q: WindowType>(supply: &Self, demand: &Window<Q>) -> WindowDeltaResult<T, Q> {
+    pub fn delta<Q: WindowType>(supply: &Self, demand: &Window<Q>) -> WindowDeltaResult<T, Q>
+    where
+        T: WindowType,
+    {
         if supply.end < demand.start {
             WindowDeltaResult {
                 remaining_supply_head: supply.clone(),

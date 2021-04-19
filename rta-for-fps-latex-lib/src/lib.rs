@@ -5,11 +5,11 @@ use rta_for_fps_lib::{
     curve::curve_types::CurveType, curve::Curve, window::Demand, window::Window,
 };
 
-pub struct DemandCurveDataPoints {
+pub struct TotalDemandCurve {
     steps: Vec<Window<Demand>>,
 }
 
-impl Display for DemandCurveDataPoints {
+impl Display for TotalDemandCurve {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "x,y")?;
         let mut summed_demand = 0;
@@ -32,10 +32,40 @@ impl Display for DemandCurveDataPoints {
     }
 }
 
-impl DemandCurveDataPoints {
+impl TotalDemandCurve {
     pub fn new<C: CurveType<WindowKind = Demand>>(curve: Curve<C>) -> Self {
-        DemandCurveDataPoints {
+        TotalDemandCurve {
             steps: curve.into_windows(),
+        }
+    }
+}
+
+pub struct CurveWindows<W> {
+    windows: Vec<Window<W>>,
+}
+
+impl<W> Display for CurveWindows<W> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        for window in self.windows.iter() {
+            let length = match window.length() {
+                WindowEnd::Finite(length) => length,
+                WindowEnd::Infinite => continue,
+            };
+            writeln!(
+                f,
+                "\\fill ({start}.0, 0.0) rectangle ++({length}.0, 1.0);",
+                start = window.start.as_unit(),
+                length = length.as_unit()
+            )?;
+        }
+        Ok(())
+    }
+}
+
+impl<W> CurveWindows<W> {
+    pub fn new<C: CurveType<WindowKind = W>>(curve: Curve<C>) -> Self {
+        CurveWindows {
+            windows: curve.into_windows(),
         }
     }
 }
