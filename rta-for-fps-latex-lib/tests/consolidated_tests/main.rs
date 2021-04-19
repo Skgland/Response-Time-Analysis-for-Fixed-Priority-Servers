@@ -1,4 +1,4 @@
-use rta_for_fps_latex_lib::DemandCurveDataPoints;
+use rta_for_fps_latex_lib::TotalDemandCurve;
 use rta_for_fps_lib::curve::AggregateExt;
 use rta_for_fps_lib::iterators::{CurveIterator, ReclassifyIterator};
 use rta_for_fps_lib::task::curve_types::TaskDemand;
@@ -12,7 +12,7 @@ fn figure_4_t1() {
         .into_iter()
         .take_while(|window| window.end <= TimeUnit::from(50));
 
-    let graph_data = DemandCurveDataPoints::new(t_1_curve.collect_curve()).to_string();
+    let graph_data = TotalDemandCurve::new(t_1_curve.collect_curve()).to_string();
 
     assert_eq!(
         graph_data,
@@ -49,7 +49,7 @@ fn figure_4_t2() {
         .into_iter()
         .take_while(|window| window.end <= TimeUnit::from(50));
 
-    let graph_data = DemandCurveDataPoints::new(t_2_curve.collect_curve()).to_string();
+    let graph_data = TotalDemandCurve::new(t_2_curve.collect_curve()).to_string();
 
     assert_eq!(
         graph_data,
@@ -85,7 +85,7 @@ fn figure_4_aggregate() {
                 .take_while(|window| window.end <= TimeUnit::from(50))
         })
         .aggregate::<ReclassifyIterator<_, TaskDemand>>();
-    let graph_data = DemandCurveDataPoints::new(aggregated_curve.collect_curve()).to_string();
+    let graph_data = TotalDemandCurve::new(aggregated_curve.collect_curve()).to_string();
     assert_eq!(
         graph_data,
         "\

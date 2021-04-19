@@ -1,4 +1,5 @@
 latex/recreate.pdf: latex/recreate.tex latex/data/*.csv
+	mkdir -p latex/build/figures/ latex/figures/
 	cd latex && pdflatex \
 		-synctex=1 \
 		-interaction=nonstopmode \
@@ -8,10 +9,9 @@ latex/recreate.pdf: latex/recreate.tex latex/data/*.csv
 
 latex/data/*.csv: run_gen
 
-
-.PHONY: build_gen
-build_gen:
+target/debug/rta-for-fps-latex-gen: rta-for-fps-latex-gen/src/**
 	cargo build
 
-run_gen: build_gen
+run_gen: target/debug/rta-for-fps-latex-gen
+	mkdir -p latex/data/
 	cargo run
