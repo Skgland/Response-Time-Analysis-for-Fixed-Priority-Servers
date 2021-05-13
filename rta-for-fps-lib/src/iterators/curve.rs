@@ -101,7 +101,7 @@ impl<C: CurveType> Iterator for CurveIter<C> {
 
 /// Wrapper for wrapping an Iterator into a `CurveIterator`
 #[derive(Debug)]
-struct IterCurveWrapper<I, C> {
+pub struct IterCurveWrapper<I, C> {
     /// the wrapped iterator
     iter: I,
 
