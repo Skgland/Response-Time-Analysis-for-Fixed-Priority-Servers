@@ -110,6 +110,8 @@ pub struct InternalActualExecutionIterator<AC, CDC> {
     spend_budget: TimeUnit,
     /// remaining constrained demand
     constrained_demand: Peeker<CurveIteratorIterator<CDC>, Window<Demand>>,
+    /// the peek of the remaining constrained demand that is not yet consumed
+    constrained_peek: Vec<Window<Demand>>,
 }
 
 impl<'a, AC: Clone, CDC: Clone> Clone for InternalActualExecutionIterator<AC, CDC> {
@@ -121,6 +123,7 @@ impl<'a, AC: Clone, CDC: Clone> Clone for InternalActualExecutionIterator<AC, CD
             current_group: self.current_group,
             spend_budget: self.spend_budget,
             constrained_demand: self.constrained_demand.clone(),
+            constrained_peek: self.constrained_peek.clone(),
         }
     }
 }
@@ -150,6 +153,7 @@ impl<AC, CDC> InternalActualExecutionIterator<AC, CDC> {
             current_group: 0,
             spend_budget: TimeUnit::ZERO,
             constrained_demand: Peeker::new(constrained_demand.into_iterator()),
+            constrained_peek: vec![],
         }
     }
 }
@@ -173,7 +177,10 @@ where
     // Algorithm 4. (4)
     fn next(&mut self) -> Option<Self::Item> {
         // (c)
-        let demand = self.constrained_demand.next();
+        let demand = self
+            .constrained_peek
+            .pop()
+            .or_else(|| self.constrained_demand.next());
 
         // as we typically deal with limited demand but endless supply
         // check demand first
@@ -219,7 +226,7 @@ where
                         let valid = Window::new(demand_window.start, valid_end);
                         let residual = Window::new(valid_end, demand_window.end);
 
-                        self.constrained_demand.restore_peek(residual);
+                        self.constrained_peek.push(residual);
                         valid
                     } else {
                         demand_window
@@ -253,10 +260,16 @@ where
                         .rev()
                         .for_each(|window| self.execution_peek.push(window));
 
+                    // Note: The paper does not account for excess demand window as R`_d,0 is not restored to the demand curve
+
+                    if !result.remaining_demand.is_empty() {
+                        self.constrained_peek.push(result.remaining_demand);
+                    }
+
                     break Some(result.overlap);
                 } else {
                     assert!(
-                        self.constrained_demand.next().is_none(),
+                        self.constrained_peek.pop().or_else(|| self.constrained_demand.next()).is_none(),
                         "While calculating the actual execution the supply dried up before the demand"
                     );
                     // out of demand and supply
