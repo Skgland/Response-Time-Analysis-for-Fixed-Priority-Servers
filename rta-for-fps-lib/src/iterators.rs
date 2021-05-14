@@ -177,6 +177,7 @@ where
 
 impl<W, P, CI> CurveIterator for TakeWhile<CI, P>
 where
+    W: WindowType,
     P: for<'r> FnMut(&'r Window<W>) -> bool,
     CI: CurveIterator + Iterator<Item = Window<W>>,
     CI::CurveKind: CurveType<WindowKind = W>,
