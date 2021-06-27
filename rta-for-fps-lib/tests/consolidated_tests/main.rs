@@ -1,5 +1,6 @@
 mod broken_assumption;
 mod curve_tests;
+mod loops;
 mod server_tests;
 mod system_tests;
 mod task_tests;

@@ -5,6 +5,7 @@ use crate::rta_lib::iterators::curve::{
 };
 use crate::rta_lib::time::TimeUnit;
 use crate::rta_lib::window::{Demand, Overlap, Supply, Window};
+use rta_for_fps_lib::iterators::CurveIterator;
 
 #[test]
 fn aggregate_curves() {
@@ -24,7 +25,7 @@ fn aggregate_curves() {
         ])
     };
 
-    let result = AggregationIterator::new(vec![c1.into_iter(), c2.into_iter()]);
+    let result = AggregationIterator::new(vec![c1.into_iter(), c2.into_iter()]).normalize();
 
     crate::util::assert_curve_eq(&c3, result);
 }

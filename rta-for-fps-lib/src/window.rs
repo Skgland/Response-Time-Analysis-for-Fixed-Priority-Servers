@@ -101,6 +101,11 @@ impl<T> Window<T> {
         !(self.end < other.start || other.end < self.start)
     }
 
+    #[must_use]
+    pub fn adjacent(&self, other: &Self) -> bool {
+        self.end == other.start || self.start == other.end
+    }
+
     /// Calculate the Window delta as defined in Definition 6. of the paper
     #[must_use]
     pub fn delta<Q: WindowType>(supply: &Self, demand: &Window<Q>) -> WindowDeltaResult<T, Q>

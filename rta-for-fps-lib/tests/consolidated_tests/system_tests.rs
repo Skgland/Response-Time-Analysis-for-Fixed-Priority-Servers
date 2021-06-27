@@ -140,6 +140,7 @@ fn executive_curve() {
 
     let c_execution_result = system
         .actual_execution_curve_iter(1)
+        .normalize()
         .take_while_curve(|window| window.end <= up_to);
 
     let expected_c_execution = unsafe {
@@ -182,6 +183,7 @@ fn response_time() {
 
     let c_s2 = system
         .actual_execution_curve_iter(server_index)
+        .normalize()
         .take_while_curve(|window| window.end <= TimeUnit::from(16));
 
     let expected = unsafe {

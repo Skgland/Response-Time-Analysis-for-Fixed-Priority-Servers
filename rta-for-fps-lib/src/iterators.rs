@@ -6,6 +6,7 @@ use std::marker::PhantomData;
 
 use crate::curve::curve_types::{CurveType, UnspecifiedCurve};
 use crate::iterators::curve::FromCurveIterator;
+use crate::iterators::join::JoinAdjacentIterator;
 use crate::window::window_types::WindowType;
 use crate::window::Window;
 
@@ -15,9 +16,9 @@ pub mod peek;
 pub mod server;
 pub mod task;
 
-/// Trait representing an Iterator that has the guarantees of a curve:
+/// Trait representing an Iterator that has almost the guarantees of a curve:
 /// 1. Windows ordered by start
-/// 2. Windows non-overlapping
+/// 2. Windows non-overlapping or adjacent (this differs from Curves as it allows adjacent windows)
 /// 3. Windows non-empty
 ///
 /// Or in other words all finite prefixes of the Iterator are a valid Curves
@@ -49,6 +50,20 @@ pub trait CurveIterator: Debug {
             iter: self,
             phantom: PhantomData,
         }
+    }
+
+    /// normalize the CurveIterator by combining adjacent windows
+    fn normalize(
+        self,
+    ) -> JoinAdjacentIterator<
+        CurveIteratorIterator<Self>,
+        <Self::CurveKind as CurveType>::WindowKind,
+        Self::CurveKind,
+    >
+    where
+        Self: Sized,
+    {
+        JoinAdjacentIterator::new_from_curve(self)
     }
 
     /// Basically [`std::iter::Iterator::take_while`] but for `CurveIterator`
