@@ -20,7 +20,8 @@ fn deferrable_server() {
 
     let result = server
         .constraint_demand_curve_iter()
-        .take_while_curve(|window| window.end <= TimeUnit::from(18));
+        .take_while_curve(|window| window.end <= TimeUnit::from(18))
+        .normalize();
 
     let expected_result = unsafe {
         // the example in the paper is confusing as

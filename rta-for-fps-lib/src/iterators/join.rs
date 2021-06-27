@@ -6,7 +6,7 @@ use std::marker::PhantomData;
 
 use crate::curve::curve_types::CurveType;
 use crate::iterators::peek::Peeker;
-use crate::iterators::CurveIterator;
+use crate::iterators::{CurveIterator, CurveIteratorIterator};
 use crate::window::Window;
 
 /// `CurveIterator` for turning an Iterator that returns ordered windows,
@@ -41,6 +41,22 @@ impl<I, W, C> JoinAdjacentIterator<I, W, C> {
     {
         JoinAdjacentIterator {
             iter: Peeker::new(iter.fuse()),
+            curve_type: PhantomData,
+        }
+    }
+}
+
+impl<C: CurveIterator>
+    JoinAdjacentIterator<
+        CurveIteratorIterator<C>,
+        <C::CurveKind as CurveType>::WindowKind,
+        C::CurveKind,
+    >
+{
+    pub fn new_from_curve(curve_iter: C) -> Self {
+        // Safety: Our Invariants are a subset of that of the CurveIterator
+        JoinAdjacentIterator {
+            iter: Peeker::new(curve_iter.into_iterator().fuse()),
             curve_type: PhantomData,
         }
     }

@@ -7,7 +7,6 @@ use std::iter::FusedIterator;
 use crate::curve::curve_types::CurveType;
 use crate::curve::{Curve, PartitionResult};
 use crate::iterators::curve::{AggregationIterator, CurveSplitIterator};
-use crate::iterators::join::JoinAdjacentIterator;
 use crate::iterators::peek::Peeker;
 use crate::iterators::CurveIterator;
 use crate::server::{AggregatedServerDemand, ConstrainedServerDemand, ServerProperties};
@@ -15,63 +14,17 @@ use crate::time::TimeUnit;
 use crate::window::WindowEnd;
 use crate::window::{Demand, Window};
 
-/// `CurveIterator` for `ConstrainedServerDemand`
-#[derive(Debug, Clone)]
-pub struct ConstrainedServerDemandIterator<I> {
-    /// internal Iterator
-    iter: Box<
-        JoinAdjacentIterator<
-            InternalConstrainedServerDemandIterator<I>,
-            Demand,
-            ConstrainedServerDemand,
-        >,
-    >,
-}
-
-impl<I> ConstrainedServerDemandIterator<I>
-where
-    I: CurveIterator<CurveKind = AggregatedServerDemand>,
-{
-    /// Create a new `ConstrainedServerDemandIterator`
-    pub fn new(server_properties: ServerProperties, aggregated_demand: I) -> Self {
-        let internal =
-            InternalConstrainedServerDemandIterator::new(server_properties, aggregated_demand);
-        let outer = unsafe {
-            // Safety:
-            // `InternalConstrainedServerDemandIterator` guarantees that the windows are in order and
-            // either non-overlapping or adjacent
-            JoinAdjacentIterator::new(internal)
-        };
-        ConstrainedServerDemandIterator {
-            iter: Box::new(outer),
-        }
-    }
-}
-
-impl<'a, I> CurveIterator for ConstrainedServerDemandIterator<I>
-where
-    I: CurveIterator<CurveKind = AggregatedServerDemand>,
-{
-    type CurveKind = ConstrainedServerDemand;
-
-    fn next_window(&mut self) -> Option<Window<<Self::CurveKind as CurveType>::WindowKind>> {
-        self.iter.next_window()
-    }
-}
-
 /// Type alias for the `WindowKind` of the `AggregatedServerDemand` `CurveType`
 /// to reduce type complexity
 type AggregateDemandWindow = <AggregatedServerDemand as CurveType>::WindowKind;
 
-/// Iterator used internally in the `ConstrainedServerDemandIterator`
-///
-/// When iterating returns windows in order that are either non-overlapping or adjacent
+/// `CurveIterator` for `ConstrainedServerDemand`
 ///
 /// used to calculate a Servers constrained demand curve,
 /// using the aggregated server demand curve
 /// based on the Algorithm 1. from the paper and described in Section 5.1 of the paper
 #[derive(Debug, Clone)]
-pub struct InternalConstrainedServerDemandIterator<I> {
+pub struct ConstrainedServerDemandIterator<I> {
     /// The Server for which to calculate the constrained demand
     server_properties: ServerProperties,
     /// The remaining aggregated Demand of the Server
@@ -83,7 +36,7 @@ pub struct InternalConstrainedServerDemandIterator<I> {
     remainder: Vec<Window<<ConstrainedServerDemand as CurveType>::WindowKind>>,
 }
 
-impl<'a, I> InternalConstrainedServerDemandIterator<I>
+impl<'a, I> ConstrainedServerDemandIterator<I>
 where
     I: CurveIterator<CurveKind = AggregatedServerDemand>,
 {
@@ -92,7 +45,7 @@ where
     pub fn new(server_properties: ServerProperties, aggregated_demand: I) -> Self {
         // Algorithm 1. (1)
         let split = CurveSplitIterator::new(aggregated_demand, server_properties.interval);
-        InternalConstrainedServerDemandIterator {
+        ConstrainedServerDemandIterator {
             server_properties,
             demand: Peeker::new(Box::new(split)),
             spill: None,
@@ -101,21 +54,21 @@ where
     }
 }
 
-impl<I: CurveIterator> FusedIterator for InternalConstrainedServerDemandIterator<I>
+impl<I: CurveIterator> FusedIterator for ConstrainedServerDemandIterator<I>
 where
     Self: Iterator,
     CurveSplitIterator<<AggregatedServerDemand as CurveType>::WindowKind, I>: FusedIterator,
 {
 }
 
-impl<I> Iterator for InternalConstrainedServerDemandIterator<I>
+impl<I> CurveIterator for ConstrainedServerDemandIterator<I>
 where
     I: CurveIterator<CurveKind = AggregatedServerDemand>,
 {
-    type Item = Window<<ConstrainedServerDemand as CurveType>::WindowKind>;
+    type CurveKind = ConstrainedServerDemand;
 
     // Algorithm 1. (2)
-    fn next(&mut self) -> Option<Self::Item> {
+    fn next_window(&mut self) -> Option<Window<<Self::CurveKind as CurveType>::WindowKind>> {
         #![allow(clippy::option_if_let_else)] // false positive, can't use map_or as the same value is moved in both branches
 
         if let Some(window) = self.remainder.pop() {
@@ -207,7 +160,7 @@ where
     }
 }
 
-impl<I> InternalConstrainedServerDemandIterator<I>
+impl<I> ConstrainedServerDemandIterator<I>
 where
     I: CurveIterator<CurveKind = AggregatedServerDemand>,
 {

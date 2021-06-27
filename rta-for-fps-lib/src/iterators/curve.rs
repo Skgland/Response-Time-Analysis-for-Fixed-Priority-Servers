@@ -45,7 +45,7 @@ impl<C: CurveType, T: FromIterator<Window<C::WindowKind>>> FromCurveIterator<C> 
 
 impl<C: CurveType> FromCurveIterator<C> for Curve<C> {
     fn from_curve_iter<CI: CurveIterator<CurveKind = C>>(iter: CI) -> Self {
-        let windows = iter.into_iterator().collect();
+        let windows = iter.normalize().into_iterator().collect();
         unsafe {
             // Safety:
             // windows collected from `CurveIterator`

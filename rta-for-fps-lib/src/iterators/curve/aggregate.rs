@@ -83,7 +83,10 @@ where
 
                 for (index, element) in iter {
                     if let Some(peek) = element.peek_ref() {
-                        if let Some(overlap_window) = overlap.aggregate(&*peek) {
+                        if let Some(overlap_window) = overlap
+                            .aggregate(&*peek)
+                            .filter(|_| !overlap.adjacent(&*peek))
+                        {
                             // update last aggregated index
                             aggregate_index = index;
                             // replace overlap with new overlap_window

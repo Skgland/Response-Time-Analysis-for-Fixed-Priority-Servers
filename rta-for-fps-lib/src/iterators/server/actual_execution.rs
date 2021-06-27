@@ -6,81 +6,12 @@ use std::iter::{FlatMap, FusedIterator};
 use crate::curve::curve_types::CurveType;
 use crate::curve::Curve;
 use crate::iterators::curve::CurveSplitIterator;
-use crate::iterators::join::JoinAdjacentIterator;
 use crate::iterators::peek::Peeker;
 use crate::iterators::{CurveIterator, CurveIteratorIterator};
-use crate::server::{
-    ActualServerExecution, ConstrainedServerDemand, ServerProperties, UnconstrainedServerExecution,
-};
+use crate::server::{ActualServerExecution, ServerProperties, UnconstrainedServerExecution};
 use crate::time::{TimeUnit, UnitNumber};
 use crate::window::WindowEnd;
 use crate::window::{Demand, Window};
-
-/// Type alias for the `WindowKind` of the `ActualServerExecution` `CurveType`
-/// to reduce type complexity
-type ActualExecutionWindow = <ActualServerExecution as CurveType>::WindowKind;
-
-/// `CurveIterator` for `ActualServerExecution`
-///
-/// Calculate the Constrained Execution Curve using Algorithm 4. from the paper
-///
-/// For a server and its unconstrained execution curve as well as its constrained demand calculate th actual execution
-///
-#[derive(Debug, Clone)]
-pub struct ActualServerExecutionIterator<AC, DC> {
-    /// internal Iterator
-    iter: Box<
-        JoinAdjacentIterator<
-            InternalActualExecutionIterator<AC, CurveIteratorIterator<DC>>,
-            ActualExecutionWindow,
-            ActualServerExecution,
-        >,
-    >,
-}
-
-impl<AC, DC> ActualServerExecutionIterator<AC, DC> {
-    /// Create a new `ActualExecutionIterator`
-    /// for the server and its `available_execution` as well as its `constrained_demand`
-    ///
-    /// Takes a reference to a Server, the Servers constrained execution curve and the Servers constrained demand curve
-    ///
-    pub fn new(
-        server_properties: ServerProperties,
-        available_execution: AC,
-        constrained_demand: DC,
-    ) -> Self
-    where
-        AC: CurveIterator<CurveKind = UnconstrainedServerExecution>,
-        DC: CurveIterator<CurveKind = ConstrainedServerDemand>,
-    {
-        let inner = InternalActualExecutionIterator::new(
-            server_properties,
-            available_execution,
-            constrained_demand.into_iterator(),
-        );
-        let outer = unsafe {
-            // Safety:
-            // `InternalActualExecutionIterator` guarantees that the windows are in order and
-            // either non-overlapping or adjacent
-            JoinAdjacentIterator::new(inner)
-        };
-        ActualServerExecutionIterator {
-            iter: Box::new(outer),
-        }
-    }
-}
-
-impl<AC, DC> CurveIterator for ActualServerExecutionIterator<AC, DC>
-where
-    AC: CurveIterator<CurveKind = UnconstrainedServerExecution>,
-    DC: CurveIterator<CurveKind = ConstrainedServerDemand>,
-{
-    type CurveKind = ActualServerExecution;
-
-    fn next_window(&mut self) -> Option<Window<<Self::CurveKind as CurveType>::WindowKind>> {
-        self.iter.next_window()
-    }
-}
 
 /// type alias for the type used in `InternalActualExecutionIterator`
 /// for easier naming
@@ -90,12 +21,15 @@ type FlattenedSplitAvailableSupply<AC> = FlatMap<
     fn((UnitNumber, Curve<UnconstrainedServerExecution>)) -> Curve<UnconstrainedServerExecution>,
 >;
 
-/// `CurveIterator` for calculating the actual execution of a Server
+/// `CurveIterator` for `ActualServerExecution`
 ///
-/// The resulting windows are in order and either adjacent or non-overlapping
+/// Calculate the Actual Execution Curve using Algorithm 4. from the paper
+///
+/// For a server and its unconstrained execution curve as well as its constrained demand calculate the actual execution
+///
 ///
 #[derive(Debug)]
-pub struct InternalActualExecutionIterator<AC, CDC> {
+pub struct ActualServerExecutionIterator<AC, CDC> {
     /// the server for which to calculate the actual execution
     server_properties: ServerProperties,
     /// the remaining available execution
@@ -114,9 +48,9 @@ pub struct InternalActualExecutionIterator<AC, CDC> {
     constrained_peek: Vec<Window<Demand>>,
 }
 
-impl<'a, AC: Clone, CDC: Clone> Clone for InternalActualExecutionIterator<AC, CDC> {
+impl<'a, AC: Clone, CDC: Clone> Clone for ActualServerExecutionIterator<AC, CDC> {
     fn clone(&self) -> Self {
-        InternalActualExecutionIterator {
+        ActualServerExecutionIterator {
             server_properties: self.server_properties,
             available_execution: self.available_execution.clone(),
             execution_peek: self.execution_peek.clone(),
@@ -128,7 +62,7 @@ impl<'a, AC: Clone, CDC: Clone> Clone for InternalActualExecutionIterator<AC, CD
     }
 }
 
-impl<AC, CDC> InternalActualExecutionIterator<AC, CDC> {
+impl<AC, CDC> ActualServerExecutionIterator<AC, CDC> {
     /// Create a new `ActualExecutionIterator`
     /// Takes a reference to a Server, the Servers constrained execution curve and the Servers constrained demand curve
     #[must_use]
@@ -146,7 +80,7 @@ impl<AC, CDC> InternalActualExecutionIterator<AC, CDC> {
         let split_execution =
             CurveSplitIterator::new(available_execution, server_properties.interval);
 
-        InternalActualExecutionIterator {
+        ActualServerExecutionIterator {
             server_properties,
             available_execution: Box::new(split_execution),
             execution_peek: Vec::new(),
@@ -158,7 +92,7 @@ impl<AC, CDC> InternalActualExecutionIterator<AC, CDC> {
     }
 }
 
-impl<AC, CDC> FusedIterator for InternalActualExecutionIterator<AC, CDC>
+impl<AC, CDC> FusedIterator for ActualServerExecutionIterator<AC, CDC>
 where
     Self: Iterator,
     FlattenedSplitAvailableSupply<AC>: FusedIterator,
@@ -166,16 +100,15 @@ where
 {
 }
 
-impl<AC, CDC> Iterator for InternalActualExecutionIterator<AC, CDC>
+impl<AC, CDC> CurveIterator for ActualServerExecutionIterator<AC, CDC>
 where
     AC: CurveIterator<CurveKind = UnconstrainedServerExecution>,
     CDC: CurveIterator,
     CDC::CurveKind: CurveType<WindowKind = Demand>,
 {
-    type Item = Window<<ActualServerExecution as CurveType>::WindowKind>;
-
+    type CurveKind = ActualServerExecution;
     // Algorithm 4. (4)
-    fn next(&mut self) -> Option<Self::Item> {
+    fn next_window(&mut self) -> Option<Window<<Self::CurveKind as CurveType>::WindowKind>> {
         // (c)
         let demand = self
             .constrained_peek
