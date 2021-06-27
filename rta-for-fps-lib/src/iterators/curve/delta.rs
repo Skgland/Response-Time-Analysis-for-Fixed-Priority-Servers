@@ -154,7 +154,7 @@ impl<I: CurveIterator, C: CurveType> CurveIterator for InverseCurveIterator<I, C
                     let result = Window::new(previous_end, window.start);
                     self.previous_end = window.end;
                     return Some(result);
-                } else if self.previous_end == TimeUnit::ZERO {
+                } else if self.previous_end == window.start {
                     self.previous_end = window.end;
                     match self.previous_end {
                         WindowEnd::Finite(end) => previous_end = end,
