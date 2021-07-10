@@ -85,11 +85,11 @@ impl<AC, CDC> ActualServerExecutionIterator<AC, CDC> {
         ActualServerExecutionIterator {
             server_properties,
             available_execution: Box::new(split_execution),
-            execution_peek: Vec::new(),
+            execution_peek: Vec::with_capacity(2), // I think 2 is the maximum size that is ever used
             current_group: 0,
             spend_budget: TimeUnit::ZERO,
             constrained_demand: Peeker::new(constrained_demand.into_iterator()),
-            constrained_peek: alloc::vec![],
+            constrained_peek: Vec::with_capacity(2), // I think 2 is the maximum size that is ever used, also when there are two we should be able to aggregate them
         }
     }
 }
