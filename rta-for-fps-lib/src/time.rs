@@ -1,8 +1,8 @@
 //! Module defining a Unit of Time
 
-use std::fmt::{Debug, Formatter};
-use std::iter::Sum;
-use std::ops::{Add, AddAssign, Div, Mul, Sub};
+use core::fmt::{Debug, Formatter};
+use core::iter::Sum;
+use core::ops::{Add, AddAssign, Div, Mul, Sub};
 
 mod util {
     //! Utility Module for the time module
@@ -37,8 +37,8 @@ pub type UnitNumber = usize;
 pub struct TimeUnit(UnitNumber);
 
 impl Debug for TimeUnit {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Debug::fmt(&self.0, f)
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        core::fmt::Debug::fmt(&self.0, f)
     }
 }
 

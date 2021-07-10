@@ -1,8 +1,8 @@
 //! Module for the Implementation of the `WindowEnd` type (to be renamed)
 
-use std::cmp::Ordering;
-use std::iter::Sum;
-use std::ops::{Add, AddAssign, Sub};
+use core::cmp::Ordering;
+use core::iter::Sum;
+use core::ops::{Add, AddAssign, Sub};
 
 use crate::time::TimeUnit;
 

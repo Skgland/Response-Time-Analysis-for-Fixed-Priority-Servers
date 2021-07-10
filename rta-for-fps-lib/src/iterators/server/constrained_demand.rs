@@ -1,8 +1,11 @@
 //! Module for the implementation of the `CurveIterator`s used to calculate
 //! the constrained demand curve of a Server
 
-use std::cmp::Ordering;
-use std::iter::FusedIterator;
+use core::cmp::Ordering;
+use core::iter::FusedIterator;
+
+use alloc::boxed::Box;
+use alloc::vec::Vec;
 
 use crate::curve::curve_types::CurveType;
 use crate::curve::{Curve, PartitionResult};
@@ -90,7 +93,7 @@ where
                         Ordering::Equal => {
                             // spill spilled into next_group
 
-                            let mut windows = vec![group_head.take()];
+                            let mut windows = alloc::vec![group_head.take()];
 
                             for window in &mut self.demand {
                                 if window.budget_group(self.server_properties.interval)
@@ -108,7 +111,7 @@ where
                                 unsafe { Curve::from_windows_unchecked(windows) };
 
                             // Handle next_group and spill
-                            let curve: Curve<_> = AggregationIterator::new(vec![
+                            let curve: Curve<_> = AggregationIterator::new(alloc::vec![
                                 next_group.into_iter(),
                                 Curve::new(spill).into_iter(),
                             ])
@@ -127,7 +130,7 @@ where
                     let k_group_head = group_head.start / self.server_properties.interval;
                     // no spill, only next group
 
-                    let mut windows = vec![group_head.take()];
+                    let mut windows = alloc::vec![group_head.take()];
 
                     for window in &mut self.demand {
                         if window.budget_group(self.server_properties.interval) == k_group_head {
@@ -180,7 +183,7 @@ where
         self.remainder.extend(
             windows
                 .drain(..index)
-                .chain(std::iter::once(head).filter(|window| !window.is_empty()))
+                .chain(core::iter::once(head).filter(|window| !window.is_empty()))
                 .rev(),
         );
 

@@ -1,6 +1,7 @@
 //! Module for the implementation of the Curve aggregate operation using iterators
 
-use std::iter::Fuse;
+use alloc::vec::Vec;
+use core::iter::Fuse;
 
 use crate::curve::curve_types::CurveType;
 use crate::curve::Aggregate;

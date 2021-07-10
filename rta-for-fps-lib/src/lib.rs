@@ -24,6 +24,9 @@
 #![warn(clippy::unimplemented)]
 #![warn(clippy::unwrap_in_result)]
 #![warn(clippy::unwrap_used)]
+// we require alloc though
+#![no_std]
+extern crate alloc;
 
 pub mod time;
 

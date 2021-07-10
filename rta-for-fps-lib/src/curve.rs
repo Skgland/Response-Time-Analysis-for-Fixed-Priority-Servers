@@ -2,7 +2,8 @@
 //!
 //! and all associated functions
 
-use std::fmt::Debug;
+use alloc::vec::Vec;
+use core::fmt::Debug;
 
 use curve_types::CurveType;
 
@@ -47,11 +48,11 @@ impl<T: CurveType> Curve<T> {
     pub fn new(window: Window<T::WindowKind>) -> Self {
         let windows = if window.is_empty() {
             // Empty windows can be ignored
-            vec![]
+            alloc::vec![]
         } else {
             // A Curve with only a single has
             // the windows always ordered and non-overlapping
-            vec![window]
+            alloc::vec![window]
         };
 
         Self { windows }
@@ -72,7 +73,9 @@ impl<T: CurveType> Curve<T> {
     /// Create a new empty Curve
     #[must_use]
     pub fn empty() -> Self {
-        Self { windows: vec![] }
+        Self {
+            windows: alloc::vec![],
+        }
     }
 
     /// Create a new Curve from the given Vector of Windows

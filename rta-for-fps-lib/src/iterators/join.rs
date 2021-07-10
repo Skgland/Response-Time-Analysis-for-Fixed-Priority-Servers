@@ -1,8 +1,8 @@
 //! Module for the implementation of the `JoinAdjacentIterator`
 
-use std::fmt::Debug;
-use std::iter::Fuse;
-use std::marker::PhantomData;
+use core::fmt::Debug;
+use core::iter::Fuse;
+use core::marker::PhantomData;
 
 use crate::curve::curve_types::CurveType;
 use crate::iterators::peek::Peeker;

@@ -1,7 +1,7 @@
 //! Module defining the Window and its operations
 
-use std::fmt::Debug;
-use std::marker::PhantomData;
+use core::fmt::Debug;
+use core::marker::PhantomData;
 
 use crate::time::{TimeUnit, UnitNumber};
 use crate::window::window_types::WindowType;
@@ -9,7 +9,7 @@ use crate::window::window_types::WindowType;
 pub mod window_types {
     //!  Module for the `WindowType` trait
 
-    use std::fmt::Debug;
+    use core::fmt::Debug;
 
     use crate::seal::Seal;
     use crate::window::{Demand, Overlap, Supply};

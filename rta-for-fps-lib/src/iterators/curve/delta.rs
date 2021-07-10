@@ -1,8 +1,11 @@
 //! Module for the implementation of the Curve delta operation using iterators
 
-use std::fmt::Debug;
-use std::iter::FusedIterator;
-use std::marker::PhantomData;
+use core::fmt::Debug;
+use core::iter::FusedIterator;
+use core::marker::PhantomData;
+
+use alloc::boxed::Box;
+use alloc::vec::Vec;
 
 use crate::curve::curve_types::CurveType;
 use crate::iterators::curve::IterCurveWrapper;
@@ -296,8 +299,11 @@ where
                         let remaining_supply = &mut self.remaining_supply;
 
                         // remember remaining supply
-                        vec![remaining_supply_head, remaining_supply_tail]
-                            .into_iter()
+
+                        // FIXME should this ever use rust edition 2021 once that is released
+                        // currently can't just call .into_iter() on the array
+                        // due to backwards compatibility in rust edition 2018
+                        IntoIterator::into_iter([remaining_supply_head, remaining_supply_tail])
                             .filter(|window| !window.is_empty())
                             .rev()
                             .for_each(|window| remaining_supply.push(window));

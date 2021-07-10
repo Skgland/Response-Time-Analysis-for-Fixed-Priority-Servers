@@ -1,8 +1,8 @@
 //! Module for the `Peeker` and `PeekRef` implementation and definition
 
-use std::marker::PhantomData;
-use std::ops::{Deref, DerefMut};
-use std::ptr::NonNull;
+use core::marker::PhantomData;
+use core::ops::{Deref, DerefMut};
+use core::ptr::NonNull;
 
 /// Smart Pointer to a Peek Element
 /// allows viewing, modifying and taking the Peek Element
@@ -40,7 +40,7 @@ impl<'a, I> PeekRef<'a, I> {
         let option_ref = NonNull::from(&*option);
         option
             .as_mut()
-            .and_then(std::option::Option::as_mut)
+            .and_then(core::option::Option::as_mut)
             .map(|inner| PeekRef {
                 container: option_ref,
                 inner: NonNull::from(inner),
@@ -94,7 +94,7 @@ impl<'a, I> PeekRef<'a, I> {
     }
 }
 
-/// A version of the standard libraries [`Peekable`](std::iter::Peekable) that lets one restore/replace/clear the peek element
+/// A version of the standard libraries [`Peekable`](core::iter::Peekable) that lets one restore/replace/clear the peek element
 #[derive(Debug, Clone)]
 pub struct Peeker<I, IT> {
     /// The iterator we are peeking into
