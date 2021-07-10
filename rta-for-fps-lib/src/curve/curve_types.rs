@@ -1,6 +1,7 @@
 //! Definition and implementations of `CurveType` trait and
 
-use std::fmt::Debug;
+use core::fmt::Debug;
+use core::marker::PhantomData;
 
 use crate::seal::Seal;
 use crate::server::{
@@ -12,7 +13,6 @@ use crate::task::curve_types::{
 };
 use crate::window::window_types::WindowType;
 use crate::window::{Demand, Overlap, Supply};
-use std::marker::PhantomData;
 
 /// Sealed Marker Trait for Curve Types
 pub trait CurveType: Seal + Debug {

@@ -1,6 +1,7 @@
 //! Module for the implementation of the Curve split operation using iterators
 
-use std::iter::FusedIterator;
+use alloc::boxed::Box;
+use core::iter::FusedIterator;
 
 use crate::curve::curve_types::CurveType;
 use crate::iterators::CurveIterator;

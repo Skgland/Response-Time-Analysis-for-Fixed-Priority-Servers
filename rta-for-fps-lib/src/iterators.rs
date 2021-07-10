@@ -1,8 +1,9 @@
 //! Module for the Iterator based implementation
 
-use std::fmt::Debug;
-use std::iter::{Empty, Fuse, TakeWhile};
-use std::marker::PhantomData;
+use alloc::boxed::Box;
+use core::fmt::Debug;
+use core::iter::{Empty, Fuse, TakeWhile};
+use core::marker::PhantomData;
 
 use crate::curve::curve_types::{CurveType, UnspecifiedCurve};
 use crate::iterators::curve::FromCurveIterator;

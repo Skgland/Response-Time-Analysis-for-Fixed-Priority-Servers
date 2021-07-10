@@ -1,7 +1,9 @@
 //! Module for the implementation of the `CurveIterator`s used to calculate
 //! the actual execution curve of a Server
 
-use std::iter::{FlatMap, FusedIterator};
+use alloc::boxed::Box;
+use alloc::vec::Vec;
+use core::iter::{FlatMap, FusedIterator, IntoIterator};
 
 use crate::curve::curve_types::CurveType;
 use crate::curve::Curve;
@@ -87,7 +89,7 @@ impl<AC, CDC> ActualServerExecutionIterator<AC, CDC> {
             current_group: 0,
             spend_budget: TimeUnit::ZERO,
             constrained_demand: Peeker::new(constrained_demand.into_iterator()),
-            constrained_peek: vec![],
+            constrained_peek: alloc::vec![],
         }
     }
 }
@@ -187,11 +189,16 @@ where
                     // as the remaining_supply_head should always be useless and as such returned for the next next call
                     // we would still need to store it in between the call
 
-                    vec![result.remaining_supply_head, result.remaining_supply_tail]
-                        .into_iter()
-                        .filter(|window| !window.is_empty())
-                        .rev()
-                        .for_each(|window| self.execution_peek.push(window));
+                    // FIXME should this ever use rust edition 2021 once that is released
+                    // currently can't just call .into_iter() on the array
+                    // due to backwards compatibility in rust edition 2018
+                    IntoIterator::into_iter([
+                        result.remaining_supply_head,
+                        result.remaining_supply_tail,
+                    ])
+                    .filter(|window| !window.is_empty())
+                    .rev()
+                    .for_each(|window| self.execution_peek.push(window));
 
                     // Note: The paper does not account for excess demand window as R`_d,0 is not restored to the demand curve
 

@@ -5,9 +5,11 @@
 //! also `FromIterator` implementation for `Curve`
 //!
 
-use std::fmt::Debug;
-use std::iter::{FromIterator, FusedIterator};
-use std::marker::PhantomData;
+use core::fmt::Debug;
+use core::iter::{FromIterator, FusedIterator};
+use core::marker::PhantomData;
+
+use alloc::vec::Vec;
 
 pub use aggregate::AggregationIterator;
 pub use delta::{
