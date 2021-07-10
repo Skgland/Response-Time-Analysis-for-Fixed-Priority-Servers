@@ -226,7 +226,7 @@ impl<DI: CurveIterator, SI: CurveIterator>
         CurveDeltaIterator {
             demand: Some(Peeker::new(Box::new(demand).into_iterator())),
             supply: Some(Box::new(supply)),
-            remaining_supply: Vec::new(),
+            remaining_supply: Vec::with_capacity(2), // I think 2 is the maximum size that is ever used
         }
     }
 
