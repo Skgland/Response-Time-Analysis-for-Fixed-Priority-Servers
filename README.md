@@ -4,6 +4,11 @@ Response Time Analysis for Fixed Priority Servers implemented in Rust
 This Project is an implementation of the paper [Response Time Analysis for Fixed Priority Servers][1] by Hamann et al.
 written in [Rust].
 
+The Project consists of three parts
+1. `rta-for-fps-lib` containing a library with the paper implementation
+1. `rta-for-fps-latex-lib` a library to help with generation latex diagrams from the output of the main library
+1. `rta-for-fps-latex-gen` an example usage of both libraries recreating a few of the papers figures
+
 The goal behind this project is a better understanding of said paper as preparation for writing a seminar paper.
 
 The implementation tries to reference the paper where practical and improve on it with type safety.

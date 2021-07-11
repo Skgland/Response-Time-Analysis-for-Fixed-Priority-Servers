@@ -33,7 +33,7 @@ mod delta;
 mod split;
 
 /// Trait to construct a value of a type from a `CurveIterator`
-/// Mirroring [`std::iter::FromIterator`]
+/// Mirroring [`core::iter::FromIterator`]
 pub trait FromCurveIterator<C: CurveType> {
     /// Construct a value from iter
     fn from_curve_iter<CI: CurveIterator<CurveKind = C>>(iter: CI) -> Self;

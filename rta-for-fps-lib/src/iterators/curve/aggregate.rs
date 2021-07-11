@@ -46,19 +46,15 @@ where
     type CurveKind = I::CurveKind;
 
     fn next_window(&mut self) -> Option<Window<Demand>> {
-        #![allow(clippy::option_if_let_else)] // false positive
-
         // find curve with earliest peek
         let result = self
             .curves
             .iter_mut()
             .enumerate()
             .filter_map(|(index, element)| {
-                if let Some(some_ref) = element.peek_ref() {
-                    Some((index, some_ref.start, some_ref))
-                } else {
-                    None
-                }
+                element
+                    .peek_ref()
+                    .map(|some_ref| (index, some_ref.start, some_ref))
             })
             .min_by_key(|(_, start, _)| *start)
             .map(|(index, _, some_ref)| (index, some_ref.take()));
