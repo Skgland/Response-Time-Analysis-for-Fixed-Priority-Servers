@@ -35,6 +35,8 @@ impl<I, W, C> JoinAdjacentIterator<I, W, C> {
     /// # Safety
     ///
     /// The Iterator I must return Windows in order that are either don't overlap or at most adjacent
+    ///
+    /// When possible use the safe alternative `JoinAdjacentIterator::new_from_curve`
     pub unsafe fn new(iter: I) -> Self
     where
         I: Iterator<Item = Window<W>>,
@@ -53,6 +55,7 @@ impl<C: CurveIterator>
         C::CurveKind,
     >
 {
+    /// Create a `JoinAdjacentIterator` from a `CurveIterator`
     pub fn new_from_curve(curve_iter: C) -> Self {
         // Safety: Our Invariants are a subset of that of the CurveIterator
         JoinAdjacentIterator {

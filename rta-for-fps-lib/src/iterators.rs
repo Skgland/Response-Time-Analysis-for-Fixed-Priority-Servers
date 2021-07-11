@@ -32,7 +32,7 @@ pub trait CurveIterator: Debug {
     /// advancing the iterator in the process
     fn next_window(&mut self) -> Option<Window<<Self::CurveKind as CurveType>::WindowKind>>;
 
-    /// collect the iterator mirroring [`std::iter::Iterator::collect`]
+    /// collect the iterator mirroring [`core::iter::Iterator::collect`]
     #[must_use]
     fn collect_curve<R: FromCurveIterator<Self::CurveKind>>(self) -> R
     where
@@ -53,7 +53,7 @@ pub trait CurveIterator: Debug {
         }
     }
 
-    /// normalize the CurveIterator by combining adjacent windows
+    /// normalize the `CurveIterator` by combining adjacent windows
     fn normalize(
         self,
     ) -> JoinAdjacentIterator<
@@ -67,7 +67,7 @@ pub trait CurveIterator: Debug {
         JoinAdjacentIterator::new_from_curve(self)
     }
 
-    /// Basically [`std::iter::Iterator::take_while`] but for `CurveIterator`
+    /// Basically [`core::iter::Iterator::take_while`] but for `CurveIterator`
     fn take_while_curve<F>(self, fun: F) -> TakeWhile<CurveIteratorIterator<Self>, F>
     where
         Self: Sized,
@@ -76,7 +76,7 @@ pub trait CurveIterator: Debug {
         self.into_iterator().take_while(fun)
     }
 
-    /// Basically [`std::iter::Iterator::fuse`] but for `CurveIterator`
+    /// Basically [`core::iter::Iterator::fuse`] but for `CurveIterator`
     fn fuse_curve(self) -> Fuse<CurveIteratorIterator<Self>>
     where
         Self: Sized,

@@ -71,7 +71,7 @@ impl<T> Window<T> {
 
     /// Create a new empty Window
     #[must_use]
-    pub fn empty() -> Self {
+    pub const fn empty() -> Self {
         Window {
             start: TimeUnit::ZERO,
             end: WindowEnd::Finite(TimeUnit::ZERO),
@@ -101,6 +101,9 @@ impl<T> Window<T> {
         !(self.end < other.start || other.end < self.start)
     }
 
+    /// Determine if two windows are adjacent, a special case of overlapping
+    ///
+    /// Used by `AggregationIterator` to take advantage of the relaxed invariant of `CurveIterator` as opposed to `Curve`
     #[must_use]
     pub fn adjacent(&self, other: &Self) -> bool {
         self.end == other.start || self.start == other.end
