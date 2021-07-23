@@ -1,6 +1,6 @@
 [package]
 name = "rta-for-fps-lib"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Bennet Bleßmann <bennet.blessmann@stu.uni-kiel.de>"]
 edition = "2018"
 description = "An Implementation of the paper 'Response Time Analysis for Fixed Priority Servers' by Hamann et al"
