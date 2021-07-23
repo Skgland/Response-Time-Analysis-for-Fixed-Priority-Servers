@@ -7,24 +7,28 @@ use crate::curve::curve_types::CurveType;
 use crate::curve::Aggregate;
 use crate::iterators::peek::Peeker;
 use crate::iterators::{CurveIterator, CurveIteratorIterator, ReclassifyIterator};
-use crate::server::{AggregatedServerDemand, ConstrainedServerDemand, HigherPriorityServerDemand};
+use crate::server::{
+    ActualServerExecution, AggregatedServerDemand, ConstrainedServerDemand,
+    HigherPriorityServerDemand, HigherPriorityServerExecution,
+};
 use crate::task::curve_types::{HigherPriorityTaskDemand, TaskDemand};
-use crate::window::{Demand, Window};
+use crate::window::Window;
+use core::fmt::Debug;
 
 /// Iterator for Aggregating two Curve Iterators
 ///
 /// Aggregate multiple (Demand) Curves as defined in Definition 5. of the paper
 ///
 #[derive(Debug, Clone)]
-pub struct AggregationIterator<I> {
+pub struct AggregationIterator<I, W> {
     /// The CurveIterators to aggregate
-    curves: Vec<Peeker<Fuse<CurveIteratorIterator<I>>, Window<Demand>>>,
+    curves: Vec<Peeker<Fuse<CurveIteratorIterator<I>>, Window<W>>>,
 }
 
-impl<I> AggregationIterator<I>
+impl<I, W> AggregationIterator<I, W>
 where
     I: CurveIterator,
-    I::CurveKind: CurveType<WindowKind = Demand>,
+    I::CurveKind: CurveType<WindowKind = W>,
 {
     /// Create a new `AggregationIterator`
     #[must_use]
@@ -38,14 +42,15 @@ where
     }
 }
 
-impl<I> CurveIterator for AggregationIterator<I>
+impl<I, W> CurveIterator for AggregationIterator<I, W>
 where
     I: CurveIterator,
-    I::CurveKind: CurveType<WindowKind = Demand>,
+    I::CurveKind: CurveType<WindowKind = W>,
+    W: Debug,
 {
     type CurveKind = I::CurveKind;
 
-    fn next_window(&mut self) -> Option<Window<Demand>> {
+    fn next_window(&mut self) -> Option<Window<W>> {
         // find curve with earliest peek
         let result = self
             .curves
@@ -111,16 +116,18 @@ pub trait AggregateInto<Result = Self>: CurveType {}
 
 impl<T: CurveType> AggregateInto for T {}
 
+impl AggregateInto<HigherPriorityServerExecution> for ActualServerExecution {}
 impl AggregateInto<HigherPriorityServerDemand> for ConstrainedServerDemand {}
 
 impl AggregateInto<AggregatedServerDemand> for TaskDemand {}
 impl AggregateInto<HigherPriorityTaskDemand> for TaskDemand {}
 
-impl<AI, O> Aggregate<AI> for ReclassifyIterator<AggregationIterator<AI>, O>
+impl<AI, O, W> Aggregate<AI> for ReclassifyIterator<AggregationIterator<AI, W>, O>
 where
     <AI as CurveIterator>::CurveKind: AggregateInto<O>,
     AI: CurveIterator,
-    AI::CurveKind: CurveType<WindowKind = Demand>,
+    AI::CurveKind: CurveType<WindowKind = W>,
+    W: Debug,
 {
     fn aggregate<I>(iter: I) -> Self
     where

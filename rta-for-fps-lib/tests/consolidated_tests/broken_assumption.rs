@@ -43,7 +43,7 @@ fn remarks() {
     let task = &servers[server_index].as_tasks()[task_index];
     let j = 24;
     let arrival = task.job_arrival(j - 1);
-    let execution = Task::actual_execution_curve_iter(&system, server_index, task_index)
+    let execution = Task::original_actual_execution_curve_iter(&system, server_index, task_index)
         .take_while_curve(|window| window.end <= swh)
         .collect_curve();
 
@@ -53,7 +53,7 @@ fn remarks() {
 
     assert_eq!(completed, TimeUnit::from(4754 * 2));
 
-    let result = Task::worst_case_response_time(&system, 1, 0, swh);
+    let result = Task::original_worst_case_response_time(&system, 1, 0, swh);
 
     assert_eq!(result, TimeUnit::from(308));
 }
@@ -82,8 +82,12 @@ fn example_too_high() {
     let system = System::new(servers);
 
     let swh = system.system_wide_hyper_period(servers.len() - 1);
-    let wcrt =
-        crate::rta_lib::task::Task::worst_case_response_time(&system, servers.len() - 1, 0, swh);
+    let wcrt = crate::rta_lib::task::Task::original_worst_case_response_time(
+        &system,
+        servers.len() - 1,
+        0,
+        swh,
+    );
 
     assert_eq!(
         wcrt,
@@ -110,15 +114,15 @@ fn execution_overlap_too_high() {
     let up_to = TimeUnit::from(48);
 
     let s1 = system
-        .actual_execution_curve_iter(0)
+        .original_actual_execution_curve_iter(0)
         .take_while_curve(|window| window.end <= up_to)
         .collect_curve();
     let s2: Curve<ActualServerExecution> = system
-        .actual_execution_curve_iter(1)
+        .original_actual_execution_curve_iter(1)
         .take_while_curve(|window| window.end <= up_to)
         .collect_curve();
     let s3: Curve<ActualServerExecution> = system
-        .actual_execution_curve_iter(2)
+        .original_actual_execution_curve_iter(2)
         .take_while_curve(|window| window.end <= up_to)
         .collect_curve();
 
@@ -162,8 +166,12 @@ fn example_too_low() {
 
     let swh = system.system_wide_hyper_period(servers.len() - 1);
 
-    let wcrt =
-        crate::rta_lib::task::Task::worst_case_response_time(&system, servers.len() - 1, 0, swh);
+    let wcrt = crate::rta_lib::task::Task::original_worst_case_response_time(
+        &system,
+        servers.len() - 1,
+        0,
+        swh,
+    );
 
     assert_eq!(
         wcrt,
@@ -191,19 +199,19 @@ fn execution_overlap_too_low() {
     let up_to = TimeUnit::from(48);
 
     let s1: Curve<ActualServerExecution> = system
-        .actual_execution_curve_iter(0)
+        .original_actual_execution_curve_iter(0)
         .take_while_curve(|window| window.end <= up_to)
         .collect_curve();
     let s2: Curve<ActualServerExecution> = system
-        .actual_execution_curve_iter(1)
+        .original_actual_execution_curve_iter(1)
         .take_while_curve(|window| window.end <= up_to)
         .collect_curve();
     let s3: Curve<ActualServerExecution> = system
-        .actual_execution_curve_iter(2)
+        .original_actual_execution_curve_iter(2)
         .take_while_curve(|window| window.end <= up_to)
         .collect_curve();
     let s4: Curve<ActualServerExecution> = system
-        .actual_execution_curve_iter(3)
+        .original_actual_execution_curve_iter(3)
         .take_while_curve(|window| window.end <= up_to)
         .collect_curve();
 

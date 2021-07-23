@@ -108,12 +108,33 @@ impl Task {
     ///
     /// Based on Definition 14. (3) of the paper
     #[must_use]
-    pub fn actual_execution_curve_iter<'a>(
+    pub fn original_actual_execution_curve_iter<'a>(
         system: &'a System,
         server_index: usize,
         task_index: usize,
     ) -> impl CurveIterator<CurveKind = ActualTaskExecution> + Clone + 'a {
-        let asec = system.actual_execution_curve_iter(server_index);
+        let asec = system.original_actual_execution_curve_iter(server_index);
+        let hptd = Task::higher_priority_task_demand_iter(
+            system.as_servers()[server_index].as_tasks(),
+            task_index,
+        );
+
+        let available_execution_curve = Task::available_execution_curve_impl(asec, hptd);
+
+        let task_demand_curve =
+            system.as_servers()[server_index].as_tasks()[task_index].into_iter();
+
+        CurveDeltaIterator::new(available_execution_curve, task_demand_curve)
+            .overlap::<ActualTaskExecution>()
+    }
+
+    #[must_use]
+    pub fn fixed_actual_execution_curve_iter<'a>(
+        system: &'a System,
+        server_index: usize,
+        task_index: usize,
+    ) -> impl CurveIterator<CurveKind = ActualTaskExecution> + Clone + 'a {
+        let asec = system.fixed_actual_execution_curve_iter(server_index);
         let hptd = Task::higher_priority_task_demand_iter(
             system.as_servers()[server_index].as_tasks(),
             task_index,
@@ -140,7 +161,7 @@ impl Task {
     /// # Panics
     /// When sanity checks fail
     #[must_use]
-    pub fn worst_case_response_time(
+    pub fn original_worst_case_response_time(
         system: &System,
         server_index: usize,
         task_index: usize,
@@ -149,7 +170,64 @@ impl Task {
         let swh = arrival_before;
 
         let actual_execution_time_iter =
-            Task::actual_execution_curve_iter(system, server_index, task_index);
+            Task::original_actual_execution_curve_iter(system, server_index, task_index);
+
+        let task = &system.as_servers()[server_index].as_tasks()[task_index];
+
+        // arrival of the last job that starts before the swh
+        let last_job = (swh - task.offset - TimeUnit::ONE) / task.interval;
+
+        let total_execution = (last_job + 1) * task.demand;
+        let mut provided = WindowEnd::Finite(TimeUnit::ZERO);
+
+        let actual_execution_time: Curve<_> = actual_execution_time_iter
+            .take_while_curve(|task| {
+                let take = provided < total_execution;
+                provided += task.length();
+                take
+            })
+            .collect_curve();
+
+        // sanity check that last_job arrival is before swh
+        assert!(
+            task.job_arrival(last_job) < swh,
+            "Last job should arrive before the system wide hyper period"
+        );
+
+        // sanity check that job after last_job is not before swh
+        assert!(
+            swh <= task.job_arrival(last_job + 1),
+            "The job after the last job would arrive after or at the system wide hyper period"
+        );
+
+        assert!(
+            WindowEnd::Finite((last_job + 1) * task.demand) <= actual_execution_time.capacity(),
+            "There should be enough capacity for the last job"
+        );
+
+        (0..=last_job)
+            .into_iter()
+            .map(|job| {
+                let arrival = task.job_arrival(job);
+                let t = (job + 1) * task.demand;
+
+                Task::time_to_provide(&actual_execution_time, t) - arrival
+            })
+            .max()
+            .unwrap_or(TimeUnit::ZERO)
+    }
+
+    #[must_use]
+    pub fn fixed_worst_case_response_time(
+        system: &System,
+        server_index: usize,
+        task_index: usize,
+        arrival_before: TimeUnit,
+    ) -> TimeUnit {
+        let swh = arrival_before;
+
+        let actual_execution_time_iter =
+            Task::fixed_actual_execution_curve_iter(system, server_index, task_index);
 
         let task = &system.as_servers()[server_index].as_tasks()[task_index];
 

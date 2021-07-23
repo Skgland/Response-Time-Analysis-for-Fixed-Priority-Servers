@@ -17,9 +17,13 @@ pub struct AggregatedServerDemand;
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
 pub struct ConstrainedServerDemand;
 
-/// Marker Type for aggregated higher server server demand curve
+/// Marker Type for aggregated higher priority server demand curve
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
 pub struct HigherPriorityServerDemand;
+
+/// Marker Type for aggregated higher priority server actual Execution curve
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
+pub struct HigherPriorityServerExecution;
 
 /// Marker Type for unconstrained server demand curve
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]

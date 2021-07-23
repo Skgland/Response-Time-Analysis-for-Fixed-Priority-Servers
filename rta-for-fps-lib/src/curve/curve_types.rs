@@ -6,7 +6,7 @@ use core::marker::PhantomData;
 use crate::seal::Seal;
 use crate::server::{
     ActualServerExecution, AggregatedServerDemand, ConstrainedServerDemand,
-    HigherPriorityServerDemand, UnconstrainedServerExecution,
+    HigherPriorityServerDemand, HigherPriorityServerExecution, UnconstrainedServerExecution,
 };
 use crate::task::curve_types::{
     ActualTaskExecution, AvailableTaskExecution, HigherPriorityTaskDemand, TaskDemand,
@@ -34,6 +34,10 @@ impl CurveType for ConstrainedServerDemand {
 
 impl CurveType for HigherPriorityServerDemand {
     type WindowKind = <ConstrainedServerDemand as CurveType>::WindowKind;
+}
+
+impl CurveType for HigherPriorityServerExecution {
+    type WindowKind = Overlap<Supply, Demand>;
 }
 
 impl CurveType for UnconstrainedServerExecution {

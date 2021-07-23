@@ -1,16 +1,19 @@
 //! Module for the System type
 
 use crate::curve::AggregateExt;
-use crate::iterators::curve::{CapacityCheckIterator, InverseCurveIterator};
+use crate::iterators::curve::{AggregationIterator, CapacityCheckIterator, InverseCurveIterator};
 
 use crate::server::{
     ActualServerExecution, ConstrainedServerDemand, HigherPriorityServerDemand, Server,
     UnconstrainedServerExecution,
 };
 
+use crate::curve::curve_types::CurveType;
 use crate::iterators::server::actual_execution::ActualServerExecutionIterator;
-use crate::iterators::{CurveIterator, ReclassifyIterator};
+use crate::iterators::{ClonableCurveIterator, CurveIterator, ReclassifyIterator};
 use crate::time::TimeUnit;
+use alloc::boxed::Box;
+use alloc::vec::Vec;
 
 /// Type representing a System of Servers
 #[derive(Debug)]
@@ -52,6 +55,31 @@ impl<'a> System<'a> {
             .aggregate::<ReclassifyIterator<_, _>>()
     }
 
+    pub fn aggregated_higher_priority_actual_execution_curve_iter<'b>(
+        &'b self,
+        server_index: usize,
+    ) -> AggregationIterator<
+        Box<dyn ClonableCurveIterator<'b, CurveKind = ActualServerExecution> + 'b>,
+        <ActualServerExecution as CurveType>::WindowKind,
+    > {
+        let mut curves: Vec<Box<dyn ClonableCurveIterator<CurveKind = ActualServerExecution>>> =
+            alloc::vec::Vec::with_capacity(2);
+
+        if server_index > 0 {
+            curves.push(Box::new(
+                self.fixed_actual_execution_curve_iter(server_index - 1),
+            ));
+            if server_index > 1 {
+                let curve = self
+                    .aggregated_higher_priority_actual_execution_curve_iter(server_index - 1)
+                    .reclassify();
+                curves.push(Box::new(curve));
+            }
+        }
+
+        AggregationIterator::new(curves)
+    }
+
     /// Calculate the system wide hyper period
     /// accounting for all servers and tasks
     /// up to and including the server with priority `server_index`
@@ -76,7 +104,7 @@ impl<'a> System<'a> {
     ///
     /// See Definition 13. of the paper for reference
     #[must_use]
-    pub fn unconstrained_server_execution_curve_iter(
+    pub fn original_unconstrained_server_execution_curve_iter(
         &self,
         server_index: usize,
     ) -> impl CurveIterator<CurveKind = UnconstrainedServerExecution> + Clone + '_ {
@@ -91,6 +119,16 @@ impl<'a> System<'a> {
         InverseCurveIterator::new(ahpc)
     }
 
+    #[must_use]
+    pub fn fixed_unconstrained_server_execution_curve_iter(
+        &self,
+        server_index: usize,
+    ) -> impl CurveIterator<CurveKind = UnconstrainedServerExecution> + Clone + '_ {
+        let ahpc = self.aggregated_higher_priority_actual_execution_curve_iter(server_index);
+
+        InverseCurveIterator::new(ahpc)
+    }
+
     /// Calculate the Constrained Execution Curve using Algorithm 4. from the paper
     /// TODO more detail, what do the parameters mean
     /// # Panics
@@ -98,12 +136,39 @@ impl<'a> System<'a> {
     /// When a server is not guaranteed its capacity every interval
     ///
     #[must_use]
-    pub fn actual_execution_curve_iter(
+    pub fn original_actual_execution_curve_iter(
         &self,
         server_index: usize,
     ) -> impl CurveIterator<CurveKind = ActualServerExecution> + Clone + '_ {
         let unchecked_unconstrained_execution =
-            self.unconstrained_server_execution_curve_iter(server_index);
+            self.original_unconstrained_server_execution_curve_iter(server_index);
+
+        let props = self.servers[server_index].properties;
+
+        // split unconstrained execution curve into groups every server.interval
+        // and check that each group has at least server.capacity of capacity
+        let checked_unconstrained_execution = CapacityCheckIterator::new(
+            unchecked_unconstrained_execution,
+            props.capacity,
+            props.interval,
+        );
+
+        let constrained_demand = self.servers[server_index].constraint_demand_curve_iter();
+
+        ActualServerExecutionIterator::new(
+            self.servers[server_index].properties,
+            checked_unconstrained_execution,
+            constrained_demand,
+        )
+    }
+
+    #[must_use]
+    pub fn fixed_actual_execution_curve_iter(
+        &self,
+        server_index: usize,
+    ) -> impl CurveIterator<CurveKind = ActualServerExecution> + Clone + '_ {
+        let unchecked_unconstrained_execution =
+            self.fixed_unconstrained_server_execution_curve_iter(server_index);
 
         let props = self.servers[server_index].properties;
 

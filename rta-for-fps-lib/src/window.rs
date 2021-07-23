@@ -169,9 +169,7 @@ impl<T> Window<T> {
     pub fn budget_group(&self, interval: TimeUnit) -> UnitNumber {
         self.start / interval
     }
-}
 
-impl Window<Demand> {
     /// Calculate the aggregation (⊕) of two windows as defined in Definition 4. of the paper
     #[must_use]
     pub fn aggregate(&self, other: &Self) -> Option<Self> {
@@ -181,6 +179,14 @@ impl Window<Demand> {
             let end = start + self.length() + other.length();
             Window::new(start, end)
         })
+    }
+
+    pub fn reclassify<R>(self) -> Window<R> {
+        Window {
+            start: self.start,
+            end: self.end,
+            window_type: PhantomData,
+        }
     }
 }
 
