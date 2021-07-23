@@ -1,5 +1,6 @@
 mod broken_assumption;
 mod curve_tests;
+mod fixed_actual_execution;
 mod loops;
 mod server_tests;
 mod system_tests;
@@ -39,10 +40,10 @@ mod incorrect {
         let swh1 = system.system_wide_hyper_period(1);
         let swh2 = system.system_wide_hyper_period(2);
         let aes1 = system
-            .actual_execution_curve_iter(1)
+            .original_actual_execution_curve_iter(1)
             .take_while_curve(|window| window.end <= swh1);
         let aes2 = system
-            .actual_execution_curve_iter(2)
+            .original_actual_execution_curve_iter(2)
             .take_while_curve(|window| window.end <= swh2);
 
         let aes1c = aes1.collect_curve();
@@ -53,10 +54,10 @@ mod incorrect {
         let result = curve_has_no_non_trivial_overlap(&aes1c, &aes2c);
         assert!(result, "check for no non-trivial overlaps");
 
-        let wcrt1 = Task::worst_case_response_time(&system, 1, 0, swh1);
+        let wcrt1 = Task::original_worst_case_response_time(&system, 1, 0, swh1);
         assert_eq!(wcrt1, TimeUnit::from(12));
 
-        let wcrt2 = Task::worst_case_response_time(&system, 2, 0, swh2);
+        let wcrt2 = Task::original_worst_case_response_time(&system, 2, 0, swh2);
         assert_eq!(wcrt2, TimeUnit::from(6));
     }
 }

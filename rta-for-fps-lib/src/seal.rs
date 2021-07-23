@@ -3,7 +3,7 @@
 use crate::curve::curve_types::UnspecifiedCurve;
 use crate::server::{
     ActualServerExecution, AggregatedServerDemand, ConstrainedServerDemand,
-    HigherPriorityServerDemand, UnconstrainedServerExecution,
+    HigherPriorityServerDemand, HigherPriorityServerExecution, UnconstrainedServerExecution,
 };
 use crate::task::curve_types::{
     ActualTaskExecution, AvailableTaskExecution, HigherPriorityTaskDemand, TaskDemand,
@@ -27,6 +27,7 @@ impl<W: WindowType> Seal for UnspecifiedCurve<W> {}
 impl Seal for AggregatedServerDemand {}
 impl Seal for ConstrainedServerDemand {}
 impl Seal for HigherPriorityServerDemand {}
+impl Seal for HigherPriorityServerExecution {}
 impl Seal for UnconstrainedServerExecution {}
 impl Seal for ActualServerExecution {}
 

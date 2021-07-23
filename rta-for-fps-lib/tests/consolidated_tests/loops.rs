@@ -10,7 +10,7 @@ fn issue8() {
     let servers: &[_] = &[Server::new(&tasks, 3.into(), 3.into(), Deferrable)];
     let system = System::new(&servers);
     let response_time =
-        Task::worst_case_response_time(&system, 0, 1, system.system_wide_hyper_period(0));
+        Task::original_worst_case_response_time(&system, 0, 1, system.system_wide_hyper_period(0));
     // For the analysis up to the SWH this is correct but in general it should be 2
     assert_eq!(response_time, TimeUnit::from(1))
 }

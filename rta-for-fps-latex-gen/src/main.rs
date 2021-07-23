@@ -74,9 +74,11 @@ fn main() -> std::io::Result<()> {
         .to_string(),
     )?;
 
-    let execution =
-        CurveSplitIterator::new(system.unconstrained_server_execution_curve_iter(1), limit)
-            .take_while(|window| window.end <= limit);
+    let execution = CurveSplitIterator::new(
+        system.original_unconstrained_server_execution_curve_iter(1),
+        limit,
+    )
+    .take_while(|window| window.end <= limit);
 
     std::fs::write(
         "latex/data/unconstrained_execution.tex",
@@ -99,8 +101,9 @@ fn main() -> std::io::Result<()> {
         .to_string(),
     )?;
 
-    let actual_execution = CurveSplitIterator::new(system.actual_execution_curve_iter(1), limit)
-        .take_while(|window| window.end <= limit);
+    let actual_execution =
+        CurveSplitIterator::new(system.original_actual_execution_curve_iter(1), limit)
+            .take_while(|window| window.end <= limit);
 
     std::fs::write(
         "latex/data/actual_execution.tex",
