@@ -1,6 +1,6 @@
 [package]
 name = "rta-for-fps-latex-gen"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Bennet Bleßmann <bb-github@t-online.de>"]
 edition = "2018"
 description = "An example usage of rta-for-fps-latex-lib reproducing a few figures from the paper 'Response Time Analysis for Fixed Priority Servers' by Hamann et al"
@@ -13,5 +13,5 @@ readme = "../README.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rta-for-fps-lib = { version = "0.1.0", path = "../rta-for-fps-lib" }
-rta-for-fps-latex-lib = { version = "0.1.0", path = "../rta-for-fps-latex-lib" }
+rta-for-fps-lib = { version = "0.2.0", path = "../rta-for-fps-lib" }
+rta-for-fps-latex-lib = { version = "0.2.0", path = "../rta-for-fps-latex-lib" }
