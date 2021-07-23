@@ -99,6 +99,22 @@ impl<'a> System<'a> {
             .fold(TimeUnit::ONE, TimeUnit::lcm)
     }
 
+    pub fn analysis_end(&self, server_index: usize) -> TimeUnit {
+        let res = self.servers[..=server_index]
+            .iter()
+            .map(|server| (server.properties.interval, TimeUnit::ZERO))
+            .chain(self.servers.iter().flat_map(|server| {
+                server
+                    .as_tasks()
+                    .iter()
+                    .map(|task| (task.interval, task.offset))
+            }))
+            .fold((TimeUnit::ONE, TimeUnit::ZERO), |acc, next| {
+                (TimeUnit::lcm(acc.0, next.0), acc.1.max(next.1))
+            });
+        res.0 + res.1
+    }
+
     /// Calculate the unconstrained execution curve
     /// for the server with priority `index`.
     ///
