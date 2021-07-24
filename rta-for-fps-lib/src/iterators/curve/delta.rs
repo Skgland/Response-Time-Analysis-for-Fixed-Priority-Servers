@@ -211,6 +211,27 @@ impl<S, D, SI, DI> CurveDeltaIterator<D, S, DI, SI> {
             end_supply: None,
         }
     }
+
+    /// Turn the `CurveDeltaIterator` into a `CurveIterator` that returns only the Overlap Windows
+    #[must_use]
+    pub fn overlap<C: CurveType<WindowKind = Overlap<S, D>>>(
+        self,
+    ) -> OverlapIterator<DI, SI, D, S, C>
+    where
+        Self: Iterator<Item = Delta<D, S, DI, SI>>,
+        Self: Clone + Debug,
+    {
+        let fun: fn(_) -> _ = Delta::overlap;
+        let inner = self.filter_map(fun);
+        let wrapped = unsafe {
+            // Safety
+            // self is an iterator of three interleaved curves, but using filter_map
+            // we filter only one out
+            // so the remaining iterator is a valid curve
+            IterCurveWrapper::new(inner)
+        };
+        OverlapIterator(wrapped)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -252,38 +273,6 @@ impl<DI: CurveIterator, SI: CurveIterator>
             supply: Some(Box::new(supply)),
             remaining_supply: Vec::with_capacity(2), // I think 2 is the maximum size that is ever used
         }
-    }
-
-    /// Turn the `CurveDeltaIterator` into a `CurveIterator` that returns only the Overlap Windows
-    pub fn overlap<
-        C: CurveType<
-            WindowKind = Overlap<
-                <SI::CurveKind as CurveType>::WindowKind,
-                <DI::CurveKind as CurveType>::WindowKind,
-            >,
-        >,
-    >(
-        self,
-    ) -> OverlapIterator<
-        DI,
-        SI,
-        <DI::CurveKind as CurveType>::WindowKind,
-        <SI::CurveKind as CurveType>::WindowKind,
-        C,
-    >
-    where
-        Self: Clone + Debug,
-    {
-        let fun: fn(_) -> _ = Delta::overlap;
-        let inner = self.filter_map(fun);
-        let wrapped = unsafe {
-            // Safety
-            // self is an iterator of three interleaved curves, but using filter_map
-            // we filter only one out
-            // so the remaining iterator is a valid curve
-            IterCurveWrapper::new(inner)
-        };
-        OverlapIterator(wrapped)
     }
 }
 
