@@ -10,7 +10,6 @@ use crate::iterators::curve::FromCurveIterator;
 use crate::iterators::join::JoinAdjacentIterator;
 use crate::window::window_types::WindowType;
 use crate::window::Window;
-use core::ops::DerefMut;
 
 pub mod curve;
 pub mod join;
@@ -94,28 +93,6 @@ pub trait CurveIterator: Debug {
     }
 }
 
-pub trait ClonableCurveIterator<'b>: CurveIterator + 'b {
-    fn clone_box(&self) -> Box<dyn ClonableCurveIterator<'b, CurveKind = Self::CurveKind> + 'b>;
-}
-
-impl<'b, T> ClonableCurveIterator<'b> for T
-where
-    T: 'b + CurveIterator + Clone,
-{
-    fn clone_box(&self) -> Box<dyn ClonableCurveIterator<'b, CurveKind = Self::CurveKind> + 'b> {
-        Box::new(self.clone())
-    }
-}
-
-impl<'a, C: CurveType> Clone for Box<dyn ClonableCurveIterator<'a, CurveKind = C> + 'a>
-where
-    C: 'a,
-{
-    fn clone(&self) -> Self {
-        self.clone_box()
-    }
-}
-
 /// `CurveIterator` wrapper to change the Curve type to any compatibly `CurveType`
 #[derive(Debug)]
 pub struct ReclassifyIterator<I, O> {
@@ -143,6 +120,38 @@ where
 
     fn next_window(&mut self) -> Option<Window<O::WindowKind>> {
         self.iter.next_window().map(Window::reclassify)
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum EitherCurveIterator<L, R> {
+    Left(L),
+    Right(R),
+}
+
+impl<L, R> EitherCurveIterator<L, R> {
+    pub fn left(left: L) -> Self {
+        Self::Left(left)
+    }
+
+    pub fn right(right: R) -> Self {
+        Self::Right(right)
+    }
+}
+
+impl<L, R, K> CurveIterator for EitherCurveIterator<L, R>
+where
+    K: CurveType,
+    L: CurveIterator<CurveKind = K>,
+    R: CurveIterator<CurveKind = K>,
+{
+    type CurveKind = K;
+
+    fn next_window(&mut self) -> Option<Window<<Self::CurveKind as CurveType>::WindowKind>> {
+        match self {
+            EitherCurveIterator::Left(left) => left.next_window(),
+            EitherCurveIterator::Right(right) => right.next_window(),
+        }
     }
 }
 
@@ -177,17 +186,6 @@ impl<CI: CurveIterator> CurveIterator for Box<CI> {
 
     fn next_window(&mut self) -> Option<Window<<Self::CurveKind as CurveType>::WindowKind>> {
         CI::next_window(self)
-    }
-}
-
-impl<'b, C> CurveIterator for Box<dyn ClonableCurveIterator<'b, CurveKind = C>>
-where
-    C: CurveType,
-{
-    type CurveKind = C;
-
-    fn next_window(&mut self) -> Option<Window<<Self::CurveKind as CurveType>::WindowKind>> {
-        self.deref_mut().next_window()
     }
 }
 

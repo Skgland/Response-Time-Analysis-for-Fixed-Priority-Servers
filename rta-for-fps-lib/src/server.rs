@@ -4,10 +4,13 @@
 
 use crate::curve::AggregateExt;
 
+use crate::iterators::curve::AggregationIterator;
 use crate::iterators::server::constrained_demand::ConstrainedServerDemandIterator;
-use crate::iterators::{CurveIterator, ReclassifyIterator};
+use crate::iterators::task::TaskDemandIterator;
+use crate::iterators::ReclassifyIterator;
 use crate::task::Task;
 use crate::time::TimeUnit;
+use crate::window::Demand;
 
 /// Marker Type for aggregated server demand curve
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
@@ -72,6 +75,11 @@ pub enum ServerKind {
     Periodic,
 }
 
+pub type AggregatedTaskDemand =
+    ReclassifyIterator<AggregationIterator<TaskDemandIterator, Demand>, AggregatedServerDemand>;
+
+pub type ConstrainedDemand = ConstrainedServerDemandIterator<AggregatedTaskDemand>;
+
 impl<'a> Server<'a> {
     /// Create a new Server with the given Tasks and properties
     #[must_use]
@@ -100,9 +108,7 @@ impl<'a> Server<'a> {
     /// Calculate the aggregated demand Curve of a given Server up to a specified limit
     /// As defined in Definition 11. in the paper
     #[must_use]
-    pub fn aggregated_demand_curve_iter(
-        &self,
-    ) -> impl CurveIterator<CurveKind = AggregatedServerDemand> + Clone + '_ {
+    pub fn aggregated_demand_curve_iter(&self) -> AggregatedTaskDemand {
         self.tasks
             .iter()
             .map(|task| task.into_iter())
@@ -111,9 +117,7 @@ impl<'a> Server<'a> {
 
     /// Calculate the constrained demand curve
     #[must_use]
-    pub fn constraint_demand_curve_iter(
-        &self,
-    ) -> impl CurveIterator<CurveKind = ConstrainedServerDemand> + Clone + '_ {
+    pub fn constraint_demand_curve_iter(&self) -> ConstrainedDemand {
         ConstrainedServerDemandIterator::new(self.properties, self.aggregated_demand_curve_iter())
     }
 }
