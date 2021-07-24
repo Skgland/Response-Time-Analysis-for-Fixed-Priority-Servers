@@ -4,14 +4,15 @@ use crate::curve::AggregateExt;
 use crate::iterators::curve::{AggregationIterator, CapacityCheckIterator, InverseCurveIterator};
 
 use crate::server::{
-    ActualServerExecution, ConstrainedServerDemand, HigherPriorityServerDemand, Server,
-    UnconstrainedServerExecution,
+    ActualServerExecution, ConstrainedDemand, ConstrainedServerDemand, HigherPriorityServerDemand,
+    HigherPriorityServerExecution, Server, UnconstrainedServerExecution,
 };
 
 use crate::curve::curve_types::CurveType;
 use crate::iterators::server::actual_execution::ActualServerExecutionIterator;
-use crate::iterators::{ClonableCurveIterator, CurveIterator, ReclassifyIterator};
+use crate::iterators::{CurveIterator, EitherCurveIterator, ReclassifyIterator};
 use crate::time::TimeUnit;
+use crate::window::Window;
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 
@@ -21,6 +22,40 @@ pub struct System<'a> {
     /// The Servers of the System
     servers: &'a [Server<'a>],
 }
+
+#[derive(Clone, Debug)]
+pub struct AggregatedHPExecution(
+    ReclassifyIterator<
+        AggregationIterator<
+            EitherCurveIterator<
+                ActualExecution,
+                ReclassifyIterator<Box<AggregatedHPExecution>, ActualServerExecution>,
+            >,
+            <ActualServerExecution as CurveType>::WindowKind,
+        >,
+        HigherPriorityServerExecution,
+    >,
+);
+
+impl CurveIterator for AggregatedHPExecution {
+    type CurveKind = HigherPriorityServerExecution;
+
+    fn next_window(&mut self) -> Option<Window<<Self::CurveKind as CurveType>::WindowKind>> {
+        self.0.next_window()
+    }
+}
+
+pub type UnconstrainedExecution =
+    InverseCurveIterator<AggregatedHPExecution, UnconstrainedServerExecution>;
+
+pub type ActualExecution = ActualServerExecutionIterator<
+    CapacityCheckIterator<
+        <<UnconstrainedExecution as CurveIterator>::CurveKind as CurveType>::WindowKind,
+        UnconstrainedExecution,
+        <UnconstrainedExecution as CurveIterator>::CurveKind,
+    >,
+    ConstrainedDemand,
+>;
 
 impl<'a> System<'a> {
     /// Create a new System from a slice of Servers,
@@ -55,29 +90,26 @@ impl<'a> System<'a> {
             .aggregate::<ReclassifyIterator<_, _>>()
     }
 
-    pub fn aggregated_higher_priority_actual_execution_curve_iter<'b>(
-        &'b self,
+    pub fn aggregated_higher_priority_actual_execution_curve_iter(
+        &self,
         server_index: usize,
-    ) -> AggregationIterator<
-        Box<dyn ClonableCurveIterator<'b, CurveKind = ActualServerExecution> + 'b>,
-        <ActualServerExecution as CurveType>::WindowKind,
-    > {
-        let mut curves: Vec<Box<dyn ClonableCurveIterator<CurveKind = ActualServerExecution>>> =
-            alloc::vec::Vec::with_capacity(2);
+    ) -> AggregatedHPExecution {
+        let mut curves: Vec<EitherCurveIterator<_, _>> = alloc::vec::Vec::with_capacity(2);
 
         if server_index > 0 {
-            curves.push(Box::new(
+            curves.push(EitherCurveIterator::Left(
                 self.fixed_actual_execution_curve_iter(server_index - 1),
             ));
             if server_index > 1 {
-                let curve = self
-                    .aggregated_higher_priority_actual_execution_curve_iter(server_index - 1)
-                    .reclassify();
-                curves.push(Box::new(curve));
+                let curve = Box::new(
+                    self.aggregated_higher_priority_actual_execution_curve_iter(server_index - 1),
+                )
+                .reclassify();
+                curves.push(EitherCurveIterator::Right(curve));
             }
         }
 
-        AggregationIterator::new(curves)
+        AggregatedHPExecution(curves.into_iter().aggregate())
     }
 
     /// Calculate the system wide hyper period
@@ -139,7 +171,7 @@ impl<'a> System<'a> {
     pub fn fixed_unconstrained_server_execution_curve_iter(
         &self,
         server_index: usize,
-    ) -> impl CurveIterator<CurveKind = UnconstrainedServerExecution> + Clone + '_ {
+    ) -> UnconstrainedExecution {
         let ahpc = self.aggregated_higher_priority_actual_execution_curve_iter(server_index);
 
         InverseCurveIterator::new(ahpc)
@@ -179,10 +211,7 @@ impl<'a> System<'a> {
     }
 
     #[must_use]
-    pub fn fixed_actual_execution_curve_iter(
-        &self,
-        server_index: usize,
-    ) -> impl CurveIterator<CurveKind = ActualServerExecution> + Clone + '_ {
+    pub fn fixed_actual_execution_curve_iter(&self, server_index: usize) -> ActualExecution {
         let unchecked_unconstrained_execution =
             self.fixed_unconstrained_server_execution_curve_iter(server_index);
 
