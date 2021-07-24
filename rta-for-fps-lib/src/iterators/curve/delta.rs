@@ -1,7 +1,7 @@
 //! Module for the implementation of the Curve delta operation using iterators
 
 use core::fmt::Debug;
-use core::iter::FusedIterator;
+use core::iter::{FilterMap, FusedIterator};
 use core::marker::PhantomData;
 
 use alloc::boxed::Box;
@@ -18,7 +18,7 @@ use crate::window::{Overlap, Window, WindowDeltaResult};
 
 /// Item type of the `CurveDeltaIterator`
 #[derive(Debug)]
-pub enum Delta<S, D, SI, DI> {
+pub enum Delta<D, S, DI, SI> {
     /// Indicate a Window of remaining supply
     RemainingSupply(Window<S>),
     /// Remaining Supply once Demand ran out
@@ -31,7 +31,7 @@ pub enum Delta<S, D, SI, DI> {
     EndDemand(Peeker<CurveIteratorIterator<Box<DI>>, Window<D>>),
 }
 
-impl<S, D, SI, DI> Delta<S, D, SI, DI> {
+impl<D, S, DI, SI> Delta<D, S, DI, SI> {
     /// turn delta into some overlap or none otherwise
     #[must_use]
     pub fn overlap(self) -> Option<Window<Overlap<S, D>>> {
@@ -213,6 +213,30 @@ impl<S, D, SI, DI> CurveDeltaIterator<D, S, DI, SI> {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct OverlapIterator<DI, SI, DW, SW, C>(
+    IterCurveWrapper<
+        FilterMap<
+            CurveDeltaIterator<DW, SW, DI, SI>,
+            fn(Delta<DW, SW, DI, SI>) -> Option<Window<Overlap<SW, DW>>>,
+        >,
+        C,
+    >,
+);
+
+impl<DI, SI, DW, SW, C> CurveIterator for OverlapIterator<DI, SI, DW, SW, C>
+where
+    C: CurveType<WindowKind = Overlap<SW, DW>>,
+    CurveDeltaIterator<DW, SW, DI, SI>: Iterator<Item = Delta<DW, SW, DI, SI>> + Debug,
+    Self: Debug,
+{
+    type CurveKind = C;
+
+    fn next_window(&mut self) -> Option<Window<<Self::CurveKind as CurveType>::WindowKind>> {
+        self.0.next_window()
+    }
+}
+
 impl<DI: CurveIterator, SI: CurveIterator>
     CurveDeltaIterator<
         <DI::CurveKind as CurveType>::WindowKind,
@@ -240,18 +264,26 @@ impl<DI: CurveIterator, SI: CurveIterator>
         >,
     >(
         self,
-    ) -> impl CurveIterator<CurveKind = C> + Clone
+    ) -> OverlapIterator<
+        DI,
+        SI,
+        <DI::CurveKind as CurveType>::WindowKind,
+        <SI::CurveKind as CurveType>::WindowKind,
+        C,
+    >
     where
         Self: Clone + Debug,
     {
-        let inner = self.filter_map(Delta::overlap);
-        unsafe {
+        let fun: fn(_) -> _ = Delta::overlap;
+        let inner = self.filter_map(fun);
+        let wrapped = unsafe {
             // Safety
             // self is an iterator of three interleaved curves, but using filter_map
             // we filter only one out
             // so the remaining iterator is a valid curve
             IterCurveWrapper::new(inner)
-        }
+        };
+        OverlapIterator(wrapped)
     }
 }
 
@@ -272,7 +304,7 @@ where
     SI: CurveIterator,
     SI::CurveKind: CurveType<WindowKind = SW>,
 {
-    type Item = Delta<SW, DW, SI, DI>;
+    type Item = Delta<DW, SW, DI, SI>;
 
     fn next(&mut self) -> Option<Self::Item> {
         #![allow(clippy::option_if_let_else)] // false positive, both branches move a value

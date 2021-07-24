@@ -15,7 +15,7 @@ pub use aggregate::AggregationIterator;
 pub use delta::{
     CurveDeltaIterator,
     Delta::{self, *},
-    InverseCurveIterator,
+    InverseCurveIterator, OverlapIterator, RemainingSupplyIterator,
 };
 pub use split::CurveSplitIterator;
 

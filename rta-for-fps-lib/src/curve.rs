@@ -269,7 +269,7 @@ where
         self,
     ) -> CurveDeltaResult<SI::CurveKind, DI::CurveKind, R>
     where
-        Self: Iterator<Item = Delta<SW, DW, SI, DI>>,
+        Self: Iterator<Item = Delta<DW, SW, DI, SI>>,
     {
         let mut result = CurveDeltaResult {
             remaining_supply: Curve::empty(),

@@ -23,6 +23,25 @@ pub struct System<'a> {
     servers: &'a [Server<'a>],
 }
 
+#[derive(Clone, Debug)]
+pub struct AggregatedHPDemand<CSD>(
+    ReclassifyIterator<
+        AggregationIterator<CSD, <ConstrainedServerDemand as CurveType>::WindowKind>,
+        HigherPriorityServerDemand,
+    >,
+);
+
+impl<CSD> CurveIterator for AggregatedHPDemand<CSD>
+where
+    CSD: CurveIterator<CurveKind = ConstrainedServerDemand>,
+{
+    type CurveKind = HigherPriorityServerDemand;
+
+    fn next_window(&mut self) -> Option<Window<<Self::CurveKind as CurveType>::WindowKind>> {
+        self.0.next_window()
+    }
+}
+
 /**
 A `CurveIterator` over the Aggregated Higher Priority Execution of a Server
 */
@@ -32,7 +51,7 @@ pub struct AggregatedHPExecution(
     ReclassifyIterator<
         AggregationIterator<
             EitherCurveIterator<
-                ActualExecution,
+                FixedActualExecution,
                 ReclassifyIterator<Box<AggregatedHPExecution>, ActualServerExecution>,
             >,
             <ActualServerExecution as CurveType>::WindowKind,
@@ -49,16 +68,49 @@ impl CurveIterator for AggregatedHPExecution {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct OriginalUnconstrainedExecution(
+    InverseCurveIterator<AggregatedHPDemand<ConstrainedDemand>, UnconstrainedServerExecution>,
+);
+
+impl CurveIterator for OriginalUnconstrainedExecution {
+    type CurveKind = UnconstrainedServerExecution;
+
+    fn next_window(&mut self) -> Option<Window<<Self::CurveKind as CurveType>::WindowKind>> {
+        self.0.next_window()
+    }
+}
+
 /**
 A `CurveIterator` over the Unconstrained execution of a server
 */
 #[derive(Clone, Debug)]
-pub struct UnconstrainedExecution(
+pub struct FixedUnconstrainedExecution(
     InverseCurveIterator<AggregatedHPExecution, UnconstrainedServerExecution>,
 );
 
-impl CurveIterator for UnconstrainedExecution {
+impl CurveIterator for FixedUnconstrainedExecution {
     type CurveKind = UnconstrainedServerExecution;
+
+    fn next_window(&mut self) -> Option<Window<<Self::CurveKind as CurveType>::WindowKind>> {
+        self.0.next_window()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct OriginalActualServerExecution(
+    ActualServerExecutionIterator<
+        CapacityCheckIterator<
+            <<OriginalUnconstrainedExecution as CurveIterator>::CurveKind as CurveType>::WindowKind,
+            OriginalUnconstrainedExecution,
+            <OriginalUnconstrainedExecution as CurveIterator>::CurveKind,
+        >,
+        ConstrainedDemand,
+    >,
+);
+
+impl CurveIterator for OriginalActualServerExecution {
+    type CurveKind = ActualServerExecution;
 
     fn next_window(&mut self) -> Option<Window<<Self::CurveKind as CurveType>::WindowKind>> {
         self.0.next_window()
@@ -70,18 +122,18 @@ A `CurveIterator` over a Servers actual execution
 */
 #[derive(Clone, Debug)]
 #[allow(clippy::type_complexity)]
-pub struct ActualExecution(
+pub struct FixedActualExecution(
     ActualServerExecutionIterator<
         CapacityCheckIterator<
-            <<UnconstrainedExecution as CurveIterator>::CurveKind as CurveType>::WindowKind,
-            UnconstrainedExecution,
-            <UnconstrainedExecution as CurveIterator>::CurveKind,
+            <<FixedUnconstrainedExecution as CurveIterator>::CurveKind as CurveType>::WindowKind,
+            FixedUnconstrainedExecution,
+            <FixedUnconstrainedExecution as CurveIterator>::CurveKind,
         >,
         ConstrainedDemand,
     >,
 );
 
-impl CurveIterator for ActualExecution {
+impl CurveIterator for FixedActualExecution {
     type CurveKind = ActualServerExecution;
 
     fn next_window(&mut self) -> Option<Window<<Self::CurveKind as CurveType>::WindowKind>> {
@@ -112,14 +164,15 @@ impl<'a> System<'a> {
     #[must_use]
     pub fn aggregated_higher_priority_demand_curve_iter<'b, CSDCI>(
         constrained_demand_curves: CSDCI,
-    ) -> impl CurveIterator<CurveKind = HigherPriorityServerDemand> + Clone + 'b
+    ) -> AggregatedHPDemand<CSDCI::Item>
     where
         CSDCI::Item: CurveIterator<CurveKind = ConstrainedServerDemand> + Clone + 'b,
         CSDCI: IntoIterator,
     {
-        constrained_demand_curves
+        let ahpd = constrained_demand_curves
             .into_iter()
-            .aggregate::<ReclassifyIterator<_, _>>()
+            .aggregate::<ReclassifyIterator<_, _>>();
+        AggregatedHPDemand(ahpd)
     }
 
     /**
@@ -196,7 +249,7 @@ impl<'a> System<'a> {
     pub fn original_unconstrained_server_execution_curve_iter(
         &self,
         server_index: usize,
-    ) -> impl CurveIterator<CurveKind = UnconstrainedServerExecution> + Clone + '_ {
+    ) -> OriginalUnconstrainedExecution {
         #![allow(clippy::redundant_closure_for_method_calls)]
 
         let csdi = self.servers[..server_index]
@@ -205,7 +258,7 @@ impl<'a> System<'a> {
 
         let ahpc = System::aggregated_higher_priority_demand_curve_iter(csdi);
 
-        InverseCurveIterator::new(ahpc)
+        OriginalUnconstrainedExecution(InverseCurveIterator::new(ahpc))
     }
 
     /**
@@ -215,10 +268,10 @@ impl<'a> System<'a> {
     pub fn fixed_unconstrained_server_execution_curve_iter(
         &self,
         server_index: usize,
-    ) -> UnconstrainedExecution {
+    ) -> FixedUnconstrainedExecution {
         let ahpc = self.aggregated_higher_priority_actual_execution_curve_iter(server_index);
 
-        UnconstrainedExecution(InverseCurveIterator::new(ahpc))
+        FixedUnconstrainedExecution(InverseCurveIterator::new(ahpc))
     }
 
     /// Calculate the Constrained Execution Curve using Algorithm 4. from the paper
@@ -231,7 +284,7 @@ impl<'a> System<'a> {
     pub fn original_actual_execution_curve_iter(
         &self,
         server_index: usize,
-    ) -> impl CurveIterator<CurveKind = ActualServerExecution> + Clone + '_ {
+    ) -> OriginalActualServerExecution {
         let unchecked_unconstrained_execution =
             self.original_unconstrained_server_execution_curve_iter(server_index);
 
@@ -247,18 +300,18 @@ impl<'a> System<'a> {
 
         let constrained_demand = self.servers[server_index].constraint_demand_curve_iter();
 
-        ActualServerExecutionIterator::new(
+        OriginalActualServerExecution(ActualServerExecutionIterator::new(
             self.servers[server_index].properties,
             checked_unconstrained_execution,
             constrained_demand,
-        )
+        ))
     }
 
     /**
     Calculate the actual execution with the fixed unconstrained server execution rather than the original unconstrained server execution
     */
     #[must_use]
-    pub fn fixed_actual_execution_curve_iter(&self, server_index: usize) -> ActualExecution {
+    pub fn fixed_actual_execution_curve_iter(&self, server_index: usize) -> FixedActualExecution {
         let unchecked_unconstrained_execution =
             self.fixed_unconstrained_server_execution_curve_iter(server_index);
 
@@ -274,7 +327,7 @@ impl<'a> System<'a> {
 
         let constrained_demand = self.servers[server_index].constraint_demand_curve_iter();
 
-        ActualExecution(ActualServerExecutionIterator::new(
+        FixedActualExecution(ActualServerExecutionIterator::new(
             self.servers[server_index].properties,
             checked_unconstrained_execution,
             constrained_demand,
