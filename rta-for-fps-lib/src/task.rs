@@ -1,17 +1,21 @@
 //! Module for the Task definition
 
+use crate::curve::curve_types::CurveType;
 use crate::curve::{AggregateExt, Curve};
-use crate::iterators::curve::CurveDeltaIterator;
+use crate::iterators::curve::{
+    AggregationIterator, CurveDeltaIterator, OverlapIterator, RemainingSupplyIterator,
+};
 use crate::iterators::task::TaskDemandIterator;
 use crate::iterators::{CurveIterator, ReclassifyIterator};
 use crate::server::ActualServerExecution;
-use crate::system::System;
+use crate::system::{FixedActualExecution, OriginalActualServerExecution, System};
 use crate::task::curve_types::{
     ActualTaskExecution, AvailableTaskExecution, HigherPriorityTaskDemand,
 };
 use crate::time::{TimeUnit, UnitNumber};
 use crate::window::WindowEnd;
 use crate::window::{Demand, Window};
+use core::fmt::Debug;
 
 pub mod curve_types {
     //! Module for `CurveType`s of a Task
@@ -46,6 +50,85 @@ pub struct Task {
     pub interval: TimeUnit,
 }
 
+#[derive(Clone, Debug)]
+pub struct AvailableExecution<HPTD, ASEC>(
+    ReclassifyIterator<
+        RemainingSupplyIterator<
+            <ActualServerExecution as CurveType>::WindowKind,
+            Demand,
+            ASEC,
+            HPTD,
+        >,
+        AvailableTaskExecution,
+    >,
+);
+
+impl<HPTD, ASEC> CurveIterator for AvailableExecution<HPTD, ASEC>
+where
+    Self: Debug,
+    HPTD: CurveIterator,
+    HPTD::CurveKind: CurveType<WindowKind = Demand>,
+    ASEC: CurveIterator,
+    ASEC::CurveKind: CurveType<WindowKind = <ActualServerExecution as CurveType>::WindowKind>,
+{
+    type CurveKind = AvailableTaskExecution;
+
+    fn next_window(&mut self) -> Option<Window<<Self::CurveKind as CurveType>::WindowKind>> {
+        self.0.next_window()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct OriginalActualTaskExecution(
+    OverlapIterator<
+        TaskDemandIterator,
+        AvailableExecution<AggregatedHPDemand, OriginalActualServerExecution>,
+        Demand,
+        <AvailableTaskExecution as CurveType>::WindowKind,
+        ActualTaskExecution,
+    >,
+);
+
+impl CurveIterator for OriginalActualTaskExecution {
+    type CurveKind = ActualTaskExecution;
+
+    fn next_window(&mut self) -> Option<Window<<Self::CurveKind as CurveType>::WindowKind>> {
+        self.0.next_window()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct FixedActualTaskExecution(
+    OverlapIterator<
+        TaskDemandIterator,
+        AvailableExecution<AggregatedHPDemand, FixedActualExecution>,
+        Demand,
+        <AvailableTaskExecution as CurveType>::WindowKind,
+        ActualTaskExecution,
+    >,
+);
+
+impl CurveIterator for FixedActualTaskExecution {
+    type CurveKind = ActualTaskExecution;
+
+    fn next_window(&mut self) -> Option<Window<<Self::CurveKind as CurveType>::WindowKind>> {
+        self.0.next_window()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct AggregatedHPDemand(
+    ReclassifyIterator<AggregationIterator<TaskDemandIterator, Demand>, HigherPriorityTaskDemand>,
+);
+
+impl CurveIterator for AggregatedHPDemand {
+    type CurveKind = HigherPriorityTaskDemand;
+
+    fn next_window(&mut self) -> Option<Window<<Self::CurveKind as CurveType>::WindowKind>> {
+        self.0.next_window()
+    }
+}
+
 impl Task {
     /// Create a new Task with the corresponding parameters
     ///
@@ -70,14 +153,13 @@ impl Task {
     /// calculate the Higher Priority task Demand for the task with priority `index` as defined in Definition 14. (1) in the paper,
     /// for a set of tasks indexed by their priority (lower index <=> higher priority) and up to the specified limit
     #[must_use]
-    pub fn higher_priority_task_demand_iter(
-        tasks: &[Self],
-        index: usize,
-    ) -> impl CurveIterator<CurveKind = HigherPriorityTaskDemand> + Clone + '_ {
-        tasks[..index]
-            .iter()
-            .map(|task| task.into_iter())
-            .aggregate::<ReclassifyIterator<_, _>>()
+    pub fn higher_priority_task_demand_iter(tasks: &[Self], index: usize) -> AggregatedHPDemand {
+        AggregatedHPDemand(
+            tasks[..index]
+                .iter()
+                .map(|task| task.into_iter())
+                .aggregate::<ReclassifyIterator<_, _>>(),
+        )
     }
 
     /// Calculate the available execution Curve for the task with priority `task_index` of the server with priority `server_index`
@@ -88,7 +170,7 @@ impl Task {
     pub fn available_execution_curve_impl<'a, HPTD, ASEC>(
         constrained_server_execution_curve: ASEC,
         higher_priority_task_demand: HPTD,
-    ) -> impl CurveIterator<CurveKind = AvailableTaskExecution> + Clone + 'a
+    ) -> AvailableExecution<HPTD, ASEC>
     where
         HPTD: CurveIterator<CurveKind = HigherPriorityTaskDemand> + Clone + 'a,
         ASEC: CurveIterator<CurveKind = ActualServerExecution> + Clone + 'a,
@@ -98,9 +180,11 @@ impl Task {
             higher_priority_task_demand,
         );
 
-        delta
-            .remaining_supply()
-            .reclassify::<AvailableTaskExecution>()
+        AvailableExecution(
+            delta
+                .remaining_supply()
+                .reclassify::<AvailableTaskExecution>(),
+        )
     }
 
     /// Calculate the actual execution Curve for the Task with priority `task_index` of the Server with priority `server_index`
@@ -112,7 +196,7 @@ impl Task {
         system: &'a System,
         server_index: usize,
         task_index: usize,
-    ) -> impl CurveIterator<CurveKind = ActualTaskExecution> + Clone + 'a {
+    ) -> OriginalActualTaskExecution {
         let asec = system.original_actual_execution_curve_iter(server_index);
         let hptd = Task::higher_priority_task_demand_iter(
             system.as_servers()[server_index].as_tasks(),
@@ -124,8 +208,10 @@ impl Task {
         let task_demand_curve =
             system.as_servers()[server_index].as_tasks()[task_index].into_iter();
 
-        CurveDeltaIterator::new(available_execution_curve, task_demand_curve)
-            .overlap::<ActualTaskExecution>()
+        OriginalActualTaskExecution(
+            CurveDeltaIterator::new(available_execution_curve, task_demand_curve)
+                .overlap::<ActualTaskExecution>(),
+        )
     }
 
     /**
@@ -137,7 +223,7 @@ impl Task {
         system: &'a System,
         server_index: usize,
         task_index: usize,
-    ) -> impl CurveIterator<CurveKind = ActualTaskExecution> + Clone + 'a {
+    ) -> FixedActualTaskExecution {
         let asec = system.fixed_actual_execution_curve_iter(server_index);
         let hptd = Task::higher_priority_task_demand_iter(
             system.as_servers()[server_index].as_tasks(),
@@ -149,8 +235,10 @@ impl Task {
         let task_demand_curve =
             system.as_servers()[server_index].as_tasks()[task_index].into_iter();
 
-        CurveDeltaIterator::new(available_execution_curve, task_demand_curve)
-            .overlap::<ActualTaskExecution>()
+        FixedActualTaskExecution(
+            CurveDeltaIterator::new(available_execution_curve, task_demand_curve)
+                .overlap::<ActualTaskExecution>(),
+        )
     }
 
     /// Calculate the WCRT for the task with priority `task_index` for the Server with priority `server_index`
