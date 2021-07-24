@@ -123,18 +123,33 @@ where
     }
 }
 
+/**
+A `CurveIterator` that wraps either the `L` or `R` `CurveIterator`
+*/
 #[derive(Copy, Clone, Debug)]
 pub enum EitherCurveIterator<L, R> {
+    /**
+    The Left Variant of the Either
+    */
     Left(L),
+    /**
+    The Right Variant of the Either
+     */
     Right(R),
 }
 
 impl<L, R> EitherCurveIterator<L, R> {
-    pub fn left(left: L) -> Self {
+    /**
+    Create an instance of the Left Variant
+    */
+    pub const fn left(left: L) -> Self {
         Self::Left(left)
     }
 
-    pub fn right(right: R) -> Self {
+    /**
+    Create an instance of the Right Variant
+     */
+    pub const fn right(right: R) -> Self {
         Self::Right(right)
     }
 }

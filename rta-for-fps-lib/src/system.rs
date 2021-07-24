@@ -23,7 +23,11 @@ pub struct System<'a> {
     servers: &'a [Server<'a>],
 }
 
+/**
+A `CurveIterator` over the Aggregated Higher Priority Execution of a Server
+*/
 #[derive(Clone, Debug)]
+#[allow(clippy::type_complexity)]
 pub struct AggregatedHPExecution(
     ReclassifyIterator<
         AggregationIterator<
@@ -45,6 +49,9 @@ impl CurveIterator for AggregatedHPExecution {
     }
 }
 
+/**
+A `CurveIterator` over the Unconstrained execution of a server
+*/
 #[derive(Clone, Debug)]
 pub struct UnconstrainedExecution(
     InverseCurveIterator<AggregatedHPExecution, UnconstrainedServerExecution>,
@@ -58,7 +65,11 @@ impl CurveIterator for UnconstrainedExecution {
     }
 }
 
+/**
+A `CurveIterator` over a Servers actual execution
+*/
 #[derive(Clone, Debug)]
+#[allow(clippy::type_complexity)]
 pub struct ActualExecution(
     ActualServerExecutionIterator<
         CapacityCheckIterator<
@@ -111,6 +122,10 @@ impl<'a> System<'a> {
             .aggregate::<ReclassifyIterator<_, _>>()
     }
 
+    /**
+    Calculate the aggregated higher priority actual execution of the server with index `server_index`
+    */
+    #[must_use]
     pub fn aggregated_higher_priority_actual_execution_curve_iter(
         &self,
         server_index: usize,
@@ -152,6 +167,11 @@ impl<'a> System<'a> {
             .fold(TimeUnit::ONE, TimeUnit::lcm)
     }
 
+    /**
+    For the server with index `server_index` calculate up to which point in time we need to perform the analysis
+    Replaces `system_wide_hyper_period` as that does not account for task offset
+    */
+    #[must_use]
     pub fn analysis_end(&self, server_index: usize) -> TimeUnit {
         let res = self.servers[..=server_index]
             .iter()
@@ -188,6 +208,9 @@ impl<'a> System<'a> {
         InverseCurveIterator::new(ahpc)
     }
 
+    /**
+    Calculate the unconstrained server execution using the aggregated hp actual execution rather than the aggregated hp constrained demand
+    */
     #[must_use]
     pub fn fixed_unconstrained_server_execution_curve_iter(
         &self,
@@ -231,6 +254,9 @@ impl<'a> System<'a> {
         )
     }
 
+    /**
+    Calculate the actual execution with the fixed unconstrained server execution rather than the original unconstrained server execution
+    */
     #[must_use]
     pub fn fixed_actual_execution_curve_iter(&self, server_index: usize) -> ActualExecution {
         let unchecked_unconstrained_execution =
