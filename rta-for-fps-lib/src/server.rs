@@ -4,13 +4,14 @@
 
 use crate::curve::AggregateExt;
 
+use crate::curve::curve_types::CurveType;
 use crate::iterators::curve::AggregationIterator;
 use crate::iterators::server::constrained_demand::ConstrainedServerDemandIterator;
 use crate::iterators::task::TaskDemandIterator;
-use crate::iterators::ReclassifyIterator;
+use crate::iterators::{CurveIterator, ReclassifyIterator};
 use crate::task::Task;
 use crate::time::TimeUnit;
-use crate::window::Demand;
+use crate::window::{Demand, Window};
 
 /// Marker Type for aggregated server demand curve
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
@@ -75,10 +76,29 @@ pub enum ServerKind {
     Periodic,
 }
 
-pub type AggregatedTaskDemand =
-    ReclassifyIterator<AggregationIterator<TaskDemandIterator, Demand>, AggregatedServerDemand>;
+#[derive(Clone, Debug)]
+pub struct AggregatedTaskDemand(
+    ReclassifyIterator<AggregationIterator<TaskDemandIterator, Demand>, AggregatedServerDemand>,
+);
 
-pub type ConstrainedDemand = ConstrainedServerDemandIterator<AggregatedTaskDemand>;
+impl CurveIterator for AggregatedTaskDemand {
+    type CurveKind = AggregatedServerDemand;
+
+    fn next_window(&mut self) -> Option<Window<<Self::CurveKind as CurveType>::WindowKind>> {
+        self.0.next_window()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ConstrainedDemand(ConstrainedServerDemandIterator<AggregatedTaskDemand>);
+
+impl CurveIterator for ConstrainedDemand {
+    type CurveKind = ConstrainedServerDemand;
+
+    fn next_window(&mut self) -> Option<Window<<Self::CurveKind as CurveType>::WindowKind>> {
+        self.0.next_window()
+    }
+}
 
 impl<'a> Server<'a> {
     /// Create a new Server with the given Tasks and properties
@@ -109,15 +129,20 @@ impl<'a> Server<'a> {
     /// As defined in Definition 11. in the paper
     #[must_use]
     pub fn aggregated_demand_curve_iter(&self) -> AggregatedTaskDemand {
-        self.tasks
-            .iter()
-            .map(|task| task.into_iter())
-            .aggregate::<ReclassifyIterator<_, _>>()
+        AggregatedTaskDemand(
+            self.tasks
+                .iter()
+                .map(|task| task.into_iter())
+                .aggregate::<ReclassifyIterator<_, _>>(),
+        )
     }
 
     /// Calculate the constrained demand curve
     #[must_use]
     pub fn constraint_demand_curve_iter(&self) -> ConstrainedDemand {
-        ConstrainedServerDemandIterator::new(self.properties, self.aggregated_demand_curve_iter())
+        ConstrainedDemand(ConstrainedServerDemandIterator::new(
+            self.properties,
+            self.aggregated_demand_curve_iter(),
+        ))
     }
 }
