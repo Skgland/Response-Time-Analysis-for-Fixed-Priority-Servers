@@ -76,6 +76,9 @@ pub enum ServerKind {
     Periodic,
 }
 
+/**
+A `CurveIterator` for a Servers aggregated task demand
+*/
 #[derive(Clone, Debug)]
 pub struct AggregatedTaskDemand(
     ReclassifyIterator<AggregationIterator<TaskDemandIterator, Demand>, AggregatedServerDemand>,
@@ -89,6 +92,9 @@ impl CurveIterator for AggregatedTaskDemand {
     }
 }
 
+/**
+A `CurveIterator`for a Servers constrained demand
+ */
 #[derive(Clone, Debug)]
 pub struct ConstrainedDemand(ConstrainedServerDemandIterator<AggregatedTaskDemand>);
 

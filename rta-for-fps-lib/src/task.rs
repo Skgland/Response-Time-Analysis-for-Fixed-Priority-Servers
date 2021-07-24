@@ -128,6 +128,10 @@ impl Task {
             .overlap::<ActualTaskExecution>()
     }
 
+    /**
+       A fixed version of the papers original actual execution, using aggregated higher priority server execution
+       instead of aggregated higher priority server constrained demand for the computation
+    */
     #[must_use]
     pub fn fixed_actual_execution_curve_iter<'a>(
         system: &'a System,
@@ -217,6 +221,9 @@ impl Task {
             .unwrap_or(TimeUnit::ZERO)
     }
 
+    /// Same as `original_worst_case_response_time` in most aspects, but uses the `fixed_actual_execution_curve_iter` instead of the `original_actual_execution_curve_iter`
+    /// # Panics
+    /// When sanity checks fail
     #[must_use]
     pub fn fixed_worst_case_response_time(
         system: &System,

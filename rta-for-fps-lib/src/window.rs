@@ -181,7 +181,11 @@ impl<T> Window<T> {
         })
     }
 
-    pub fn reclassify<R>(self) -> Window<R> {
+    /**
+    Change the `window_type` of the `Window`
+    */
+    #[must_use]
+    pub const fn reclassify<R>(self) -> Window<R> {
         Window {
             start: self.start,
             end: self.end,
