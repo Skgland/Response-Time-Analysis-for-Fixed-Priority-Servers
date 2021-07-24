@@ -64,7 +64,7 @@ fn main() -> std::io::Result<()> {
         servers[0].constraint_demand_curve_iter(),
     ));
     let hp_load_first24 =
-        CurveSplitIterator::new(hp_load.clone(), limit).take_while(|window| window.end <= limit);
+        CurveSplitIterator::new(hp_load, limit).take_while(|window| window.end <= limit);
 
     std::fs::write(
         "latex/data/external_load.tex",

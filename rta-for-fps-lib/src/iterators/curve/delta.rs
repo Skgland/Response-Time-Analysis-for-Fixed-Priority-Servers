@@ -214,12 +214,10 @@ impl<S, D, SI, DI> CurveDeltaIterator<D, S, DI, SI> {
 
     /// Turn the `CurveDeltaIterator` into a `CurveIterator` that returns only the Overlap Windows
     #[must_use]
-    pub fn overlap<C: CurveType<WindowKind = Overlap<S, D>>>(
-        self,
-    ) -> OverlapIterator<DI, SI, D, S, C>
+    pub fn overlap<C>(self) -> OverlapIterator<DI, SI, D, S, C>
     where
-        Self: Iterator<Item = Delta<D, S, DI, SI>>,
-        Self: Clone + Debug,
+        Self: Iterator<Item = Delta<D, S, DI, SI>> + Debug,
+        C: CurveType<WindowKind = Overlap<S, D>>,
     {
         let fun: fn(_) -> _ = Delta::overlap;
         let inner = self.filter_map(fun);
@@ -234,7 +232,11 @@ impl<S, D, SI, DI> CurveDeltaIterator<D, S, DI, SI> {
     }
 }
 
+/// Iterator Adapter for filtering a `CurveDeltaIterator` into only the overlap
+///
+/// See [`CurveDeltaIterator::overlap`]
 #[derive(Clone, Debug)]
+#[allow(clippy::type_complexity)]
 pub struct OverlapIterator<DI, SI, DW, SW, C>(
     IterCurveWrapper<
         FilterMap<
@@ -267,6 +269,7 @@ impl<DI: CurveIterator, SI: CurveIterator>
     >
 {
     /// Create a new Iterator for computing the delta between the supply and demand curve
+    #[must_use]
     pub fn new(supply: SI, demand: DI) -> Self {
         CurveDeltaIterator {
             demand: Some(Peeker::new(Box::new(demand).into_iterator())),
