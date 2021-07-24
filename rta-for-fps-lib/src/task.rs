@@ -50,6 +50,9 @@ pub struct Task {
     pub interval: TimeUnit,
 }
 
+/**
+    A `CurveIterator` over a tasks available execution curve
+*/
 #[derive(Clone, Debug)]
 pub struct AvailableExecution<HPTD, ASEC>(
     ReclassifyIterator<
@@ -78,11 +81,14 @@ where
     }
 }
 
+/**
+A `CurveIterator` over the actual task execution of a task using the original algorithm
+ */
 #[derive(Clone, Debug)]
 pub struct OriginalActualTaskExecution(
     OverlapIterator<
         TaskDemandIterator,
-        AvailableExecution<AggregatedHPDemand, OriginalActualServerExecution>,
+        AvailableExecution<AggregatedHPTaskDemand, OriginalActualServerExecution>,
         Demand,
         <AvailableTaskExecution as CurveType>::WindowKind,
         ActualTaskExecution,
@@ -97,11 +103,14 @@ impl CurveIterator for OriginalActualTaskExecution {
     }
 }
 
+/**
+   A `CurveIterator` over the actual task execution of a task using the fixed algorithm
+*/
 #[derive(Clone, Debug)]
 pub struct FixedActualTaskExecution(
     OverlapIterator<
         TaskDemandIterator,
-        AvailableExecution<AggregatedHPDemand, FixedActualExecution>,
+        AvailableExecution<AggregatedHPTaskDemand, FixedActualExecution>,
         Demand,
         <AvailableTaskExecution as CurveType>::WindowKind,
         ActualTaskExecution,
@@ -116,12 +125,15 @@ impl CurveIterator for FixedActualTaskExecution {
     }
 }
 
+/**
+ * A `CurveIterator` over a tasks aggregated higher priority task demand
+ */
 #[derive(Clone, Debug)]
-pub struct AggregatedHPDemand(
+pub struct AggregatedHPTaskDemand(
     ReclassifyIterator<AggregationIterator<TaskDemandIterator, Demand>, HigherPriorityTaskDemand>,
 );
 
-impl CurveIterator for AggregatedHPDemand {
+impl CurveIterator for AggregatedHPTaskDemand {
     type CurveKind = HigherPriorityTaskDemand;
 
     fn next_window(&mut self) -> Option<Window<<Self::CurveKind as CurveType>::WindowKind>> {
@@ -153,8 +165,11 @@ impl Task {
     /// calculate the Higher Priority task Demand for the task with priority `index` as defined in Definition 14. (1) in the paper,
     /// for a set of tasks indexed by their priority (lower index <=> higher priority) and up to the specified limit
     #[must_use]
-    pub fn higher_priority_task_demand_iter(tasks: &[Self], index: usize) -> AggregatedHPDemand {
-        AggregatedHPDemand(
+    pub fn higher_priority_task_demand_iter(
+        tasks: &[Self],
+        index: usize,
+    ) -> AggregatedHPTaskDemand {
+        AggregatedHPTaskDemand(
             tasks[..index]
                 .iter()
                 .map(|task| task.into_iter())
@@ -192,8 +207,8 @@ impl Task {
     ///
     /// Based on Definition 14. (3) of the paper
     #[must_use]
-    pub fn original_actual_execution_curve_iter<'a>(
-        system: &'a System,
+    pub fn original_actual_execution_curve_iter(
+        system: &System,
         server_index: usize,
         task_index: usize,
     ) -> OriginalActualTaskExecution {
@@ -219,8 +234,8 @@ impl Task {
        instead of aggregated higher priority server constrained demand for the computation
     */
     #[must_use]
-    pub fn fixed_actual_execution_curve_iter<'a>(
-        system: &'a System,
+    pub fn fixed_actual_execution_curve_iter(
+        system: &System,
         server_index: usize,
         task_index: usize,
     ) -> FixedActualTaskExecution {

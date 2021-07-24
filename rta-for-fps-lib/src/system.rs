@@ -22,16 +22,18 @@ pub struct System<'a> {
     /// The Servers of the System
     servers: &'a [Server<'a>],
 }
-
+/**
+A `CurveIterator` over a servers aggregated higher priority demand
+*/
 #[derive(Clone, Debug)]
-pub struct AggregatedHPDemand<CSD>(
+pub struct AggregatedHPServerDemand<CSD>(
     ReclassifyIterator<
         AggregationIterator<CSD, <ConstrainedServerDemand as CurveType>::WindowKind>,
         HigherPriorityServerDemand,
     >,
 );
 
-impl<CSD> CurveIterator for AggregatedHPDemand<CSD>
+impl<CSD> CurveIterator for AggregatedHPServerDemand<CSD>
 where
     CSD: CurveIterator<CurveKind = ConstrainedServerDemand>,
 {
@@ -68,9 +70,12 @@ impl CurveIterator for AggregatedHPExecution {
     }
 }
 
+/**
+A `CurveIterator` over a servers unconstrained execution using the original algorithm
+*/
 #[derive(Clone, Debug)]
 pub struct OriginalUnconstrainedExecution(
-    InverseCurveIterator<AggregatedHPDemand<ConstrainedDemand>, UnconstrainedServerExecution>,
+    InverseCurveIterator<AggregatedHPServerDemand<ConstrainedDemand>, UnconstrainedServerExecution>,
 );
 
 impl CurveIterator for OriginalUnconstrainedExecution {
@@ -97,7 +102,11 @@ impl CurveIterator for FixedUnconstrainedExecution {
     }
 }
 
+/**
+A `CurveIterator` over a Servers actual execution using the original algorithm
+ */
 #[derive(Clone, Debug)]
+#[allow(clippy::type_complexity)]
 pub struct OriginalActualServerExecution(
     ActualServerExecutionIterator<
         CapacityCheckIterator<
@@ -118,7 +127,7 @@ impl CurveIterator for OriginalActualServerExecution {
 }
 
 /**
-A `CurveIterator` over a Servers actual execution
+A `CurveIterator` over a Servers actual execution using the fixed algorithm
 */
 #[derive(Clone, Debug)]
 #[allow(clippy::type_complexity)]
@@ -164,7 +173,7 @@ impl<'a> System<'a> {
     #[must_use]
     pub fn aggregated_higher_priority_demand_curve_iter<'b, CSDCI>(
         constrained_demand_curves: CSDCI,
-    ) -> AggregatedHPDemand<CSDCI::Item>
+    ) -> AggregatedHPServerDemand<CSDCI::Item>
     where
         CSDCI::Item: CurveIterator<CurveKind = ConstrainedServerDemand> + Clone + 'b,
         CSDCI: IntoIterator,
@@ -172,7 +181,7 @@ impl<'a> System<'a> {
         let ahpd = constrained_demand_curves
             .into_iter()
             .aggregate::<ReclassifyIterator<_, _>>();
-        AggregatedHPDemand(ahpd)
+        AggregatedHPServerDemand(ahpd)
     }
 
     /**
