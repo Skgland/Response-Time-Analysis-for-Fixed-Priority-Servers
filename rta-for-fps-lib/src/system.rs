@@ -45,17 +45,38 @@ impl CurveIterator for AggregatedHPExecution {
     }
 }
 
-pub type UnconstrainedExecution =
-    InverseCurveIterator<AggregatedHPExecution, UnconstrainedServerExecution>;
+#[derive(Clone, Debug)]
+pub struct UnconstrainedExecution(
+    InverseCurveIterator<AggregatedHPExecution, UnconstrainedServerExecution>,
+);
 
-pub type ActualExecution = ActualServerExecutionIterator<
-    CapacityCheckIterator<
-        <<UnconstrainedExecution as CurveIterator>::CurveKind as CurveType>::WindowKind,
-        UnconstrainedExecution,
-        <UnconstrainedExecution as CurveIterator>::CurveKind,
+impl CurveIterator for UnconstrainedExecution {
+    type CurveKind = UnconstrainedServerExecution;
+
+    fn next_window(&mut self) -> Option<Window<<Self::CurveKind as CurveType>::WindowKind>> {
+        self.0.next_window()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ActualExecution(
+    ActualServerExecutionIterator<
+        CapacityCheckIterator<
+            <<UnconstrainedExecution as CurveIterator>::CurveKind as CurveType>::WindowKind,
+            UnconstrainedExecution,
+            <UnconstrainedExecution as CurveIterator>::CurveKind,
+        >,
+        ConstrainedDemand,
     >,
-    ConstrainedDemand,
->;
+);
+
+impl CurveIterator for ActualExecution {
+    type CurveKind = ActualServerExecution;
+
+    fn next_window(&mut self) -> Option<Window<<Self::CurveKind as CurveType>::WindowKind>> {
+        self.0.next_window()
+    }
+}
 
 impl<'a> System<'a> {
     /// Create a new System from a slice of Servers,
@@ -174,7 +195,7 @@ impl<'a> System<'a> {
     ) -> UnconstrainedExecution {
         let ahpc = self.aggregated_higher_priority_actual_execution_curve_iter(server_index);
 
-        InverseCurveIterator::new(ahpc)
+        UnconstrainedExecution(InverseCurveIterator::new(ahpc))
     }
 
     /// Calculate the Constrained Execution Curve using Algorithm 4. from the paper
@@ -227,10 +248,10 @@ impl<'a> System<'a> {
 
         let constrained_demand = self.servers[server_index].constraint_demand_curve_iter();
 
-        ActualServerExecutionIterator::new(
+        ActualExecution(ActualServerExecutionIterator::new(
             self.servers[server_index].properties,
             checked_unconstrained_execution,
             constrained_demand,
-        )
+        ))
     }
 }
